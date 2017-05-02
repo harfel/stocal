@@ -3,7 +3,7 @@ import abc
 class Reaction(object) :
 	"""Reaction class
 
-	Base class for stochastic transitions of reactants into products.
+	Abstract base class for stochastic transitions of reactants into products.
 	Subclasses must implement the propensity method.
 
 	After initialization, reactants and products must not be altered.
@@ -53,12 +53,15 @@ class Reaction(object) :
 	def propensity(self, state) :
 		"""Reaction propensity
 		
-		This method has to be provided by a subclass.
+		This method has to be provided by a subclass and must return a
+		non-negative float denoting the reaction propensity for the
+		provided state. The function should not modify the provided state.
 		"""
 		return 0.
 
 
 class MassAction(Reaction) :
+	"""Reaction with mass action kinetics"""
 	def __init__(self, reactants, products, c) :
 		if c < 0 :
 			raise ValueError("stochastic rate constants must be non-negative.")
@@ -73,6 +76,18 @@ class MassAction(Reaction) :
 			(choose(state.get(s,0), n) for s,n in self.reactants.iteritems()),
 			self.c
 		)
+
+
+class Rule(object) :
+	"""Abstract base class for rules
+	
+	Rule subclasses must provide the infer_reactions method.
+	"""
+	__metaclass__ = abc.ABCMeta
+	
+	@abc.abstractmethod
+	def infer_reactions(self, new_species, state) :
+		raise StopIteration
 
 
 class Process(object) :
@@ -106,6 +121,7 @@ class TrajectorySampler(object) :
 	def __iter__(self) :
 		"""Iteratively apply and return a firing transition"""
 		raise StopIteration
+		yield None
 
 
 from random import random
