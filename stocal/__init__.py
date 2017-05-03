@@ -48,6 +48,18 @@ class Transition(object) :
 			))
 		return self._hash
 
+	def __repr__(self) :
+		return '%s(%s, %s)' % (
+			type(self).__name__, self.reactants, self.products
+		)
+
+	def __str__(self) :
+		def dct2str(dct) :
+			return ' + '.join(
+				s if n==1 else '%s*%s' % (n,s) for s,n in dct.iteritems()
+			)
+		return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
+
 
 class Reaction(Transition) :
 	"""Reaction class
@@ -93,6 +105,11 @@ class MassAction(Reaction) :
 			raise ValueError("stochastic rate constants must be non-negative.")
 		super(MassAction, self).__init__(reactants, products)
 		self.c = c
+
+	def __repr__(self) :
+		return '%s(%s, %s, %f)' % (
+			type(self).__name__, self.reactants, self.products, self.c
+		)
 
 	def propensity(self, state) :
 		def choose(n,k) :
