@@ -11,6 +11,8 @@ class Reaction(object) :
 	"""
 	__metaclass__ = abc.ABCMeta
 
+	rule = None
+
 	def __init__(self, reactants, products) :
 		"""Initialization
 		
@@ -96,8 +98,9 @@ class Process(object) :
 	A collection of all reactions (and later rules) that define a
 	stochastic process.
 	"""
-	def __init__(self, reactions) :
+	def __init__(self, reactions=[], rules=[]) :
 		self.reactions = reactions
+		self.rules = rules
 
 	def trajectory(self, state, t=0., tmax=-1., steps=-1) :
 		"""Create trajcetory sampler for given state"""
@@ -133,6 +136,7 @@ class DirectMethod(TrajectorySampler) :
 	def __init__(self, process, state, t=0., tmax=-1., steps=-1) :
 		if t<0 :
 			raise ValueError("t must not be negative.")
+		self.process = process
 		self.state = state
 		self.reactions = []
 		self.step = 0
@@ -147,23 +151,41 @@ class DirectMethod(TrajectorySampler) :
 		"""Add a new reaction to the sampler"""
 		self.reactions.append(reaction)
 
-	def update_state(self, dct, **kwds) :
+	def update_state(self, dct) :
 		"""Modify sampler state"""
-		self.state.update(dct, **kwds)
+		for rule in self.process.rules :
+			for r in rule.infer_reactions(dct, self.state) :
+				if r not in self.reactions :
+					r.rule = Rule
+					self.add_reaction(r)
+		self.state.update(dct)
 
 	def __iter__(self) :
 		"""Iteratively apply and return a firing transition"""
 		while True :
 			if self.steps>0 and self.step==self.steps : break
 			if self.tmax>=0 and self.time>=self.tmax : break
+
 			propensities = [r.propensity(self.state) for r in self.reactions]
+
+			# housekeeping: remove depleted reactions
+			depleted = [
+				i for i,p in enumerate(izip(propensities,self.reactions))
+				if p==0. and r.rule
+			]
+			for i in reversed(depleted) :
+				del self.reactions[i]
+				del propensities[i]
+
 			total_propensity = sum(propensities)
 			if not total_propensity :
 				if self.tmax>=0 : self.time = self.tmax
 				break
+
 			dt = -log(random()/total_propensity)
 			self.time += dt
 			self.step += 1
+
 			if self.time >= self.tmax >= 0 :
 				self.time = self.tmax
 				break
@@ -176,11 +198,20 @@ class DirectMethod(TrajectorySampler) :
 				yield reaction
 
 	def _perform_reaction(self, reaction) :
-		for species,n in reaction.reactants.iteritems() :
-			self.state[species] -= n
-			if not self.state[species] :
-				del self.state[species]
-		for species,n in reaction.products.iteritems() :
-			if species not in self.state :
-				self.state[species] = 0
-			self.state[species] += n
+		def begin() :
+			for species,n in reaction.reactants.iteritems() :
+				self.state[species] -= n
+				if not self.state[species] :
+					del self.state[species]
+		def end() :
+			for species,n in reaction.products.iteritems() :
+				if species not in self.state :
+					self.state[species] = 0
+				self.state[species] += n
+		begin()
+		for rule in self.process.rules :
+			for r in rule.infer_reactions(reaction.products, self.state) :
+				if r not in self.reactions :
+					r.rule = Rule
+					self.add_reaction(r)
+		end()

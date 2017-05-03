@@ -6,7 +6,15 @@ import unittest
 import stocal
 
 
-class TestStaticProcess(unittest.TestCase) :
+class TestProcess(unittest.TestCase) :
+	def test_initialization(self) :
+		"""Processes can be initialized with and without reactions/rules"""
+		stocal.Process([])
+		stocal.Process([], [])
+		stocal.Process([], rules=[])
+		stocal.Process(rules=[])
+		stocal.Process(reactions=[])
+
 	def test_trajectory(self) :
 		"""Process.trajectory can be called with optional arguments"""
 		proc = stocal.Process([])
@@ -18,7 +26,7 @@ class TestStaticProcess(unittest.TestCase) :
 		self.assert_(isinstance(proc.trajectory({}, steps=10), stocal.TrajectorySampler))
 
 
-class TestTrajectorySampler(object) :
+class TestStaticProcess(object) :
 	def test_empty_process(self) :
 		"""If no transition is applicable, the sampler stops"""
 		process = stocal.Process([])
@@ -81,5 +89,39 @@ class TestTrajectorySampler(object) :
 		self.assertEqual(iter(traj).next(), reaction)
 
 
-class TestDirectMethod(unittest.TestCase, TestTrajectorySampler) :
+class TestRuleProcess(object) :
+	class Rule(stocal.Rule) :
+		"""Degradation rule"""
+		def infer_reactions(self, new_species, state) :
+			for species in new_species :
+				yield stocal.MassAction({species:1}, {}, 1.)
+
+	def test_dynamic_reactions(self) :
+		"""One transition can generate another"""
+		reaction = stocal.MassAction({'a':1}, {'b':1}, 1.)
+		process = stocal.Process([reaction], [self.Rule()])
+		traj = process.trajectory({'a':1})
+		self.assertIs(iter(traj).next(), reaction)
+		try : iter(traj).next()
+		except StopIteration : self.fail("StopIteration raised")
+
+	def test_dynamic_state_update(self) :
+		"""Modifying the state can generate new transitions through rules"""
+		process = stocal.Process(rules=[self.Rule()])
+		traj = process.trajectory({})
+		try :
+			iter(traj).next()
+			self.fail("StopIteration not raised")
+		except StopIteration : pass
+		traj.update_state({'a':5})
+
+		try : iter(traj).next()
+		except StopIteration : self.fail("StopIteration raised")
+
+
+class TestDirectMethod(unittest.TestCase, TestStaticProcess, TestRuleProcess) :
 	Sampler = stocal.DirectMethod
+
+
+if __name__ == '__main__' :
+	unittest.main()
