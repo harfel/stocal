@@ -133,5 +133,22 @@ class TestMassAction(TestReaction) :
 		self.assertAlmostEqual(r1({'a':10}), 0.5*10*r2({'a':1, 'b':9}))
 
 
+class TestEvent(unittest.TestCase) :
+	def test_one_time(self) :
+		"""Singular events occur in infinite future after their firing"""
+		t = 0.1
+		event = stocal.Event({}, {'a':1}, t)
+		self.assertEqual(event.next_occurrence(0.), t)
+		self.assertEqual(event.next_occurrence(2*t), float('inf'))
+
+	def test_periodicity(self) :
+		"""Periodic events occur repeatedly with the give frequency"""
+		offset = 0.1
+		dt = 1.
+		event = stocal.Event({}, {'a':1}, offset, dt)
+		for t in xrange(100) :
+			self.assertAlmostEqual(event.next_occurrence(t), t+offset)
+
+
 if __name__ == '__main__' :
 	unittest.main()

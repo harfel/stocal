@@ -62,9 +62,8 @@ class Transition(object) :
 
 
 class Reaction(Transition) :
-	"""Reaction class
+	"""Stochastic Transitions
 
-	Reactions are stochastic Transitions.
 	Subclasses must implement a propensity method.
 	"""
 	def __eq__(self, other) :
@@ -99,7 +98,7 @@ class Reaction(Transition) :
 
 
 class MassAction(Reaction) :
-	"""Reaction with mass action kinetics"""
+	"""Reactions with mass action kinetics"""
 	def __init__(self, reactants, products, c) :
 		if c < 0 :
 			raise ValueError("stochastic rate constants must be non-negative.")
@@ -119,6 +118,27 @@ class MassAction(Reaction) :
 			(choose(state.get(s,0), n) for s,n in self.reactants.iteritems()),
 			self.c
 		)
+
+
+class Event(Transition) :
+	"""Deterministic transitions.
+	
+	Events are transitions that occur either once, at a specified time, or
+	periodically with a given frequency starting at a specified time."""
+	def __init__(self, reactants, products, time, frequency=0) :
+		if frequency<0 :
+			raise ValueError("dt must be greater than (or equal to) 0.")
+		super(Event, self).__init__(reactants, products)
+		self.t = time
+		self.dt = frequency
+
+	def next_occurrence(self, time) :
+		if self.dt :
+			return self.t + self.dt*((time-self.t)//self.dt+1)
+		elif time < self.t :
+			return self.t
+		else :
+			return float('inf')
 
 
 class Rule(object) :
