@@ -13,7 +13,7 @@ class TestProcess(unittest.TestCase) :
 		stocal.Process([], [])
 		stocal.Process([], rules=[])
 		stocal.Process(rules=[])
-		stocal.Process(reactions=[])
+		stocal.Process(transitions=[])
 
 	def test_trajectory(self) :
 		"""Process.trajectory can be called with optional arguments"""
@@ -92,9 +92,11 @@ class TestStaticProcess(object) :
 class TestRuleProcess(object) :
 	class Rule(stocal.Rule) :
 		"""Degradation rule"""
-		def infer_reactions(self, new_species, state) :
+		Transition = stocal.MassAction
+
+		def infer_transitions(self, new_species, state) :
 			for species in new_species :
-				yield stocal.MassAction({species:1}, {}, 1.)
+				yield self.Transition({species:1}, {}, 1.)
 
 	def test_dynamic_reactions(self) :
 		"""One transition can generate another"""

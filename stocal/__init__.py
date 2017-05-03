@@ -1,10 +1,7 @@
 import abc
 
-class Reaction(object) :
-	"""Reaction class
-
-	Abstract base class for stochastic transitions of reactants into products.
-	Subclasses must implement the propensity method.
+class Transition(object) :
+	"""Transitions are transformations of reactants into products
 
 	After initialization, reactants and products must not be altered.
 	Doing so leads to undefined behavior.
@@ -24,7 +21,9 @@ class Reaction(object) :
 		if not all(n>0 for n in products.itervalues()) :
 			raise ValueError("product stoichiometries must be positive.")
 		if not reactants and not products :
-			raise ValueError("Reaction must have either reactants or products.")
+			raise ValueError(
+				"%s must have either reactants or products." % type(self).__name__
+			)
 
 		self.reactants = reactants
 		self.products = products
@@ -32,14 +31,13 @@ class Reaction(object) :
 
 	def __eq__(self, other) :
 		"""Structural congruence
-		
-		Reactions are equal if their reactants, products, and propensity
-		functions are equal.
+
+		Transitions are equal if their reactants and products are equal.
 		"""
 		return (
+			isinstance(other, Transition) and
 			self.reactants == other.reactants and
-			self.products == other.products and
-			type(self).propensity == type(other).propensity
+			self.products == other.products
 		)
 
 	def __hash__(self) :
@@ -47,6 +45,32 @@ class Reaction(object) :
 			self._hash = hash((
 				tuple(sorted(self.reactants.items())),
 				tuple(sorted(self.products.items())),
+			))
+		return self._hash
+
+
+class Reaction(Transition) :
+	"""Reaction class
+
+	Reactions are stochastic Transitions.
+	Subclasses must implement a propensity method.
+	"""
+	def __eq__(self, other) :
+		"""Structural congruence
+		
+		Reactions are equal if their reactants, products, and propensity
+		functions are equal.
+		"""
+		return (
+			super(Reaction,self).__eq__(other) and
+			isinstance(other, Reaction) and
+			type(self).propensity == type(other).propensity
+		)
+
+	def __hash__(self) :
+		if not self._hash :
+			self._hash = hash((
+				super(Reaction, self).__hash__(),
 				type(self).propensity
 			))
 		return self._hash
@@ -83,23 +107,36 @@ class MassAction(Reaction) :
 class Rule(object) :
 	"""Abstract base class for rules
 	
-	Rule subclasses must provide the infer_reactions method.
+	Subclasses must provide a class attribute called Transition,
+	which denotes the class of Transitions they generate.
+	They also must provide a method infer_transitions which performs
+	the actual transition inference.
 	"""
 	__metaclass__ = abc.ABCMeta
 	
+	@abc.abstractproperty
+	def Transition(self) :
+		"""The type of Transition that the rule generates"""
+		return Transition
+
 	@abc.abstractmethod
-	def infer_reactions(self, new_species, state) :
+	def infer_transitions(self, new_species, state) :
+		"""infer new transitions among new_species and state
+		
+		The method must return an iterable of Transition objects.
+		"""
 		raise StopIteration
+		yield None
 
 
 class Process(object) :
 	"""Stochastic process class
 
-	A collection of all reactions (and later rules) that define a
+	A collection of all transitions and rules that define a
 	stochastic process.
 	"""
-	def __init__(self, reactions=[], rules=[]) :
-		self.reactions = reactions
+	def __init__(self, transitions=[], rules=[]) :
+		self.transitions = transitions
 		self.rules = rules
 
 	def trajectory(self, state, t=0., tmax=-1., steps=-1) :
@@ -111,8 +148,8 @@ class TrajectorySampler(object) :
 	__metaclass__ = abc.ABCMeta
 	
 	@abc.abstractmethod
-	def add_reaction(self, reaction) :
-		"""Add a new reaction to the sampler"""
+	def add_transition(self, transition) :
+		"""Add a new transition to the sampler"""
 		pass
 
 	@abc.abstractmethod
@@ -136,28 +173,32 @@ class DirectMethod(TrajectorySampler) :
 	def __init__(self, process, state, t=0., tmax=-1., steps=-1) :
 		if t<0 :
 			raise ValueError("t must not be negative.")
+		if any(not isinstance(r,Reaction) for r in process.transitions) :
+			raise ValueError("DirectMethod only works with Reactions.")
+		if any(not issubclass(r.Transition, Reaction) for r in process.rules) :
+			raise ValueError("DirectMethod only works with Reactions.")
 		self.process = process
 		self.state = state
-		self.reactions = []
+		self.transitions = []
 		self.step = 0
 		self.steps = steps
 		self.time = t
 		self.tmax = tmax
 
-		for reaction in process.reactions :
-			self.add_reaction(reaction)
+		for transition in process.transitions :
+			self.add_transition(transition)
 
-	def add_reaction(self, reaction) :
-		"""Add a new reaction to the sampler"""
-		self.reactions.append(reaction)
+	def add_transition(self, transition) :
+		"""Add a new transition to the sampler"""
+		self.transitions.append(transition)
 
 	def update_state(self, dct) :
 		"""Modify sampler state"""
 		for rule in self.process.rules :
-			for r in rule.infer_reactions(dct, self.state) :
-				if r not in self.reactions :
-					r.rule = Rule
-					self.add_reaction(r)
+			for r in rule.infer_transitions(dct, self.state) :
+				if r not in self.transitions :
+					r.rule = rule
+					self.add_transition(r)
 		self.state.update(dct)
 
 	def __iter__(self) :
@@ -166,15 +207,15 @@ class DirectMethod(TrajectorySampler) :
 			if self.steps>0 and self.step==self.steps : break
 			if self.tmax>=0 and self.time>=self.tmax : break
 
-			propensities = [r.propensity(self.state) for r in self.reactions]
+			propensities = [r.propensity(self.state) for r in self.transitions]
 
-			# housekeeping: remove depleted reactions
+			# housekeeping: remove depleted transitions
 			depleted = [
-				i for i,p in enumerate(izip(propensities,self.reactions))
+				i for i,p in enumerate(izip(propensities,self.transitions))
 				if p==0. and r.rule
 			]
 			for i in reversed(depleted) :
-				del self.reactions[i]
+				del self.transitions[i]
 				del propensities[i]
 
 			total_propensity = sum(propensities)
@@ -191,27 +232,27 @@ class DirectMethod(TrajectorySampler) :
 				break
 			else :
 				pick = random()*total_propensity
-				for p,reaction in izip(propensities, self.reactions) :
+				for p,transition in izip(propensities, self.transitions) :
 					pick -= p
 					if pick < 0. : break
-				self._perform_reaction(reaction)
-				yield reaction
+				self._perform_transition(transition)
+				yield transition
 
-	def _perform_reaction(self, reaction) :
+	def _perform_transition(self, transition) :
 		def begin() :
-			for species,n in reaction.reactants.iteritems() :
+			for species,n in transition.reactants.iteritems() :
 				self.state[species] -= n
 				if not self.state[species] :
 					del self.state[species]
 		def end() :
-			for species,n in reaction.products.iteritems() :
+			for species,n in transition.products.iteritems() :
 				if species not in self.state :
 					self.state[species] = 0
 				self.state[species] += n
 		begin()
 		for rule in self.process.rules :
-			for r in rule.infer_reactions(reaction.products, self.state) :
-				if r not in self.reactions :
-					r.rule = Rule
-					self.add_reaction(r)
+			for r in rule.infer_transitions(transition.products, self.state) :
+				if r not in self.transitions :
+					r.rule = rule
+					self.add_transition(r)
 		end()
