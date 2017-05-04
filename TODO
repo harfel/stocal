@@ -1,4 +1,7 @@
-- Gillespe's first reaction method
+- improve test-based Sampler specification
 - tests for static and dynamic processes with events
 - D implementation
 - Gibson & Brucks next reaction method
+- volume awareness
+- automated Rule.infer_transition application
+- RewriteRule support

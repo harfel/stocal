@@ -96,6 +96,19 @@ class Reaction(Transition) :
 		"""
 		return 0.
 
+	def next_ocurrence(self, time, state) :
+		"""Determine next reaction firng
+		
+		This is a helper function to use Reactions in place of Events.
+		It randomly draws a daly from a Poisson distribution and
+		returns the given current time plus the delay.
+		"""
+		from random import random
+		from math import log
+		p = self.propensity(state)
+		if not p : return float('inf')
+		else : return time - log(random()/p)
+
 
 class MassAction(Reaction) :
 	"""Reactions with mass action kinetics"""
@@ -132,7 +145,7 @@ class Event(Transition) :
 		self.t = time
 		self.dt = frequency
 
-	def next_occurrence(self, time) :
+	def next_occurrence(self, time, state={}) :
 		if self.dt :
 			return self.t + self.dt*((time-self.t)//self.dt+1)
 		elif time < self.t :
@@ -176,14 +189,31 @@ class Process(object) :
 		self.transitions = transitions
 		self.rules = rules
 
-	def trajectory(self, state, t=0., tmax=-1., steps=-1) :
-		"""Create trajcetory sampler for given state"""
-		return DirectMethod(self, state, t, tmax, steps)
+	def trajectory(self, state, t=0., tmax=float('inf'), steps=-1) :
+		"""Create trajcetory sampler for given state
+		
+		If any static or infered transition is deterministic, this returns
+		the FirstReactionMethod, otherwise the DirectMethod."""
+		Sampler = DirectMethod if (
+			all(isinstance(r, Reaction) for r in self.transitions)
+			and all(issubclass(r.Transition, Reaction) for r in self.rules)
+		) else FirstReactionMethod
+
+		return Sampler(self, state, t, tmax, steps)
 
 
 class TrajectorySampler(object) :
 	__metaclass__ = abc.ABCMeta
 	
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+		if t<0 :
+			raise ValueError("t must not be negative.")
+		self.process = process
+		self.step = 0
+		self.steps = steps
+		self.time = t
+		self.tmax = tmax
+
 	@abc.abstractmethod
 	def add_transition(self, transition) :
 		"""Add a new transition to the sampler"""
@@ -201,27 +231,16 @@ class TrajectorySampler(object) :
 		yield None
 
 
-from random import random
-from math import log
-from itertools import izip
-
 class DirectMethod(TrajectorySampler) :
 	"""Implementation of Gillespie's direct method"""
-	def __init__(self, process, state, t=0., tmax=-1., steps=-1) :
-		if t<0 :
-			raise ValueError("t must not be negative.")
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+		super(DirectMethod, self).__init__(process, state, t, tmax, steps)
 		if any(not isinstance(r,Reaction) for r in process.transitions) :
 			raise ValueError("DirectMethod only works with Reactions.")
 		if any(not issubclass(r.Transition, Reaction) for r in process.rules) :
 			raise ValueError("DirectMethod only works with Reactions.")
-		self.process = process
 		self.state = state
 		self.transitions = []
-		self.step = 0
-		self.steps = steps
-		self.time = t
-		self.tmax = tmax
-
 		for transition in process.transitions :
 			self.add_transition(transition)
 
@@ -240,9 +259,13 @@ class DirectMethod(TrajectorySampler) :
 
 	def __iter__(self) :
 		"""Iteratively apply and return a firing transition"""
+		from random import random
+		from math import log
+		from itertools import izip
+
 		while True :
 			if self.steps>0 and self.step==self.steps : break
-			if self.tmax>=0 and self.time>=self.tmax : break
+			if self.time>=self.tmax : break
 
 			propensities = [r.propensity(self.state) for r in self.transitions]
 
@@ -257,14 +280,13 @@ class DirectMethod(TrajectorySampler) :
 
 			total_propensity = sum(propensities)
 			if not total_propensity :
-				if self.tmax>=0 : self.time = self.tmax
+				if self.tmax<float('inf') : self.time = self.tmax
 				break
 
 			dt = -log(random()/total_propensity)
 			self.time += dt
-			self.step += 1
 
-			if self.time >= self.tmax >= 0 :
+			if self.time >= self.tmax :
 				self.time = self.tmax
 				break
 			else :
@@ -272,8 +294,84 @@ class DirectMethod(TrajectorySampler) :
 				for p,transition in izip(propensities, self.transitions) :
 					pick -= p
 					if pick < 0. : break
+				self.step += 1
 				self._perform_transition(transition)
 				yield transition
+
+	def _perform_transition(self, transition) :
+		def begin() :
+			for species,n in transition.reactants.iteritems() :
+				self.state[species] -= n
+				if not self.state[species] :
+					del self.state[species]
+		def end() :
+			for species,n in transition.products.iteritems() :
+				if species not in self.state :
+					self.state[species] = 0
+				self.state[species] += n
+		begin()
+		for rule in self.process.rules :
+			for r in rule.infer_transitions(transition.products, self.state) :
+				if r not in self.transitions :
+					r.rule = rule
+					self.add_transition(r)
+		end()
+
+
+class FirstReactionMethod(TrajectorySampler) :
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+		super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps)
+		self.state = state
+		self.transitions = []
+		for transition in process.transitions :
+			self.add_transition(transition)
+
+	def __iter__(self) :
+		"""Iteratively apply and return a firing transition"""
+		while True :
+			if self.steps>0 and self.step==self.steps : break
+			if self.time>=self.tmax : break
+
+			firings = [
+				(r.next_ocurrence(self.time, self.state),r)
+				for r in self.transitions
+			]
+
+			# housekeeping: remove depleted transitions
+			depleted = [
+				i for i,(p,r) in enumerate(firings)
+				if p==float('inf') and (r.rule or isinstance(r, Event))
+			]
+			for i in reversed(depleted) :
+				del self.transitions[i]
+				del firings[i]
+
+			if not firings : break
+
+			time, transition = min(firings)
+
+			if time >= self.tmax :
+				break
+			else :
+				self.step += 1
+				self.time = time
+				self._perform_transition(transition)
+				yield transition
+
+		if self.tmax<float('inf') : self.time = self.tmax
+
+	def add_transition(self, transition) :
+		"""Add a new transition to the sampler"""
+		self.transitions.append(transition)
+
+	def update_state(self, dct) :
+		"""Modify sampler state"""
+		for rule in self.process.rules :
+			for r in rule.infer_transitions(dct, self.state) :
+				if r not in self.transitions :
+					r.rule = rule
+					self.add_transition(r)
+		self.state.update(dct)
 
 	def _perform_transition(self, transition) :
 		def begin() :
