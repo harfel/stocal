@@ -22,11 +22,13 @@ class Transition(object) :
 			raise ValueError("product stoichiometries must be positive.")
 		if not reactants and not products :
 			raise ValueError(
-				"%s must have either reactants or products." % type(self).__name__
+				"%s must have either reactants or products."
+				% type(self).__name__
 			)
 
 		self.reactants = reactants
 		self.products = products
+		self.last_occurrence = -1.
 		self._hash = 0
 
 	def __eq__(self, other) :
@@ -96,7 +98,7 @@ class Reaction(Transition) :
 		"""
 		return 0.
 
-	def next_ocurrence(self, time, state) :
+	def next_occurrence(self, time, state) :
 		"""Determine next reaction firng
 		
 		This is a helper function to use Reactions in place of Events.
@@ -139,6 +141,8 @@ class Event(Transition) :
 	Events are transitions that occur either once, at a specified time, or
 	periodically with a given frequency starting at a specified time."""
 	def __init__(self, reactants, products, time, frequency=0) :
+		if time<0 :
+			raise ValueError("time must be greater than 0.")
 		if frequency<0 :
 			raise ValueError("dt must be greater than (or equal to) 0.")
 		super(Event, self).__init__(reactants, products)
@@ -150,6 +154,8 @@ class Event(Transition) :
 			return self.t + self.dt*((time-self.t)//self.dt+1)
 		elif time < self.t :
 			return self.t
+		elif time == self.t and self.last_occurrence != time :
+			return time
 		else :
 			return float('inf')
 
@@ -189,7 +195,7 @@ class Process(object) :
 		self.transitions = transitions
 		self.rules = rules
 
-	def trajectory(self, state, t=0., tmax=float('inf'), steps=-1) :
+	def trajectory(self, state, t=0., tmax=float('inf'), steps=None) :
 		"""Create trajcetory sampler for given state
 		
 		If any static or infered transition is deterministic, this returns
@@ -205,9 +211,15 @@ class Process(object) :
 class TrajectorySampler(object) :
 	__metaclass__ = abc.ABCMeta
 	
-	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
 		if t<0 :
 			raise ValueError("t must not be negative.")
+		if tmax<0 :
+			raise ValueError("tmax must not be negative.")
+		if steps is not None and steps<0 :
+			raise ValueError("steps must not be negative.")
+		if any(n<=0 for n in state.itervalues()) :
+			raise ValueError("state copy numbers must be positive")
 		self.process = process
 		self.step = 0
 		self.steps = steps
@@ -233,7 +245,7 @@ class TrajectorySampler(object) :
 
 class DirectMethod(TrajectorySampler) :
 	"""Implementation of Gillespie's direct method"""
-	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
 		super(DirectMethod, self).__init__(process, state, t, tmax, steps)
 		if any(not isinstance(r,Reaction) for r in process.transitions) :
 			raise ValueError("DirectMethod only works with Reactions.")
@@ -264,7 +276,7 @@ class DirectMethod(TrajectorySampler) :
 		from itertools import izip
 
 		while True :
-			if self.steps>0 and self.step==self.steps : break
+			if self.steps is not None and self.step==self.steps : return
 			if self.time>=self.tmax : break
 
 			propensities = [r.propensity(self.state) for r in self.transitions]
@@ -279,15 +291,12 @@ class DirectMethod(TrajectorySampler) :
 				del propensities[i]
 
 			total_propensity = sum(propensities)
-			if not total_propensity :
-				if self.tmax<float('inf') : self.time = self.tmax
-				break
+			if not total_propensity : break
 
 			dt = -log(random()/total_propensity)
 			self.time += dt
 
 			if self.time >= self.tmax :
-				self.time = self.tmax
 				break
 			else :
 				pick = random()*total_propensity
@@ -297,6 +306,8 @@ class DirectMethod(TrajectorySampler) :
 				self.step += 1
 				self._perform_transition(transition)
 				yield transition
+
+		if self.tmax<float('inf') : self.time = self.tmax
 
 	def _perform_transition(self, transition) :
 		def begin() :
@@ -319,7 +330,7 @@ class DirectMethod(TrajectorySampler) :
 
 
 class FirstReactionMethod(TrajectorySampler) :
-	def __init__(self, process, state, t=0., tmax=float('inf'), steps=-1) :
+	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
 		super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps)
 		self.state = state
 		self.transitions = []
@@ -329,25 +340,26 @@ class FirstReactionMethod(TrajectorySampler) :
 	def __iter__(self) :
 		"""Iteratively apply and return a firing transition"""
 		while True :
-			if self.steps>0 and self.step==self.steps : break
+			if self.steps is not None and self.step==self.steps : return
 			if self.time>=self.tmax : break
 
 			firings = [
-				(r.next_ocurrence(self.time, self.state),r)
-				for r in self.transitions
+				(trans.next_occurrence(self.time, self.state),trans)
+				for trans in self.transitions
+				if not isinstance(trans, Event)
+				or trans.last_occurrence != self.time
 			]
 
 			# housekeeping: remove depleted transitions
 			depleted = [
-				i for i,(p,r) in enumerate(firings)
-				if p==float('inf') and (r.rule or isinstance(r, Event))
+				i for i,(t,r) in enumerate(firings)
+				if t==float('inf') and (r.rule or isinstance(r, Event))
 			]
 			for i in reversed(depleted) :
 				del self.transitions[i]
 				del firings[i]
 
 			if not firings : break
-
 			time, transition = min(firings)
 
 			if time >= self.tmax :
@@ -355,6 +367,7 @@ class FirstReactionMethod(TrajectorySampler) :
 			else :
 				self.step += 1
 				self.time = time
+				transition.last_occurrence = time
 				self._perform_transition(transition)
 				yield transition
 

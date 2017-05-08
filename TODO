@@ -1,7 +1,6 @@
-- improve test-based Sampler specification
-- tests for static and dynamic processes with events
+- statistical verification tests
 - D implementation
-- Gibson & Brucks next reaction method
+- SSA profiling and algorithm variations
 - volume awareness
 - automated Rule.infer_transition application
 - RewriteRule support
