@@ -149,6 +149,27 @@ class Event(Transition) :
 		self.t = time
 		self.dt = frequency
 
+	def __eq__(self, other) :
+		"""Structural congruence
+		
+		Reactions are equal if their reactants, products, and propensity
+		functions are equal.
+		"""
+		return (
+			super(Event,self).__eq__(other) and
+			isinstance(other, Event) and
+			self.t == other.t and
+			self.dt == other.dt
+		)
+
+	def __hash__(self) :
+		if not self._hash :
+			self._hash = hash((
+				super(Event, self).__hash__(),
+				self.t, self.dt
+			))
+		return self._hash
+
 	def next_occurrence(self, time, state={}) :
 		if self.dt :
 			return self.t + self.dt*((time-self.t)//self.dt+1)

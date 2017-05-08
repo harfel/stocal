@@ -1,6 +1,7 @@
 - statistical verification tests
 - D implementation
 - SSA profiling and algorithm variations
+- python3 compatibility
 - volume awareness
 - automated Rule.infer_transition application
 - RewriteRule support
