@@ -109,7 +109,7 @@ class Reaction(Transition) :
 		from math import log
 		p = self.propensity(state)
 		if not p : return float('inf')
-		else : return time - log(random()/p)
+		else : return time - log(random())/p
 
 
 class MassAction(Reaction) :
@@ -314,7 +314,7 @@ class DirectMethod(TrajectorySampler) :
 			total_propensity = sum(propensities)
 			if not total_propensity : break
 
-			dt = -log(random()/total_propensity)
+			dt = -log(random())/total_propensity
 			self.time += dt
 
 			if self.time >= self.tmax :
