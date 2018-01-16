@@ -51,16 +51,22 @@ class Transition(object) :
 		return self._hash
 
 	def __repr__(self) :
-		return '%s(%s, %s)' % (
-			type(self).__name__, self.reactants, self.products
-		)
+		try :
+			return '%s(%s, %s)' % (
+				type(self).__name__, self.reactants, self.products
+			)
+		except AttributeError :
+			return super(Transition, self).__repr__()
 
 	def __str__(self) :
 		def dct2str(dct) :
 			return ' + '.join(
 				s if n==1 else '%s*%s' % (n,s) for s,n in dct.iteritems()
 			)
-		return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
+		try :
+			return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
+		except AttributeError :
+			return super(Transition, self).__str__()
 
 
 class Reaction(Transition) :
@@ -121,9 +127,12 @@ class MassAction(Reaction) :
 		self.c = c
 
 	def __repr__(self) :
-		return '%s(%s, %s, %f)' % (
-			type(self).__name__, self.reactants, self.products, self.c
-		)
+		try :
+			return '%s(%s, %s, %g)' % (
+				type(self).__name__, self.reactants, self.products, self.c
+			)
+		except AttributeError :
+			return super(MassAction, self).__repr__()
 
 	def propensity(self, state) :
 		def choose(n,k) :
@@ -241,11 +250,20 @@ class TrajectorySampler(object) :
 			raise ValueError("steps must not be negative.")
 		if any(n<=0 for n in state.itervalues()) :
 			raise ValueError("state copy numbers must be positive")
+
 		self.process = process
 		self.step = 0
 		self.steps = steps
 		self.time = t
 		self.tmax = tmax
+
+		self.state = state
+		self.transitions = []
+		for transition in self.process.transitions :
+			self.add_transition(transition)
+		for rule in self.process.rules :
+			for transition in rule.infer_transitions(self.state, {}) :
+				self.add_transition(transition)
 
 	@abc.abstractmethod
 	def add_transition(self, transition) :
@@ -272,10 +290,6 @@ class DirectMethod(TrajectorySampler) :
 			raise ValueError("DirectMethod only works with Reactions.")
 		if any(not issubclass(r.Transition, Reaction) for r in process.rules) :
 			raise ValueError("DirectMethod only works with Reactions.")
-		self.state = state
-		self.transitions = []
-		for transition in process.transitions :
-			self.add_transition(transition)
 
 	def add_transition(self, transition) :
 		"""Add a new transition to the sampler"""
@@ -302,17 +316,17 @@ class DirectMethod(TrajectorySampler) :
 
 			propensities = [r.propensity(self.state) for r in self.transitions]
 
+			total_propensity = sum(propensities)
+			if not total_propensity : break
+
 			# housekeeping: remove depleted transitions
 			depleted = [
-				i for i,p in enumerate(izip(propensities,self.transitions))
-				if p==0. and r.rule
+				i for i,(p,t) in enumerate(izip(propensities,self.transitions))
+				if p==0. and t.rule
 			]
 			for i in reversed(depleted) :
 				del self.transitions[i]
 				del propensities[i]
-
-			total_propensity = sum(propensities)
-			if not total_propensity : break
 
 			dt = -log(random())/total_propensity
 			self.time += dt
@@ -343,21 +357,14 @@ class DirectMethod(TrajectorySampler) :
 				self.state[species] += n
 		begin()
 		for rule in self.process.rules :
-			for r in rule.infer_transitions(transition.products, self.state) :
-				if r not in self.transitions :
-					r.rule = rule
-					self.add_transition(r)
+			for trans in rule.infer_transitions(transition.products, self.state) :
+				if trans not in self.transitions :
+					trans.rule = rule
+					self.add_transition(trans)
 		end()
 
 
 class FirstReactionMethod(TrajectorySampler) :
-	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
-		super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps)
-		self.state = state
-		self.transitions = []
-		for transition in process.transitions :
-			self.add_transition(transition)
-
 	def __iter__(self) :
 		"""Iteratively apply and return a firing transition"""
 		while True :
@@ -371,6 +378,9 @@ class FirstReactionMethod(TrajectorySampler) :
 				or trans.last_occurrence != self.time
 			]
 
+			if not firings : break
+			time, transition = min(firings)
+
 			# housekeeping: remove depleted transitions
 			depleted = [
 				i for i,(t,r) in enumerate(firings)
@@ -379,9 +389,6 @@ class FirstReactionMethod(TrajectorySampler) :
 			for i in reversed(depleted) :
 				del self.transitions[i]
 				del firings[i]
-
-			if not firings : break
-			time, transition = min(firings)
 
 			if time >= self.tmax :
 				break
@@ -420,8 +427,8 @@ class FirstReactionMethod(TrajectorySampler) :
 				self.state[species] += n
 		begin()
 		for rule in self.process.rules :
-			for r in rule.infer_transitions(transition.products, self.state) :
-				if r not in self.transitions :
-					r.rule = rule
-					self.add_transition(r)
+			for trans in rule.infer_transitions(transition.products, self.state) :
+				if trans not in self.transitions :
+					trans.rule = rule
+					self.add_transition(trans)
 		end()
