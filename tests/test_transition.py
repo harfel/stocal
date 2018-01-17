@@ -25,6 +25,11 @@ class TransitionSpecification(object) :
 		self.Transition({}, {'z':1})
 		with self.assertRaises(ValueError) :
 			self.Transition({}, {})
+
+	def test_sequence_initialization(self) :
+		"""Transitions can be intialized with dicts or sequences"""
+		self.assertEqual(self.Transition(['a'],['z']), self.Transition({'a':1},{'z':1}))
+		self.assertEqual(self.Transition(['a', 'a'],['z']), self.Transition({'a':2},{'z':1}))
 	
 	def test_equality(self) :
 		"""Transitions are equal if their reactants and products are equal"""
@@ -38,7 +43,6 @@ class TransitionSpecification(object) :
 		trans_1 = self.Transition({'a':1},{'z':1})
 		trans_2 = self.Transition({'a':1},{'z':1})
 		self.assertEqual(hash(trans_1), hash(trans_2))
-
 
 
 class TestReaction(unittest.TestCase, TransitionSpecification) :

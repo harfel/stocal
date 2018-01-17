@@ -29,15 +29,8 @@ import stocal
 
 
 class DegradationRule(stocal.Rule) :
-	class Transition(stocal.MassAction) :
-		c = 1.
-
-		def __init__(self, kl, i) :
-			super(DegradationRule.Transition, self).__init__(
-				{kl: 1},
-				{kl[:i]: 2} if kl[:i]==kl[i:] else {kl[:i]: 1, kl[i:]: 1},
-				2*self.c if kl[:i]==kl[i:] else self.c
-			)
+	Transition = stocal.MassAction
+	c = 1.
 
 	def __str__(self) :
 		return 'kl --> k+l'
@@ -46,19 +39,14 @@ class DegradationRule(stocal.Rule) :
 		for kl in new_species :
 			if kl in state : continue
 			for i in xrange(1,len(kl)) :
-				yield self.Transition(kl, i)
+				k = kl[:i]
+				l = kl[i:]
+				yield self.Transition([kl], [k, l], self.c)
 
 
 class LigationRule(stocal.Rule) :
-	class Transition(stocal.MassAction) :
-		c = 1.e-10
-
-		def __init__(self, k, l) :
-			super(LigationRule.Transition, self).__init__(
-				{k: 2} if k==l else {k: 1, l: 1},
-				{k+l: 1},
-				2*self.c if k==l else self.c
-			)
+	Transition = stocal.MassAction
+	c = 1.e-10
 
 	def __str__(self) :
 		return 'k+l --> kl'
@@ -67,22 +55,15 @@ class LigationRule(stocal.Rule) :
 		for k in new_species :
 			if state.get(k,0) >= 2 : continue
 			for l in new_species :
-				yield self.Transition(k,l)
+				yield self.Transition([k,l], [k+l], self.c)
 			for l in state :
-				yield self.Transition(k,l)
-				yield self.Transition(l,k)
+				yield self.Transition([k,l], [k+l], self.c)
+				yield self.Transition([k,l], [l+k], self.c)
 
 
 class AutoCatalysisRule(stocal.Rule) :
-	class Transition(stocal.MassAction) :
-		c = 1.e-6
-
-		def __init__(self, k, l) :
-			super(AutoCatalysisRule.Transition, self).__init__(
-				{k: 2, k+l: 1} if k==l else {k: 1, l: 1, k+l: 1},
-				{k+l: 2},
-				2*self.c if k==l else self.c
-			)
+	Transition = stocal.MassAction
+	c = 1.e-6
 
 	def __str__(self) :
 		return 'k+l+kl --> 2*kl'
@@ -92,19 +73,26 @@ class AutoCatalysisRule(stocal.Rule) :
 			if state.get(k,0) >= 2 : continue
 			for l in new_species :
 				if k+l in state :
-					yield self.Transition(k,l)
+					yield self.Transition([k,l,k+l], {k+l:2}, self.c)
 				if k.startswith(l) and l in state :
-					yield self.Transition(l, k[len(l):])
+					yield self.Transition([k[len(l):],l,k], {k:2}, self.c)
 			for l in state :
 				if k+l in state :
-					yield self.Transition(k,l)
+					yield self.Transition([k,l,k+l], {k+l:2}, self.c)
 				if l+k in state :
-					yield self.Transition(l,k)
-				if k.startswith(l) and l in state :
-					yield self.Transition(l, k[len(l):])
-				if k.endswith(l) and l in state :
-					yield self.Transition(k[:len(l)],l)
+					yield self.Transition([k,l,l+k], {l+k:2}, self.c)
+				if k.startswith(l) :
+					yield self.Transition([k[len(l):],l,k], {k:2}, self.c)
+				if k.endswith(l) :
+					yield self.Transition([k[:len(l)],l,k], {k:2}, self.c)
 
 
 process = stocal.Process(rules=[DegradationRule(), LigationRule(), AutoCatalysisRule()])
 initial_state = { 'a': 200000, 'b': 200000 }
+
+
+if __name__ == '__main__' :
+	traj = stocal.DirectMethod(process, initial_state, tmax=1)
+	for _ in traj :
+		print traj.time, traj.state
+

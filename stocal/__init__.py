@@ -13,9 +13,18 @@ class Transition(object) :
 	def __init__(self, reactants, products) :
 		"""Initialization
 		
-		reactants and products are mappings that give the stoichiometric
-		factor of each involved species.
+		reactants and products are either mappings that give the
+		stoichiometric factor of each involved species, or sequences.
 		"""
+		# if reactants/products are not a dictionary, they are assumed
+		# to be unordered sequences of reactants/products
+		def seq_to_dict(seq) :
+			return seq if isinstance(seq, dict) else {
+				s: seq.count(s) for s in set(seq)
+			}
+		reactants = seq_to_dict(reactants)
+		products = seq_to_dict(products)
+
 		if not all(n>0 for n in reactants.itervalues()) :
 			raise ValueError("reactant stoichiometries must be positive.")
 		if not all(n>0 for n in products.itervalues()) :
