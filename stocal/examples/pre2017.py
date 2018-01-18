@@ -41,7 +41,8 @@ class DegradationRule(stocal.Rule) :
 			for i in xrange(1,len(kl)) :
 				k = kl[:i]
 				l = kl[i:]
-				yield self.Transition([kl], [k, l], self.c)
+				f = 2 if kl[-i:]==k and kl[:-i]==l and 2*i!=len(kl) else 1
+				yield self.Transition([kl], [k, l], f*self.c)
 
 
 class LigationRule(stocal.Rule) :
@@ -55,10 +56,12 @@ class LigationRule(stocal.Rule) :
 		for k in new_species :
 			if state.get(k,0) >= 2 : continue
 			for l in new_species :
-				yield self.Transition([k,l], [k+l], self.c)
+				f = 2 if k+l==l+k else 1
+				yield self.Transition([k,l], [k+l], f*self.c)
 			for l in state :
-				yield self.Transition([k,l], [k+l], self.c)
-				yield self.Transition([k,l], [l+k], self.c)
+				f = 2 if k+l==l+k else 1
+				yield self.Transition([k,l], [k+l], f*self.c)
+				yield self.Transition([k,l], [l+k], f*self.c)
 
 
 class AutoCatalysisRule(stocal.Rule) :
@@ -73,18 +76,24 @@ class AutoCatalysisRule(stocal.Rule) :
 			if state.get(k,0) >= 2 : continue
 			for l in new_species :
 				if k+l in state :
-					yield self.Transition([k,l,k+l], {k+l:2}, self.c)
-				if k.startswith(l) and l in state :
-					yield self.Transition([k[len(l):],l,k], {k:2}, self.c)
+					f = 2 if k+l==l+k else 1
+					yield self.Transition([k,l,k+l], {k+l:2}, f*self.c)
+				if k.startswith(l) and k!=l and l in state :
+					f = 2 if k[len(l):]+l==l+k[len(l):] else 1
+					yield self.Transition([k[len(l):],l,k], {k:2}, f*self.c)
 			for l in state :
 				if k+l in state :
-					yield self.Transition([k,l,k+l], {k+l:2}, self.c)
+					f = 2 if k+l==l+k else 1
+					yield self.Transition([k,l,k+l], {k+l:2}, f*self.c)
 				if l+k in state :
-					yield self.Transition([k,l,l+k], {l+k:2}, self.c)
-				if k.startswith(l) :
-					yield self.Transition([k[len(l):],l,k], {k:2}, self.c)
-				if k.endswith(l) :
-					yield self.Transition([k[:len(l)],l,k], {k:2}, self.c)
+					f = 2 if k+l==l+k else 1
+					yield self.Transition([k,l,l+k], {l+k:2}, f*self.c)
+				if k.startswith(l) and k!=l :
+					f = 2 if k[len(l):]+l==l+k[len(l):] else 1
+					yield self.Transition([k[len(l):],l,k], {k:2}, f*self.c)
+				if k.endswith(l) and k!=l :
+					f = 2 if k[:-len(l)]+l==l+k[:-len(l)] else 1
+					yield self.Transition([k[:-len(l)],l,k], {k:2}, f*self.c)
 
 
 process = stocal.Process(rules=[DegradationRule(), LigationRule(), AutoCatalysisRule()])
@@ -94,5 +103,4 @@ initial_state = { 'a': 200000, 'b': 200000 }
 if __name__ == '__main__' :
 	traj = stocal.DirectMethod(process, initial_state, tmax=1)
 	for _ in traj :
-		print traj.time, traj.state
-
+		print(traj.time, traj.state)
