@@ -24,83 +24,61 @@ The rules operate over any monomer alphabet, but the model defines
 an initial state with two types of monomers, making this a binary exact
 autocatalytic polymer model.
 """
-
 import stocal
 
 
-class DegradationRule(stocal.Rule) :
+alpha = 1.e-10
+beta = 1000**-2
+initial_state = { c: 200000 for c in 'ab'}
+
+
+class DegradationRule(stocal.ReactionRule) :
 	Transition = stocal.MassAction
-	c = 1.
+	order = 1
 
 	def __str__(self) :
 		return 'kl --> k+l'
 
-	def infer_transitions(self, new_species, state) :
-		for kl in new_species :
-			if kl in state : continue
-			for i in xrange(1,len(kl)) :
-				k = kl[:i]
-				l = kl[i:]
-				f = 2 if kl[-i:]==k and kl[:-i]==l and 2*i!=len(kl) else 1
-				yield self.Transition([kl], [k, l], f*self.c)
+	def novel_reactions(self, kl) :
+		for i in xrange(1,len(kl)) :
+			k = kl[:i]
+			l = kl[i:]
+			yield self.Transition([kl], [k, l], 1.)
 
 
-class LigationRule(stocal.Rule) :
+class LigationRule(stocal.ReactionRule) :
 	Transition = stocal.MassAction
-	c = 1.e-10
+	order = 2
 
 	def __str__(self) :
 		return 'k+l --> kl'
 
-	def infer_transitions(self, new_species, state) :
-		for k in new_species :
-			if state.get(k,0) >= 2 : continue
-			for l in new_species :
-				f = 2 if k+l==l+k else 1
-				yield self.Transition([k,l], [k+l], f*self.c)
-			for l in state :
-				f = 2 if k+l==l+k else 1
-				yield self.Transition([k,l], [k+l], f*self.c)
-				yield self.Transition([k,l], [l+k], f*self.c)
+	def novel_reactions(self, k, l) :
+		yield self.Transition([k,l], [k+l], alpha)
+		yield self.Transition([k,l], [l+k], alpha)
 
 
-class AutoCatalysisRule(stocal.Rule) :
+class AutoCatalysisRule(stocal.ReactionRule) :
 	Transition = stocal.MassAction
-	c = 1.e-6
+	order = 3
 
 	def __str__(self) :
 		return 'k+l+kl --> 2*kl'
-
-	def infer_transitions(self, new_species, state) :
-		for k in new_species :
-			if state.get(k,0) >= 2 : continue
-			for l in new_species :
-				if k+l in state :
-					f = 2 if k+l==l+k else 1
-					yield self.Transition([k,l,k+l], {k+l:2}, f*self.c)
-				if k.startswith(l) and k!=l and l in state :
-					f = 2 if k[len(l):]+l==l+k[len(l):] else 1
-					yield self.Transition([k[len(l):],l,k], {k:2}, f*self.c)
-			for l in state :
-				if k+l in state :
-					f = 2 if k+l==l+k else 1
-					yield self.Transition([k,l,k+l], {k+l:2}, f*self.c)
-				if l+k in state :
-					f = 2 if k+l==l+k else 1
-					yield self.Transition([k,l,l+k], {l+k:2}, f*self.c)
-				if k.startswith(l) and k!=l :
-					f = 2 if k[len(l):]+l==l+k[len(l):] else 1
-					yield self.Transition([k[len(l):],l,k], {k:2}, f*self.c)
-				if k.endswith(l) and k!=l :
-					f = 2 if k[:-len(l)]+l==l+k[:-len(l)] else 1
-					yield self.Transition([k[:-len(l)],l,k], {k:2}, f*self.c)
+		
+	def novel_reactions(self, *reactants) :
+		k,l,m = sorted(reactants, key=lambda s : len(s))
+		if k+l == m :
+			yield self.Transition([k,l,m], {m:2}, beta)
+		if l+k == m :
+			yield self.Transition([k,l,m], {m:2}, beta)
 
 
-process = stocal.Process(rules=[DegradationRule(), LigationRule(), AutoCatalysisRule()])
-initial_state = { 'a': 200000, 'b': 200000 }
+process = stocal.Process(
+	rules=[DegradationRule(), LigationRule(), AutoCatalysisRule()]
+)
 
 
 if __name__ == '__main__' :
-	traj = stocal.DirectMethod(process, initial_state, tmax=1)
+	traj = stocal.DirectMethod(process, initial_state, tmax=100.)
 	for _ in traj :
 		print(traj.time, traj.state)

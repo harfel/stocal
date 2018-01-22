@@ -218,10 +218,75 @@ class Rule(object) :
 	def infer_transitions(self, new_species, state) :
 		"""infer new transitions among new_species and state
 		
-		The method must return an iterable of Transition objects.
+		This method is called by the stochastic simulation algorithm
+		"in the middle of a transition", i.e. after removing reactants
+		from the state but before adding new_species as products.
+		Implementations must return an iterable of Transition objects.
+		"""
+		# XXX Should this take last_transition?
+		raise StopIteration
+
+
+class ReactionRule(Rule) :
+	"""Abstract base class that facilitates inference of Reactions
+
+	This class provides a standard implementation of infer_transitions
+	that generates all combinations of length self.order which containt
+	spieces in state and or new_species, and which became possible only
+	with the last transition, but where not possible using species of
+	state alone. I.e. at least one molecule in the combination must
+	come from new_species.
+	The inference algorithm then calls ReactionRule.novel_transitions,
+	passing in each novel combination as an unordered list. This method,
+	to be implemented by a subclass, should return an iterable over
+	every reaction that takes the novel species as reactants.
+	"""
+
+	@abc.abstractproperty
+	def order(self) :
+		"""Reaction order of infered reactions.
+		
+		The order of a reaction is the number of reactant molecules.
+		To be defined by a subclass."""
+		return int()
+
+	@abc.abstractmethod
+	def novel_reactions(self, *reactants) :
+		"""Infer reactions for the given unordered list of reactants.
+
+		To be implemented by a subclass.
 		"""
 		raise StopIteration
-		yield None
+
+	def infer_transitions(self, last_products, state) :
+		"""Standard inference algorithm for Reactions.
+		
+		see help(type(self)) for an explanation of the algorithm.
+		"""
+		def combinations(reactants, species, novel) :
+			if len(reactants) == self.order :
+				if novel :
+					yield reactants
+				return
+			if not species : return
+			s, n, end = species.pop(0)
+			if not novel and n>end : return
+			for combination in combinations(reactants, list(species), novel) :
+				yield combination
+			m = min(self.order-len(reactants), end)
+			for i in xrange(1,m+1) :
+				reactants.append(s)
+				for combination in combinations(reactants, list(species), novel or i>=n) :
+					yield combination
+			del reactants[-m:]
+
+		species = sorted((
+			(s, state.get(s,0)+1, min(last_products.get(s,0)+state.get(s,0), self.order))
+			for s in set(last_products).union(state)
+		), key=lambda (s,n,m) : n-m)
+		for reactants in combinations([], species, False) :
+			for trans in self.novel_reactions(*reactants) :
+				yield trans
 
 
 class Process(object) :
@@ -290,6 +355,41 @@ class TrajectorySampler(object) :
 		raise StopIteration
 		yield None
 
+	def _perform_transition(self, transition) :
+		"""Perform the given transition.
+		
+		Remove reactants from and add products to state, and
+		call self.rules to potentially infer novel transitions
+		for the changed system state.
+		"""
+		proper_reactants = {	# XXX store in transition
+			s : n - transition.products.get(s,0)
+			for s,n in transition.reactants.iteritems()
+			if transition.products.get(s,0) < n
+		}
+		proper_products = {
+			s : n - transition.reactants.get(s,0)
+			for s,n in transition.products.iteritems()
+			if transition.reactants.get(s,0) < n
+		}
+		def begin() :
+			for species,n in proper_reactants.iteritems() :
+				self.state[species] -= n
+				if not self.state[species] :
+					del self.state[species]
+		def end() :
+			for species,n in proper_products.iteritems() :
+				if species not in self.state :
+					self.state[species] = 0
+				self.state[species] += n
+		begin()
+		for rule in self.process.rules :
+			# XXX determine from state which rules should queried
+			for trans in rule.infer_transitions(proper_products, self.state) :
+				trans.rule = rule
+				self.add_transition(trans)
+		end()
+
 
 class DirectMethod(TrajectorySampler) :
 	"""Implementation of Gillespie's direct method"""
@@ -353,25 +453,6 @@ class DirectMethod(TrajectorySampler) :
 
 		if self.tmax<float('inf') : self.time = self.tmax
 
-	def _perform_transition(self, transition) :
-		def begin() :
-			for species,n in transition.reactants.iteritems() :
-				self.state[species] -= n
-				if not self.state[species] :
-					del self.state[species]
-		def end() :
-			for species,n in transition.products.iteritems() :
-				if species not in self.state :
-					self.state[species] = 0
-				self.state[species] += n
-		begin()
-		for rule in self.process.rules :
-			for trans in rule.infer_transitions(transition.products, self.state) :
-				if trans not in self.transitions :
-					trans.rule = rule
-					self.add_transition(trans)
-		end()
-
 
 class FirstReactionMethod(TrajectorySampler) :
 	def __iter__(self) :
@@ -422,22 +503,3 @@ class FirstReactionMethod(TrajectorySampler) :
 					r.rule = rule
 					self.add_transition(r)
 		self.state.update(dct)
-
-	def _perform_transition(self, transition) :
-		def begin() :
-			for species,n in transition.reactants.iteritems() :
-				self.state[species] -= n
-				if not self.state[species] :
-					del self.state[species]
-		def end() :
-			for species,n in transition.products.iteritems() :
-				if species not in self.state :
-					self.state[species] = 0
-				self.state[species] += n
-		begin()
-		for rule in self.process.rules :
-			for trans in rule.infer_transitions(transition.products, self.state) :
-				if trans not in self.transitions :
-					trans.rule = rule
-					self.add_transition(trans)
-		end()
