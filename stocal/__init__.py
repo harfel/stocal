@@ -37,6 +37,18 @@ class Transition(object) :
 
 		self.reactants = reactants
 		self.products = products
+
+		self.true_reactants = {
+			s : n - products.get(s,0)
+			for s,n in reactants.iteritems()
+			if products.get(s,0) < n
+		}
+		self.true_products = {
+			s : n - reactants.get(s,0)
+			for s,n in products.iteritems()
+			if reactants.get(s,0) < n
+		}
+
 		self.last_occurrence = -1.
 		self._hash = 0
 
@@ -331,13 +343,11 @@ class TrajectorySampler(object) :
 		self.time = t
 		self.tmax = tmax
 
-		self.state = state
 		self.transitions = []
 		for transition in self.process.transitions :
 			self.add_transition(transition)
-		for rule in self.process.rules :
-			for transition in rule.infer_transitions(self.state, {}) :
-				self.add_transition(transition)
+		self.state = {}
+		self.update_state(state)
 
 	@abc.abstractmethod
 	def add_transition(self, transition) :
@@ -362,30 +372,20 @@ class TrajectorySampler(object) :
 		call self.rules to potentially infer novel transitions
 		for the changed system state.
 		"""
-		proper_reactants = {	# XXX store in transition
-			s : n - transition.products.get(s,0)
-			for s,n in transition.reactants.iteritems()
-			if transition.products.get(s,0) < n
-		}
-		proper_products = {
-			s : n - transition.reactants.get(s,0)
-			for s,n in transition.products.iteritems()
-			if transition.reactants.get(s,0) < n
-		}
 		def begin() :
-			for species,n in proper_reactants.iteritems() :
+			for species,n in transition.true_reactants.iteritems() :
 				self.state[species] -= n
 				if not self.state[species] :
 					del self.state[species]
 		def end() :
-			for species,n in proper_products.iteritems() :
+			for species,n in transition.true_products.iteritems() :
 				if species not in self.state :
 					self.state[species] = 0
 				self.state[species] += n
 		begin()
 		for rule in self.process.rules :
 			# XXX determine from state which rules should queried
-			for trans in rule.infer_transitions(proper_products, self.state) :
+			for trans in rule.infer_transitions(transition.true_products, self.state) :
 				trans.rule = rule
 				self.add_transition(trans)
 		end()

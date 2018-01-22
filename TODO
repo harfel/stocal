@@ -1,11 +1,11 @@
-- python3 compatibility
 - doc
 - examples
 =
 - multiset and unorderer_list types
+- python3 compatibility
+- sort out tests: separate specifications from tests
 - statistical verification tests
 - SSA profiling and algorithm variations
-- D implementation
+- C/C++/D implementation
 - volume awareness
-- RewriteRule support
-
+- String rewrite rule support
