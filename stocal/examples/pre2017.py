@@ -23,6 +23,9 @@ self-replicating heteropolymers:
 The rules operate over any monomer alphabet, but the model defines
 an initial state with two types of monomers, making this a binary exact
 autocatalytic polymer model.
+
+With the default parameters, simulations will take a significant
+amount of time.
 """
 import stocal
 
@@ -79,6 +82,6 @@ process = stocal.Process(
 
 
 if __name__ == '__main__' :
-	traj = stocal.DirectMethod(process, initial_state, tmax=100.)
+	traj = process.trajectory(initial_state, tmax=100.)
 	for _ in traj :
-		print(traj.time, traj.state)
+		print traj.time, traj.state

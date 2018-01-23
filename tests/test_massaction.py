@@ -19,7 +19,7 @@ class MassActionSpecification(unittest.TestCase) :
 	def test_equality(self) :
 		"""MassActions with different constants are considered different."""
 		self.assertEqual(self.Transition(1.), self.Transition(1.))
-		self.assertNotEqual(self.Transition(1.), self.Transition(1.))
+		self.assertNotEqual(self.Transition(1.), self.Transition(2.))
 
 	def test_equal_propensities(self) :
 		"""Assert consistent propensities

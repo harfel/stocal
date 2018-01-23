@@ -1,10 +1,39 @@
+"""A framework for rule-based stochastic simulation
+
+This package offers functionalities to perform stochastic simulations
+over regular as well as rule-based systems. To run a stochastic
+simulation, simply define a Process as a collection of Transition and
+Rule objects and call its trajectory method, providing an initial
+state and a stop criterion (max simulated time or number of steps).
+Iterating over the trajectory yields a series of fired transitions.
+After ech transition, the attributes trajectory.time and
+trajectory.state give information about the system state.
+
+Example uses are provided in the stocal.examples package.
+"""
 import abc
 
-class Transition(object) :
-	"""Transitions are transformations of reactants into products
 
-	After initialization, reactants and products must not be altered.
-	Doing so leads to undefined behavior.
+class Transition(object) :
+	"""Abstract base class for transformations of reactants into products.
+
+	Transitions define reactants and products, but not the kinetic
+	law of the transformation. Consult MassAction and Event for the most
+	common rate law implementations.
+	
+	Transition instances provide the attributes self.reactants and
+	self.products, which are mappings of chemical species to their
+	stoichiometric factors. Instances also provide the attributes
+	self.true_reactants and self.true_products, which exclude chemical
+	species that appear both as reactants and products (i.e. as
+	catalysts).
+
+	Instances also have an attribute self.rule which defaults to None
+	and which is set by the TrajectorySampler if a Transition has been
+	inferred by a Rule.
+
+	Modiying any of these attributes after initialization is an error
+	and leads to undefined behavior.
 	"""
 	__metaclass__ = abc.ABCMeta
 
@@ -14,7 +43,8 @@ class Transition(object) :
 		"""Initialization
 		
 		reactants and products are either mappings that give the
-		stoichiometric factor of each involved species, or sequences.
+		stoichiometric factor of each involved species, or sequences
+		which are interpreted as unordered lists.
 		"""
 		# if reactants/products are not a dictionary, they are assumed
 		# to be unordered sequences of reactants/products
@@ -63,6 +93,9 @@ class Transition(object) :
 			self.products == other.products
 		)
 
+	def __ne__(self, other) :
+		return not self==other
+
 	def __hash__(self) :
 		if not self._hash :
 			self._hash = hash((
@@ -89,11 +122,22 @@ class Transition(object) :
 		except AttributeError :
 			return super(Transition, self).__str__()
 
+	@abc.abstractmethod
+	def next_occurrence(self, time, state) :
+		"""Time of next occurrence after given time.
+		
+		This method has to be implemented by a subclass. See
+		Event.next_occurrence and Reaction.next_occurrence for examples.
+		"""
+		return float('inf')
+
 
 class Reaction(Transition) :
-	"""Stochastic Transitions
+	"""Abstract base class for stochastic transitions.
 
-	Subclasses must implement a propensity method.
+	Stochastic transitions are those that occur with a certain
+	proponsity within a given time interval. 
+	Subclasses must implement the propensity method.
 	"""
 	def __eq__(self, other) :
 		"""Structural congruence
@@ -117,8 +161,8 @@ class Reaction(Transition) :
 
 	@abc.abstractmethod
 	def propensity(self, state) :
-		"""Reaction propensity
-		
+		"""Reaction propensity.
+
 		This method has to be provided by a subclass and must return a
 		non-negative float denoting the reaction propensity for the
 		provided state. The function should not modify the provided state.
@@ -126,11 +170,12 @@ class Reaction(Transition) :
 		return 0.
 
 	def next_occurrence(self, time, state) :
-		"""Determine next reaction firng
-		
-		This is a helper function to use Reactions in place of Events.
-		It randomly draws a daly from a Poisson distribution and
-		returns the given current time plus the delay.
+		"""Determine next reaction firing time.
+
+		This is a helper function to use Reactions in next-firing-time
+		based TrajectorySampler's. The method randomly draws a delay
+		from a Poisson distribution with mean propensity  and returns
+		the given current time plus the delay.
 		"""
 		from random import random
 		from math import log
@@ -140,7 +185,14 @@ class Reaction(Transition) :
 
 
 class MassAction(Reaction) :
-	"""Reactions with mass action kinetics"""
+	"""Reactions with mass action kinetics.
+	
+	The propensity of a mass action reaction is defined as the
+	stochastic rate constant c times the number of possible reaction
+	partners, where the latter is the product of the binomial
+	coefficients to choose n reaction partners out of m molecules for
+	each reacting species.
+	"""
 	def __init__(self, reactants, products, c) :
 		if c < 0 :
 			raise ValueError("stochastic rate constants must be non-negative.")
@@ -156,6 +208,10 @@ class MassAction(Reaction) :
 			return super(MassAction, self).__repr__()
 
 	def propensity(self, state) :
+		"""Reaction propensity for the given state.
+		
+		Calling propensity does not modify the underlying reaction.
+		"""
 		def choose(n,k) :
 			return reduce(lambda x,i: x*(n+1-i)/i, xrange(1,k+1), 1)
 		return reduce(
@@ -164,12 +220,33 @@ class MassAction(Reaction) :
 			self.c
 		)
 
+	def __eq__(self, other) :
+		"""Structural congruence
+		
+		MassAction reactions are equal if their reactants, products,
+		and stochastic rate constants are equal.
+		"""
+		return (
+			super(MassAction,self).__eq__(other) and
+			isinstance(other, MassAction) and
+			self.c == other.c
+		)
+
+	def __hash__(self) :
+		if not self._hash :
+			self._hash = hash((
+				super(MassAction, self).__hash__(),
+				self.c
+			))
+		return self._hash
+
 
 class Event(Transition) :
 	"""Deterministic transitions.
 	
-	Events are transitions that occur either once, at a specified time, or
-	periodically with a given frequency starting at a specified time."""
+	Events are Transition's that occur either once at a specified time,
+	or periodically with a given frequency starting at a specified time.
+	"""
 	def __init__(self, reactants, products, time, frequency=0) :
 		if time<0 :
 			raise ValueError("time must be greater than 0.")
@@ -182,8 +259,8 @@ class Event(Transition) :
 	def __eq__(self, other) :
 		"""Structural congruence
 		
-		Reactions are equal if their reactants, products, and propensity
-		functions are equal.
+		Events are equal if their reactants, products, time, and
+		frequency are equal.
 		"""
 		return (
 			super(Event,self).__eq__(other) and
@@ -201,6 +278,11 @@ class Event(Transition) :
 		return self._hash
 
 	def next_occurrence(self, time, state={}) :
+		"""Next occurrence of the Event at or after time.
+
+		If the event event does not re-occur, returns float('inf').
+		Calling next_occurrence leaves the event unmodified.
+		"""
 		if self.dt :
 			return self.t + self.dt*((time-self.t)//self.dt+1)
 		elif time < self.t :
@@ -305,14 +387,17 @@ class Process(object) :
 	"""Stochastic process class
 
 	A collection of all transitions and rules that define a
-	stochastic process.
+	stochastic process. When initializing a TrajectorySampler with
+	a Process instance, transitions get copied over into the sampler.
+	This makes it possible to use a single process instance with
+	multiple samplers.
 	"""
 	def __init__(self, transitions=[], rules=[]) :
 		self.transitions = transitions
 		self.rules = rules
 
 	def trajectory(self, state, t=0., tmax=float('inf'), steps=None) :
-		"""Create trajcetory sampler for given state
+		"""Create trajectory sampler for given state
 		
 		If any static or infered transition is deterministic, this returns
 		the FirstReactionMethod, otherwise the DirectMethod."""
@@ -325,9 +410,28 @@ class Process(object) :
 
 
 class TrajectorySampler(object) :
+	"""Abstract base class for stochastic trajectory samplers.
+
+	This is the interface for stochastic trajectory samplers, i.e.
+	imlementations of the stochastic simulation algorithm.
+	A trajectory sampler is initialized with a given process and
+	initial state, and options start time, end time, and maximal
+	number of iterations. The sampler instance can then be iterated
+	over to produce a stochastic trajectory:
+	
+	>>> trajectory = DirectMethod(process, state, steps=10000)
+	>>> for transition in trajectory :
+	...     print trajectory.time, trajectory.state, transition
+	"""
 	__metaclass__ = abc.ABCMeta
 	
 	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
+		"""Initialize the sampler for the given Process and state.
+		
+		State is a dictionary that maps chemical species to positive
+		integers denoting their copy number. An optional start time
+		t, end time tmax, and maximal number of steps can be provided.
+		"""
 		if t<0 :
 			raise ValueError("t must not be negative.")
 		if tmax<0 :
@@ -356,12 +460,21 @@ class TrajectorySampler(object) :
 
 	@abc.abstractmethod
 	def update_state(self, dct, **kwds) :
-		"""Modify sampler state"""
+		"""Modify sampler state.
+		
+		New transitions get infered appropriately."""
 		pass
 
 	@abc.abstractmethod
 	def __iter__(self) :
-		"""Iteratively apply and return a firing transition"""
+		"""Sample stochastic trajectory.
+		
+		This method iteratively picks an applicable transition with
+		probability proportional to its propensity, updates the sampler
+		state accordingly, and yields the transition to the caller.
+		After each transition, rules are invoked to infer potential
+		novel transitions.		
+		"""
 		raise StopIteration
 		yield None
 
@@ -384,7 +497,7 @@ class TrajectorySampler(object) :
 				self.state[species] += n
 		begin()
 		for rule in self.process.rules :
-			# XXX determine from state which rules should queried
+			# XXX determine from state which rules should be queried
 			for trans in rule.infer_transitions(transition.true_products, self.state) :
 				trans.rule = rule
 				self.add_transition(trans)
@@ -392,7 +505,17 @@ class TrajectorySampler(object) :
 
 
 class DirectMethod(TrajectorySampler) :
-	"""Implementation of Gillespie's direct method"""
+	"""Implementation of Gillespie's direct method.
+	
+	The standard stochastic simulation algorithm, published in
+	D. T. Gillespie, J. Comp. Phys. 22, 403-434 (1976).
+
+	DirectMethod works only over processes that employ stochastic
+	transitions (Reaction's). If the process includes Event's,
+	FirstReactionMethod has to be used instead.
+
+	See help(TrajectorySampler) for usage information.
+	"""
 	def __init__(self, process, state, t=0., tmax=float('inf'), steps=None) :
 		super(DirectMethod, self).__init__(process, state, t, tmax, steps)
 		if any(not isinstance(r,Reaction) for r in process.transitions) :
@@ -401,20 +524,20 @@ class DirectMethod(TrajectorySampler) :
 			raise ValueError("DirectMethod only works with Reactions.")
 
 	def add_transition(self, transition) :
-		"""Add a new transition to the sampler"""
 		self.transitions.append(transition)
 
 	def update_state(self, dct) :
-		"""Modify sampler state"""
 		for rule in self.process.rules :
 			for r in rule.infer_transitions(dct, self.state) :
 				if r not in self.transitions :
 					r.rule = rule
 					self.add_transition(r)
 		self.state.update(dct)
+		for species in dct :
+			if not species :
+				del self.state[species]
 
 	def __iter__(self) :
-		"""Iteratively apply and return a firing transition"""
 		from random import random
 		from math import log
 		from itertools import izip
@@ -455,8 +578,17 @@ class DirectMethod(TrajectorySampler) :
 
 
 class FirstReactionMethod(TrajectorySampler) :
+	"""Implementation of Gillespie's first reaction method.
+	
+	A stochastic simulation algorithm, published in
+	D. T. Gillespie, J. Comp. Phys. 22, 403-434 (1976).
+
+	FirstReactionMethod works with processes that feature deterministic
+	transitions, i.e. Event's.
+
+	See help(TrajectorySampler) for usage information.
+	"""
 	def __iter__(self) :
-		"""Iteratively apply and return a firing transition"""
 		while True :
 			if self.steps is not None and self.step==self.steps : return
 			if self.time>=self.tmax : break
@@ -492,14 +624,15 @@ class FirstReactionMethod(TrajectorySampler) :
 		if self.tmax<float('inf') : self.time = self.tmax
 
 	def add_transition(self, transition) :
-		"""Add a new transition to the sampler"""
 		self.transitions.append(transition)
 
 	def update_state(self, dct) :
-		"""Modify sampler state"""
 		for rule in self.process.rules :
 			for r in rule.infer_transitions(dct, self.state) :
 				if r not in self.transitions :
 					r.rule = rule
 					self.add_transition(r)
 		self.state.update(dct)
+		for species in dct :
+			if not species :
+				del self.state[species]

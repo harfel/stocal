@@ -1,4 +1,3 @@
-- doc
 - examples
 =
 - multiset and unorderer_list types
@@ -9,3 +8,7 @@
 - C/C++/D implementation
 - volume awareness
 - String rewrite rule support
+- other kinetic laws, e.g. Hill function
+- non-autonomous transitions
+- every/until filters and other stop criteria
+- curried reactions (determine products only upon application)
