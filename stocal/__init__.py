@@ -284,7 +284,8 @@ class Event(Transition) :
 		Calling next_occurrence leaves the event unmodified.
 		"""
 		if self.dt :
-			return self.t + self.dt*((time-self.t)//self.dt+1)
+			t = time + (self.t-time)%self.dt
+			return t if self.last_occurrence!=time else t+self.dt
 		elif time < self.t :
 			return self.t
 		elif time == self.t and self.last_occurrence != time :
@@ -594,10 +595,8 @@ class FirstReactionMethod(TrajectorySampler) :
 			if self.time>=self.tmax : break
 
 			firings = [
-				(trans.next_occurrence(self.time, self.state),trans)
+				(trans.next_occurrence(self.time, self.state), trans)
 				for trans in self.transitions
-				if not isinstance(trans, Event)
-				or trans.last_occurrence != self.time
 			]
 
 			if not firings : break

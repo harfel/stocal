@@ -104,7 +104,7 @@ class TrajectorySamplerSpecification(object) :
 		transition = stocal.MassAction({'a':1}, {}, 1.)
 		sampler = self.Sampler(stocal.Process([transition]), {'a':100}, steps=n)
 		self.assertEqual(sum(1 for _ in sampler), n)
-		self.assertEqual(sampler.steps, n)
+		self.assertEqual(sampler.step, n)
 
 	def test_iter_zero_steps(self) :
 		"""If steps equals zero, sampler stops immediately"""
@@ -112,7 +112,7 @@ class TrajectorySamplerSpecification(object) :
 		transition = stocal.MassAction({'a':1}, {}, 1.)
 		sampler = self.Sampler(stocal.Process([transition]), {'a':100}, steps=n)
 		self.assertEqual(sum(1 for _ in sampler), n)
-		self.assertEqual(sampler.steps, n)
+		self.assertEqual(sampler.step, n)
 
 	def test_iter_steps_and_tmax(self) :
 		"""if steps exceed, time should not be advanced to tmax"""
@@ -129,7 +129,7 @@ class TestDirectMethod(unittest.TestCase, TrajectorySamplerSpecification) :
 	Sampler = stocal.DirectMethod
 
 
-class FirstReactionMethodAction(unittest.TestCase, TrajectorySamplerSpecification) :
+class TestFirstReactionMethod(unittest.TestCase, TrajectorySamplerSpecification) :
 	Sampler = stocal.FirstReactionMethod
 
 	def test_iter_simultaneous_events(self) :
@@ -143,6 +143,18 @@ class FirstReactionMethodAction(unittest.TestCase, TrajectorySamplerSpecificatio
 		self.assertEqual(sampler.state, {'a':1, 'b':1})
 		self.assertEqual(sampler.step, 2)
 		self.assertEqual(sampler.time, 10)
+
+	def test_exact_number_of_events(self) :
+		"""sampler performs specified number of events"""
+		n = 10
+		proc = stocal.Process([
+			stocal.Event({}, {'a':1}, 0, 1)
+		])
+		sampler = self.Sampler(proc, {}, tmax=n)
+		for trans in sampler : pass
+		self.assertEqual(sampler.state, {'a':n})
+		self.assertEqual(sampler.step, n)
+		self.assertAlmostEqual(sampler.time, n)
 
 
 if __name__ == '__main__' :
