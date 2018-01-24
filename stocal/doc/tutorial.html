@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>stocal tutorial</title>
+	<style>
+	body {
+		max-width:60em;
+		margin:0 auto 5em auto;
+	}
+	
+	pre.source {
+		background-color:#eee;
+		border:1px solid black;
+		padding:1ex;
+	}
+	</style>
+</head>
+
+<body>
+<h1>stocal Tutorial</h1>
+stocal is a python library for rule-based stochastic simulation
+(AKA Gillespie simulations). It is currently only available for
+python2.7.
+
+<ol>
+	<li><a href="#installation">Download and Installation</a>
+	<li><a href="#simple-example">A Simple Example</a>
+	<li><a href="#reactions">Reactions</a>
+	<li><a href="#events">Events</a>
+	<li><a href="#rules">Rule-Based Processes</a>
+	<li><a href="#complex-states">Complex States</a>
+	<li><a href="#propensities">Propensities</a>
+	<li><a href="#documentation">Further Documentation</a>
+</ol>
+
+<a name="installation"></a>
+<h2>Download and Installation</h2>
+The latest stable version of stocal can be obtained from github
+using the following commands:
+<pre class="source">
+&gt; git clone https://github.com/harfel/stocal.git
+&gt; cd stocal
+&gt; sudo python setup.py install
+</pre>
+If you want to obtain the development version, simply
+<pre class="source">
+&gt; git checkout develop
+</pre>
+before installing.
+
+<a name="simple-example"></a>
+<h2>A Simple Example</h2>
+<p>We start by defining a simple stochastic process that describes the
+reversible dimerization of two molecules of type A into a dimer A2.
+Reactions are supposed to follow mass action kinetics.</p>
+
+<p>To model this in stocal, we define two MassAction reactions,
+one that transforms two A molecules into one molecule A2 with
+stochastic rate constant 1.0, and one that transforms one molecule
+of A2 into two A molecules with stochastic rate constant 10.0.
+We then create a Process that groups these two reactions.</p>
+<pre class="source">
+&gt;&gt;&gt; from stocal import *
+&gt;&gt;&gt; r1 = MassAction({'A': 2}, {'A2': 1}, 1.)
+&gt;&gt;&gt; r2 = MassAction({'A2': 1}, {'A': 2}, 10.)
+&gt;&gt;&gt; process = Process([r1, r2])
+</pre>
+We can use this process, to sample stochastic trajectories.
+The method <tt>Process.trajectory</tt> instantiates a trajectory sampler
+for a given initial condition and stop criterion.
+The trajectory sampler implements the iterator protocol, so we can
+simply iterate through the trajectory, invoking one stochastic transition
+at a time. With each transition, time and state of the trajectory are
+properly updated:
+<pre class="source">
+&gt;&gt;&gt; trajectory = process.trajectory({'A':100}, steps=1000)
+&gt;&gt;&gt; for transition in trajectory :
+...     print trajectory.time, trajectory.get('A', 0), trajectory.state.get('A2', 0)
+</pre>
+This writes out the time and state of the first 1000 steps of the
+stochastic trajectory as tab separated data.
+
+<a name="reactions"></a>
+<h2>Reactions</h2>
+<p>Reactions such as MassActions above can either be invoked by
+specifying reactant and product stoichiometries as dictionaries,
+or as lists. If lists are used, the order of elements in the list is
+irrelevant. There is no bound to the number of molecules that can
+undergo a reaction. Reactants and products can also be empty to model
+inflow into and outflow out of the system.</p>
+
+<p>Propensities of reactions are calculated by multiplying the
+stochastic rate constant with the number of potential reaction partners
+in a given state. For reactions of up to three reactants, this reads:</p>
+<table>
+	<tr><th>Reactants</th><th>Propensity</th></tr>
+	<tr><td>&mdash;</td><td>reaction.c</td></tr>
+	<tr><td>A</td><td>reaction.c*state['A']</td></tr>
+	<tr><td>A + B</td><td>reaction.c*state['A']*state['B']</td></tr>
+	<tr><td>A + A</td><td>reaction.c*state['A']*(state['A']-1)/2.</td></tr>
+	<tr><td>A + B + C</td><td>reaction.c*state['A']*state['B']*state['C']</td></tr>
+	<tr><td>A + A + B</td><td>reaction.c*state['A']*(state['A']-1)*state['B']/2.</td></tr>
+	<tr><td>A + A + A</td><td>reaction.c*state['A']*(state['A']-1)*(state['A']-2)/6.</td></tr>
+</table>
+<p>In general, the propensity of a reaction is the stochastic rate
+constant times the product of the binomial coefficients to choose
+<i>n</i> reaction partners, <i>n</i> being the stoichiometry of the
+reactant, out of <i>m</i> molecules, <i>m</i> being the copy number
+of that reactant in the system state, for each reactant type.</p>
+		
+<a name="events"></a>
+<h2>Events</h2>
+stocal supports deterministic transitions that happen at a specific
+time, either once or periodically with a given frequency.
+<pre class="source">
+&gt;&gt;&gt; feed = Event([], ['A'], 0.0, 1.0)
+&gt;&gt;&gt; process = Process([r1, r2, feed])
+</pre>
+Here, the event <tt>feed</tt> will occur, and feed an A molecule to the
+system, at time t=0.0 and then periodically every 1.0 time units.
+Unlike stochastic reactions that occur with an average frequency,
+nondeterministic events happen at exactly the specified times.
+
+
+<a name="rules"></a>
+<h2>Rule-Based Processes</h2>
+<p>Having introduced an inflow, we next add an outflow to the model
+that dilutes species proportional to their abundance. We could simply
+add two reactions that remove molecules from the state:</p>
+<pre class="source">
+&gt;&gt;&gt; r4 = MassAction(['A'], [], 0.001)
+&gt;&gt;&gt; r5 = MassAction(['A2'], [], 0.001)
+</pre>
+<p>However, this requires adding a dilution reaction for every chemical
+in model. This might become cumbersome when dealing with many species,
+and we might end up forgetting the dilution of one species or
+another.</p>
+
+<p>We take this scenario as a motivation to introduce rule-based
+modelling. Rules can be thought of as patterns for reactions, rather
+than specific reactions. As such, rules generate a whole set of
+reactions.</p>
+
+<p>Defining a rule requires to create a python class with some
+required attributes and methods. The class needs to be derived from
+<tt>ReactionRule</tt>, which requires our subclass to have the following
+attributes:</p>
+<dl>
+	<dt>Transition:</dt>
+	<dd>The type of Transition that the rule generates.
+	Here, this is the <tt>MassAction</tt> type.</dd>
+	<dt>order:</dt>
+	<dd>The reaction order (i.e. the total number of reacting molecules)
+	of generated reactions. Here, this equlas to 1.</dd>
+	<dt>novel_reactions:</dt>
+	<dd>A method that generates an iterable of transitions for the given
+	reactants.</dd>
+</dl>
+Taking this all together, we define the following Dilution rule:
+<pre class="source">
+class Dilution(ReactionRule) :
+    Transition = MassAction
+    order = 1
+
+    def novel_reactions(self, species) :
+        yield self.Transition([species], [], 0.001)
+</pre>
+Note the use of <tt>yield</tt> in the <tt>novel_reactions</tt> method.
+This python keyword generates an on-the-fly iterable that contains all
+yielded items. If <tt>yield</tt> is unfamiliar to you, you can instead
+return a list of transitions without changing the behavior of the code:
+<pre class="source">
+    def novel_reactions(self, species) :
+        return [ self.Transition([species], [], 0.001) ]
+</pre>
+	
+Having defined a new rule, we can create a rule-based stochastic process
+by giving a second argument the Process constructor:
+<pre class="source">
+process = Process([r1, r2, feed], [Dilution()])
+</pre>
+<p>Note here, that the second argument is a list of rule <i>instances</i>
+rather than classes.</p>
+
+<p>For clarity, <tt>Process</tt> allows its arguments to be named,
+and we could have written the same processes instantiation as</p>
+<pre class="source">
+process = Process(transitions=[r1, r2, feed], rules=[Dilution()])
+</pre>
+
+<p>Let us look at a more interesting case and consider a system where
+A molecules cannot only form dimers but polymers of any length.
+Any two polymers&mdash;including monomers which are really just polymers
+of length one&mdash;can come together to form a chain that joins these
+two polymers.</p>
+
+<p>To model this, we define a rule class for the polymerization that
+generates a Polymerization reaction for any two reactants:</p>
+<pre class="source">
+class Polymerization(ReactionRule) :
+    Transition = MassAction
+    order = 2
+
+    def novel_reactions(self, k, l) :
+        yield self.Transition([k,l], [k+l], 10.)
+</pre>
+<p>This time, <tt>novel_reactions</tt> receives two reactants,
+<tt>a</tt> and <tt>b</tt> and yields a reaction that produces
+their concatenation. This way, rules can create molecular species that
+had not been previously in the system state!</p>
+
+<p>To complete this example, we also generalize the reverse reactions
+and define a Hydrolysis rule that breaks a polymer at any bond.
+To make the model a little more interesting, we decide that the
+stochastic rate constants of these reactions depends on the lengths
+of the hydrolysis products, so that polymers are more likely to break
+in the middle.</p>
+<pre class="source">
+class Hydrolysis(ReactionRule) :
+    Transition = MassAction
+    order = 1
+
+    def novel_reactions(self, k) :
+        for i in xrange(1, len(k)) :
+            c = 10.*i*(len(k)-i)
+            yield self.Transition([k], [k[:i], k[i:]], c)
+</pre>
+<p>This time our rule employs a <tt>for</tt> loop to generate several
+reactions for each reactant&mdash;one for each potential breaking point
+of the polymer.</p>
+
+<p>The total stochastic process, including feeding, polymerization,
+hybridization, and dilution is then defined by:</p>
+<pre class="source">
+process = Process(transitions=[feed], rules=[Dilution(), Polymerization(), Hydrolysis()])
+</pre>
+<p>Note that no change is necessary for the dilution rule, since it
+already generates a reaction for every chemical in the system.</p>
+
+<a name="complex-states"></a>
+<h2>Complex States</h2>
+<p>So far, all our molecular species have been character sequences, either
+in the form of simple labels such as "A" and "A2", or in the form of
+strings. However, stocal does not require chemicals to be strings. Any
+imutable object can be used as a valid chemical species. Examples
+would be tuples, frozensets, or custom python classes that define
+a <tt>__hash__</tt> method and do not allow the user to alter the
+state of an instance. This functionality is handy when modelling
+chemistries that are more complex than simple molecules and polymers.</p>
+
+<p>When defining custom classes to work with stocal, it is important
+to properly implement what is called <i>structural congruence</i>.
+Simply put, structurally congruent objects objects that are physically
+identical (congruent) even though they might differ syntactically.</p>
+
+<p>As a simple example, imagine we would like to model molecular
+complexes, i.e. non-covalent associations of molecules. These are
+important, for example, in molecular biology, where many proteins
+form multi-protein complexes.</p>
+
+<p>We could decide to model those complexes using tuples, where the
+tuple items correspond to the individual components of the complex. For
+example, the tuple <tt>('50S', '30S')</tt> could refer to the
+complexified large and small subunit that constitute the ribosome.</p>
+
+<p>However, tuples are ordered sequences in python, whereas molecular
+complexes usually do not have a designated order of their components:
+<tt>('50S', '30S')</tt> is really just the same as <tt>('30S', '50S')</tt>
+and we need to teach this to python.</p>
+
+<p>To do so, we defince a custom data type (class) that provides
+an implementation of the equality operator <tt>__eq__</tt>
+as well as the hash function <tt>__hash__</tt>. Since python does
+not impose any semantics on customly defined operators, we also
+have to define the inequality operator <tt>__ne__</tt>.</p>
+
+<p>The simplest way to implement structural congruence is by means
+of a normalization function that maps all congruent instances to
+an identical representation. For our molecular complexes, we could
+simply sort the tuple elements, thus making sure that differently
+ordered complexes have the same normalization.</p>
+
+<pre class="source">
+class Complex(tuple) :
+    @property
+    def normalized(self) :
+        return tuple(sorted(self))
+
+    def __eq__(self, other) :
+        return self.normalized == other.normalized
+
+    def __ne__(self, other) :
+        return not self==other
+
+    def __hash__(self) :
+        return hash(self.normalized)
+</pre>
+
+A complete implementation for molecular complexes might also overload
+the plus operator <tt>__add__</tt> to make sure that adding to Complexes
+generates a new Complex (since it would currently generate a tuple).
+
+<a name="propensities"></a>
+<h2>Propensities</h2>
+<p>Rule-based stochastic processes bear a subtlety with regard to
+propensities which does not appear in regular stochastic processes.
+It is thus worthwhile to discuss propensity calculations in more
+detail.</p>
+
+<p>To illustrate the issue, we extend the above polymer example to work
+with several types of monomers A and B, which can form polymers with
+mixed content, such as ABBABAA. To achieve this, we simply need to
+define another feed Event that provides monomers of the second type:</p>
+<pre class="source">
+process = Process(
+    transitions=[
+        Event({}, {'A': 1}, 0., 1.),
+        Event({}, {'B': 1}, 0., 1.),
+    ],
+    rules=[Dilution(), Polymerization(), Hydrolysis()]
+)
+</pre>
+
+<p>However, we need to decide what polymerization means and need to
+slightly adapt the code of our model. A (linear) polymer is a chain
+of interlinked polymers. Links could either be directional or
+undirectional. Chemical examples of directional links are ester bonds,
+peptide bonds, nucleic acid bonds, or any other bond where one can
+clearly identify a left-hand and a right-hand side in the polymer.
+Ether bonds, ketones and thiol bonds, on the other hand, are examples
+of undirectional bonds, where the molecule is rotationally symmetric
+along the binding site.</p>
+
+<p>We have to decide whether our model features directional or
+undirectional polymerization. Our choice will determine which
+route we need to take to model polymerization accordingly.</p>
+
+<p>In the case of directional bonds, two polymers <i>k</i> and <i>l</i>
+can potentially form two different polymerization products: <i>k+l</i>
+and <i>l+k</i>. Therefore, the polymerization rule has to generate
+both reactions:</p>
+<pre class="source">
+class Polymerization(ReactionRule) :
+    Transition = MassAction
+    order = 2
+
+    def novel_reactions(self, k, l) :
+        yield self.Transition([k,l], [k+l], 5.)
+        yield self.Transition([k,l], [l+k], 5.)
+</pre>
+<p>If <tt>k</tt> and <tt>l</tt> are different and if <tt>k+l</tt>
+is different from <tt>l+k</tt>, this yields two reactions with
+propensities 5<i>n</i><sub>k</sub>n</i><sub>l</sub> each. If, however,
+<tt>k</tt> equals <tt>l</tt>, the generated reactions are identical,
+each one with propensity 5/2n</i><sub>k</sub>(n</i><sub>k</sub>-1),
+where the factor 1/2 comes from the binomial coefficent discussed in
+the section on <a href="#reactions">Reactions</a>.
+It is also possible for <tt>k</tt> and <tt>l</tt> to be different,
+but yet, for the reaction products <tt>k+l</tt> and <tt>l+k</tt> to be
+identical&mdash;or more precisely, structurally congruent. An example
+would be the molecules AB and ABAB which form the polymer ABABAB no
+matter which way around they bind. Since reactant and product lists in
+the Transition constructor are unordered lists, the two generated
+reactions would also be identical, each with propensity
+5*<i>n</i><sub>k</sub>n</i><sub>l</sub>.</p>
+
+<p>Stocal properly detects the multiplicity of reactions, and assigns
+to each generated reaction a total propensity that sums up the
+propensities from individually generated reactions. In the example,
+this implies that any &quot;left&quot; polymer will bind any
+&quot;right&quot; polymer with about the same propensity, no matter
+whether the two reactants are equal or not. However, if the two
+possible polymerization products are indistinguishable, they will
+be produced with a doubled propensity.</p>
+
+<p>In the case of undirectional bonds, we only have to infer the
+original one reaction, but we have to assert that <i>k+l</i> and
+<i>l+k</i> are structurally congruent. As we have seen before, this
+is best done by defining a custom type for undirectional polymers:</p>
+<pre class="source">
+class Polymer(str) :
+    @property
+    def normalized(self) :
+        return min(self, ''.join(reversed(self)))
+</pre>
+<p>with the above overloads for <tt>__eq__</tt>, <tt>__ne__</tt> and
+<tt>__hash__</tt>. The undirectional Polymerization rule now becomes:</p>
+<pre class="source">
+class Polymerization(ReactionRule) :
+    Transition = MassAction
+    order = 2
+
+    def novel_reactions(self, k, l) :
+        yield self.Transition([k,l], [Polymer(k+l)], 10.)
+</pre>
+<p>In this case, propensities are calculated as in the standard
+Gillespie algorithm, where the propensity of a reaction with
+dinstinguishable partners is twice as big as the propensity of
+reactions with indistinguishable partners.</p>
+
+<p>In summary, when modelling chemistries in stocal, the user does
+not need to bother about calculating propensities, as this is
+dealt with by the framework. In contrast, what the user has to
+pay attention to is that the textual representation of molecules
+properly captures the physical aspects of the modelled chemistry,
+i.e. define proper structural congruence relations.</p>
+
+<a name="#documentation"></a>
+<h2>Further Documentation</h2>
+The full API of stocal is available via pydoc:
+<pre class="source">
+&gt; pydoc stocal
+</pre>
+Examples of stocal in use can be found in the
+<a href="../examples/">examples</a> folder.
+</body>
+</html>

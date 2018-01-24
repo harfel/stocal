@@ -1,0 +1,14 @@
+=
+- move tests into stocal and reorganize
+- multiset and unorderer_list types
+- python3 compatibility
+- sort out tests: separate specifications from tests
+- statistical verification tests
+- SSA profiling and algorithm variations
+- C/C++/D implementation
+- volume awareness
+- String rewrite rule support
+- other kinetic laws, e.g. Hill function
+- non-autonomous transitions
+- every/until filters and other stop criteria
+- curried reactions (determine products only upon application)
