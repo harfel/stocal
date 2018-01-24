@@ -1,14 +1,15 @@
-=
-- move tests into stocal and reorganize
+- reorganize package: integrate tests and split __init__.py
+- provide tests.test_reactionrule
 - multiset and unorderer_list types
 - python3 compatibility
-- sort out tests: separate specifications from tests
 - statistical verification tests
+- volume awareness
+- string rewrite rule support
+- every/until filters and other stop criteria
+= version 1.1
+- non-autonomous transitions
+- curried reactions (determine products only upon application)
+- other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations
 - C/C++/D implementation
-- volume awareness
-- String rewrite rule support
-- other kinetic laws, e.g. Hill function
-- non-autonomous transitions
-- every/until filters and other stop criteria
-- curried reactions (determine products only upon application)
+- libSBML integration
