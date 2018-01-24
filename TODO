@@ -1,5 +1,10 @@
-- reorganize package: integrate tests and split __init__.py
+- move tests into stocal
+- move transitions into transitions.py
+- move algorithms into algorithm package
+- reorganize tests to mirror modules
 - provide tests.test_reactionrule
+- satisfy pylint
+=
 - multiset and unorderer_list types
 - python3 compatibility
 - statistical verification tests
