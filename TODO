@@ -1,6 +1,3 @@
-- examples
-- licence
-- pass tests when pushing to develop/master
 =
 - move tests into stocal and reorganize
 - multiset and unorderer_list types
