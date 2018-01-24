@@ -1,10 +1,11 @@
 import unittest
 import os
 
+os.chdir(os.path.dirname(__file__))
 
 test_modules = [
-	'tests.' + f[:-len('.py')]
-	for f in os.listdir(os.path.dirname(__file__))
+	f[:-len('.py')]
+	for f in os.listdir('.')
 	if f.startswith('test_') and f.endswith('.py')
 ]
 

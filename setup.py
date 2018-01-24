@@ -9,6 +9,6 @@ setup(
 	author = "Harold Fellermann",
 	author_email = "harold.fellermann@newcastle.ac.uk",
 	url = "https://github.com/harfel/",
-	packages = ["stocal", "stocal.examples"],
+	packages = ["stocal", "stocal.examples", "stocal.tests"],
 	package_data = {'stocal' : ['doc/*.html']},
 )

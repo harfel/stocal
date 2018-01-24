@@ -1,4 +1,3 @@
-- move tests into stocal
 - move transitions into transitions.py
 - move algorithms into algorithm package
 - reorganize tests to mirror modules

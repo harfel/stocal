@@ -39,10 +39,14 @@ trajectory = process.trajectory(initial_state, tmax=100) :
 
 ### API / Tutorial
 
-A tutorial on how to use stocal can be found in stocal/doc/tutorial.html
+A tutorial on how to use stocal can be found in stocal/doc/tutorial.html.
 Various usage examples are provided in stocal/examples.
 The package API is thoroughly documented and can be accessed through
-pydoc.
+pydoc. The behavior of stocal is specified via tests. The test suite
+can be run with
+```bash
+python -m stocal.tests
+'''
 
 
 ### Installation

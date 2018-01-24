@@ -32,6 +32,9 @@ trajectory.state give information about the system state.
 
 A user tutorial is provided in stocal/doc/tutorial.html
 Example uses can be found in the stocal.examples package.
+
+The behavior of all stocal classes is specified via tests, which are
+located in the stocal.tests package.
 """
 import abc
 
