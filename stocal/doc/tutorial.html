@@ -24,12 +24,13 @@ python2.7.
 
 <ol>
 	<li><a href="#installation">Download and Installation</a>
-	<li><a href="#simple-example">A simple example</a>
+	<li><a href="#simple-example">A Simple Example</a>
 	<li><a href="#reactions">Reactions</a>
 	<li><a href="#events">Events</a>
-	<li><a href="#rules">Rule-based processes</a>
-	<li><a href="#complex-states">Complex states</a>
+	<li><a href="#rules">Rule-Based Processes</a>
+	<li><a href="#complex-states">Complex States</a>
 	<li><a href="#propensities">Propensities</a>
+	<li><a href="#documentation">Further Documentation</a>
 </ol>
 
 <a name="installation"></a>
@@ -48,7 +49,7 @@ If you want to obtain the development version, simply
 before installing.
 
 <a name="simple-example"></a>
-<h2>A simple example</h2>
+<h2>A Simple Example</h2>
 <p>We start by defining a simple stochastic process that describes the
 reversible dimerization of two molecules of type A into a dimer A2.
 Reactions are supposed to follow mass action kinetics.</p>
@@ -122,7 +123,7 @@ nondeterministic events happen at exactly the specified times.
 
 
 <a name="rules"></a>
-<h2>Rule-based processes</h2>
+<h2>Rule-Based Processes</h2>
 <p>Having introduced an inflow, we next add an outflow to the model
 that dilutes species proportional to their abundance. We could simply
 add two reactions that remove molecules from the state:</p>
@@ -237,7 +238,7 @@ process = Process(transitions=[feed], rules=[Dilution(), Polymerization(), Hydro
 already generates a reaction for every chemical in the system.</p>
 
 <a name="complex-states"></a>
-<h2>Complex states</h2>
+<h2>Complex States</h2>
 <p>So far, all our molecular species have been character sequences, either
 in the form of simple labels such as "A" and "A2", or in the form of
 strings. However, stocal does not require chemicals to be strings. Any
@@ -404,5 +405,13 @@ pay attention to is that the textual representation of molecules
 properly captures the physical aspects of the modelled chemistry,
 i.e. define proper structural congruence relations.</p>
 
+<a name="#documentation"></a>
+<h2>Further Documentation</h2>
+The full API of stocal is available via pydoc:
+<pre class="source">
+&gt; pydoc stocal
+</pre>
+Examples of stocal in use can be found in the
+<a href="../examples/">examples</a> folder.
 </body>
 </html>
