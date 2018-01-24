@@ -9,7 +9,8 @@ Iterating over the trajectory yields a series of fired transitions.
 After ech transition, the attributes trajectory.time and
 trajectory.state give information about the system state.
 
-Example uses are provided in the stocal.examples package.
+A user tutorial is provided in stocal/doc/tutorial.html
+Example uses can be found in the stocal.examples package.
 """
 import abc
 

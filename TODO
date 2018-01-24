@@ -1,9 +1,8 @@
-- docs
-- add docs to setup
 - examples
 - licence
 - pass tests when pushing to develop/master
 =
+- move tests into stocal and reorganize
 - multiset and unorderer_list types
 - python3 compatibility
 - sort out tests: separate specifications from tests
