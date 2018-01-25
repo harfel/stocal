@@ -1,6 +1,5 @@
-- move transitions into transitions.py
-- move algorithms into algorithm package
 - reorganize tests to mirror modules
+- test tutorial
 - provide tests.test_reactionrule
 - satisfy pylint
 =

@@ -126,11 +126,11 @@ class TrajectorySamplerSpecification(object) :
 
 
 class TestDirectMethod(unittest.TestCase, TrajectorySamplerSpecification) :
-	Sampler = stocal.DirectMethod
+	Sampler = stocal.algorithms.DirectMethod
 
 
 class TestFirstReactionMethod(unittest.TestCase, TrajectorySamplerSpecification) :
-	Sampler = stocal.FirstReactionMethod
+	Sampler = stocal.algorithms.FirstReactionMethod
 
 	def test_iter_simultaneous_events(self) :
 		"""two Events can occur at the exact same time"""
