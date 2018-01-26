@@ -1,9 +1,6 @@
-- reorganize tests to mirror modules
-- test tutorial
-- provide tests.test_reactionrule
 - satisfy pylint
 =
-- multiset and unorderer_list types
+- multiset and unordered_list types
 - python3 compatibility
 - statistical verification tests
 - volume awareness

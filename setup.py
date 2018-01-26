@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
 	name = "stocal",
@@ -11,4 +11,5 @@ setup(
 	url = "https://github.com/harfel/",
 	packages = ["stocal", "stocal.examples", "stocal.tests"],
 	package_data = {'stocal' : ['doc/*.html']},
+	test_suite = 'stocal.tests',
 )

@@ -1,12 +1,9 @@
-"""TrajectorySampler tests
-
-These tests specify the behavior of TrajectorySampler implementations.
-"""
 import unittest
+from abstract_test import AbstractTestCase
 import stocal
 
 
-class TrajectorySamplerSpecification(object) :
+class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.TrajectorySampler)) :
 	def test_init_optional_args(self) :
 		"""init can be called with optional arguments"""
 		proc = stocal.Process([])
@@ -125,11 +122,12 @@ class TrajectorySamplerSpecification(object) :
 		self.assertEqual(sampler.time, 0.)
 
 
-class TestDirectMethod(unittest.TestCase, TrajectorySamplerSpecification) :
+
+class TestDirectMethod(TestTrajectorySampler) :
 	Sampler = stocal.algorithms.DirectMethod
 
 
-class TestFirstReactionMethod(unittest.TestCase, TrajectorySamplerSpecification) :
+class TestFirstReactionMethod(TestTrajectorySampler) :
 	Sampler = stocal.algorithms.FirstReactionMethod
 
 	def test_iter_simultaneous_events(self) :

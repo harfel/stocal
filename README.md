@@ -45,7 +45,7 @@ The package API is thoroughly documented and can be accessed through
 pydoc. The behavior of stocal is specified via tests. The test suite
 can be run with
 ```bash
-python -m stocal.tests
+python setup.py test
 '''
 
 
