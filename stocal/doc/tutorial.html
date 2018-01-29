@@ -75,7 +75,7 @@ properly updated:
 <pre class="source">
 &gt;&gt;&gt; trajectory = process.trajectory({'A':100}, steps=1000)
 &gt;&gt;&gt; for transition in trajectory :
-...     print trajectory.time, trajectory.get('A', 0), trajectory.state.get('A2', 0)
+...     print trajectory.time, trajectory.state.get('A', 0), trajectory.state.get('A2', 0)
 </pre>
 This writes out the time and state of the first 1000 steps of the
 stochastic trajectory as tab separated data.
