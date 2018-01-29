@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
 	name = "stocal",
-	version = "1.0",
+	version = "1.0.1",
 	description = "simple rule-based stochastic simulation",
 	author = "Harold Fellermann",
 	author_email = "harold.fellermann@newcastle.ac.uk",
