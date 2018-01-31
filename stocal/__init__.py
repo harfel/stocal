@@ -24,7 +24,6 @@
 This package offers functionalities to perform stochastic simulations
 over regular as well as rule-based systems.
 
-A user tutorial is provided in stocal/doc/tutorial.html
 Example uses can be found in the stocal.examples package.
 
 The behavior of all stocal classes is specified via tests, which are
