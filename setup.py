@@ -1,14 +1,29 @@
 #! /usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 
-setup(
-	name = "stocal",
-	version = "1.0.1",
-	description = "simple rule-based stochastic simulation",
-	author = "Harold Fellermann",
-	author_email = "harold.fellermann@newcastle.ac.uk",
-	url = "https://github.com/harfel/",
-	packages = ["stocal", "stocal.examples"],
-	package_data = {'stocal' : ['doc/*.html']},
-)
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
+
+setup(name = "stocal",
+      version = "1.0.1",
+      description = "simple rule-based stochastic simulation",
+      long_description = readme(),
+      classifiers=[
+        'Development Status :: 3 - Alpha',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Scientific/Engineering :: Chemistry',
+        'Topic :: Scientific/Engineering :: Mathematics',
+        'Topic :: Scientific/Engineering :: Physics',
+      ],
+      url = "https://github.com/harfel/",
+      author = "Harold Fellermann",
+      author_email = "harold.fellermann@newcastle.ac.uk",
+      license='MIT',
+      packages = ["stocal", "stocal.examples", "stocal.tests"],
+      include_package_data=True,
+      zip_safe = True,
+      test_suite = 'stocal.tests')

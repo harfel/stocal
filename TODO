@@ -1,6 +1,4 @@
-- reorganize package: integrate tests and split __init__.py
-- provide tests.test_reactionrule
-- multiset and unorderer_list types
+- multiset and unordered_list types
 - python3 compatibility
 - statistical verification tests
 - volume awareness
