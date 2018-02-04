@@ -1,5 +1,3 @@
-- satisfy pylint
-=
 - multiset and unordered_list types
 - python3 compatibility
 - statistical verification tests
