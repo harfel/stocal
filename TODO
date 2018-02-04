@@ -1,10 +1,13 @@
-- multiset and unordered_list types
+- multiset tests
+- multiset implementation
+- integrate multiset in stocal
+=
 - python3 compatibility
 - statistical verification tests
 - volume awareness
 - string rewrite rule support
 - every/until filters and other stop criteria
-= version 1.1
+= version 1.0.2
 - non-autonomous transitions
 - curried reactions (determine products only upon application)
 - other kinetic laws, e.g. Hill function
