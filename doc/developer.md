@@ -34,10 +34,11 @@ python setup.py test
 Passing of all tests is an enforced requirement for all code merged
 into the develop and master branches.
 
-Coverage analysis can be performed using the third party `coverage`
-module. The command lines are:
+Coverage analysis can be performed using the
+[third party](https://pypi.python.org/pypi/coverage) `coverage` module.
+The command lines are:
 ```bash
-coverate run --source=stocal --omit='stocal/tests/*' setup.py test
+coverage run --source=stocal --omit='stocal/tests/*' setup.py test
 coverage html
 ```
 
@@ -45,7 +46,4 @@ New functionality should be accompanied by tests. For novel
 implementations of defined interfaces (abstract classes), such as
 Transition or Rule, stocal.test.abstract_test offers an infrastructure
 to derive implementation test cases from interface test cases. See
-```shell
-pydoc stocal.tests
-'''
-for more information.
+`pydoc stocal.tests` for more information.

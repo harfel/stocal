@@ -2,17 +2,17 @@
 stocal is a python library for rule-based stochastic simulation (AKA [Gillespie simulations](https://en.wikipedia.org/wiki/Gillespie_algorithm)). It is currently only available for python2.7. 
 
 ## Download and Installation
-The latest stable version of stocal can be obtained from github using the following commands:
+The latest stable release of stocal is available from the python package index:
+```shell
+pip install pypi
+```
+The development version can be obtained from github using the following commands:
 ```shell
 git clone https://github.com/harfel/stocal.git
 cd stocal
+git checkout develop
 sudo python setup.py install
 ```
-If you want to obtain the development version, simply 
-```shell
-git checkout develop
-```
-before installing.
 
 ## A Simple Example
 We start by defining a simple stochastic process that describes the reversible dimerization of two molecules of type A into a dimer A2. Reactions are supposed to follow mass action kinetics.
@@ -38,14 +38,14 @@ Reactions such as MassActions above can either be invoked by specifying reactant
 
 Propensities of reactions are calculated by multiplying the stochastic rate constant with the number of potential reaction partners in a given state. For reactions of up to three reactants, this reads:
 
-| Reactants | Propensity |
-| --------- | ---------- |
-| -         | reaction.c |
-| A         | reaction.c\*state['A'] |
-| A + B     | reaction.c\*state['A']\*state['B'] |
-| A + A     | reaction.c\*state['A']\*(state['A']-1])/2. |
-| A + B + C | reaction.c\*state['A']\*state['B']\*state['C'] |
-| A + A + B | reaction.c\*state['A']\*(state['A']-1])\*state['B']/2. |
+| Reactants | Propensity                                                  |
+| --------- | ----------------------------------------------------------- |
+| -         | reaction.c                                                  |
+| A         | reaction.c\*state['A']                                      |
+| A + B     | reaction.c\*state['A']\*state['B']                          |
+| A + A     | reaction.c\*state['A']\*(state['A']-1])/2.                  |
+| A + B + C | reaction.c\*state['A']\*state['B']\*state['C']              |
+| A + A + B | reaction.c\*state['A']\*(state['A']-1])\*state['B']/2.      |
 | A + A + A | reaction.c\*state['A']\*(state['A']-1])\*(state['A']-2])/6. |
 
 In general, the propensity of a reaction is the stochastic rate constant times the product of the binomial coefficients to choose _n_ reaction partners, _n_ being the stoichiometry of the reactant, out of _m_ molecules, _m_ being the copy number of that reactant in the system state, for each reactant type.
