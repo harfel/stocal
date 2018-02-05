@@ -1,6 +1,3 @@
-- multiset implementation
-- integrate multiset in stocal
-=
 - python3 compatibility
 - statistical verification tests
 - volume awareness
@@ -13,3 +10,9 @@
 - SSA profiling and algorithm variations
 - C/C++/D implementation
 - libSBML integration
+
+Planned backward incompatible changes:
+--------------------------------------
+- replace state.get(s, 0) by state[s] in MassAction.reactions
+- use multiset unions in ReactionRule.infer_transitions
+- replace bad variable names that stocal warns about
