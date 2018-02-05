@@ -4,7 +4,7 @@ stocal is a python library for rule-based stochastic simulation (AKA [Gillespie 
 ## Download and Installation
 The latest stable release of stocal is available from the python package index:
 ```shell
-pip install pypi
+pip install stocal
 ```
 The development version can be obtained from github using the following commands:
 ```shell
