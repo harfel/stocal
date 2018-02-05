@@ -27,6 +27,8 @@ novel transitions during the course of a stochastic simulation.
 
 import abc
 
+from .structures import multiset
+
 
 class Transition(object):
     """Abstract base class for transformations of reactants into products.
@@ -60,15 +62,8 @@ class Transition(object):
         stoichiometric factor of each involved species, or sequences
         which are interpreted as unordered lists.
         """
-        # if reactants/products are not a dictionary, they are assumed
-        # to be unordered sequences of reactants/products
-        def seq_to_dict(seq):
-            """convert unordered list into dict"""
-            return seq if isinstance(seq, dict) else {
-                s: seq.count(s) for s in set(seq)
-            }
-        reactants = seq_to_dict(reactants)
-        products = seq_to_dict(products)
+        reactants = multiset(reactants)
+        products = multiset(products)
 
         if not all(n > 0 for n in reactants.itervalues()):
             raise ValueError("reactant stoichiometries must be positive.")
@@ -83,16 +78,8 @@ class Transition(object):
         self.reactants = reactants
         self.products = products
 
-        self.true_reactants = {
-            s: n - products.get(s, 0)
-            for s, n in reactants.iteritems()
-            if products.get(s, 0) < n
-        }
-        self.true_products = {
-            s: n - reactants.get(s, 0)
-            for s, n in products.iteritems()
-            if reactants.get(s, 0) < n
-        }
+        self.true_reactants = reactants - products
+        self.true_products = products - reactants
 
         self.last_occurrence = -1.
         self._hash = 0
@@ -230,6 +217,7 @@ class MassAction(Reaction):
 
         Calling propensity does not modify the underlying reaction.
         """
+        # could be simplified as state[0] if specification would enforce multiset state
         def choose(n, k):
             """binomial coefficient"""
             return reduce(lambda x, i: x*(n+1-i)/i, xrange(1, k+1), 1)
@@ -401,6 +389,13 @@ class ReactionRule(Rule):
                 for combination in combinations(reactants, list(novel_species), novel or i >= end):
                     yield combination
             del reactants[-m:]
+
+        # could be simplified if specification would enforce multiset state:
+        # next_state = state + last_products
+        # novel_species = sorted((
+        #     (species, state[species]+1, min(next_state[species], self.order))
+        #     for species in set(last_products).union(state)
+        # ), key=lambda (species, n, m): n-m)
 
         novel_species = sorted((
             (species, state.get(species, 0)+1,

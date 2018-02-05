@@ -1,13 +1,18 @@
-- multiset and unordered_list types
 - python3 compatibility
 - statistical verification tests
 - volume awareness
 - string rewrite rule support
 - every/until filters and other stop criteria
-= version 1.1
+= version 1.0.2
 - non-autonomous transitions
 - curried reactions (determine products only upon application)
 - other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations
 - C/C++/D implementation
 - libSBML integration
+
+Planned backward incompatible changes:
+--------------------------------------
+- replace state.get(s, 0) by state[s] in MassAction.reactions
+- use multiset unions in ReactionRule.infer_transitions
+- replace bad variable names that stocal warns about

@@ -27,6 +27,7 @@ interface by subclassing this abstract base class.
 
 import abc
 
+from .structures import multiset
 from .transitions import Event, Reaction
 
 class TrajectorySampler(object):
@@ -70,7 +71,7 @@ class TrajectorySampler(object):
         self.transitions = []
         for transition in self.process.transitions:
             self.add_transition(transition)
-        self.state = {}
+        self.state = multiset()
         self.update_state(state)
 
     @abc.abstractmethod
@@ -104,25 +105,13 @@ class TrajectorySampler(object):
         call self.rules to potentially infer novel transitions
         for the changed system state.
         """
-        def begin():
-            """remove reactants from state"""
-            for species, amount in transition.true_reactants.iteritems():
-                self.state[species] -= amount
-                if not self.state[species]:
-                    del self.state[species]
-        def end():
-            """add products to state"""
-            for species, amount in transition.true_products.iteritems():
-                if species not in self.state:
-                    self.state[species] = 0
-                self.state[species] += amount
-        begin()
+        self.state -= transition.true_reactants
         for rule in self.process.rules:
             # XXX determine from state which rules should be queried
             for trans in rule.infer_transitions(transition.true_products, self.state):
                 trans.rule = rule
                 self.add_transition(trans)
-        end()
+        self.state += transition.true_products
 
 
 class DirectMethod(TrajectorySampler):
@@ -154,9 +143,6 @@ class DirectMethod(TrajectorySampler):
                     trans.rule = rule
                     self.add_transition(trans)
         self.state.update(dct)
-        for species in dct:
-            if not species:
-                del self.state[species]
 
     def __iter__(self):
         from random import random
@@ -262,6 +248,3 @@ class FirstReactionMethod(TrajectorySampler):
                     trans.rule = rule
                     self.add_transition(trans)
         self.state.update(dct)
-        for species in dct:
-            if not species:
-                del self.state[species]
