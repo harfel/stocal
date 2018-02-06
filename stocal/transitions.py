@@ -26,6 +26,7 @@ novel transitions during the course of a stochastic simulation.
 """
 
 import abc
+import warnings
 
 from .structures import multiset
 
@@ -202,7 +203,7 @@ class MassAction(Reaction):
         if c < 0:
             raise ValueError("stochastic rate constants must be non-negative.")
         super(MassAction, self).__init__(reactants, products)
-        self.c = c
+        self.constant = c
 
     def __repr__(self):
         try:
@@ -217,14 +218,16 @@ class MassAction(Reaction):
 
         Calling propensity does not modify the underlying reaction.
         """
-        # could be simplified as state[0] if specification would enforce multiset state
+        if not isinstance(state, multiset):
+            warnings.warn("state must be a multiset.", DeprecationWarning)
+
         def choose(n, k):
             """binomial coefficient"""
             return reduce(lambda x, i: x*(n+1-i)/i, xrange(1, k+1), 1)
         return reduce(
             lambda a, b: a*b,
             (choose(state.get(s, 0), n) for s, n in self.reactants.iteritems()),
-            self.c
+            self.constant
         )
 
     def __eq__(self, other):
@@ -236,18 +239,18 @@ class MassAction(Reaction):
         return (
             super(MassAction, self).__eq__(other) and
             isinstance(other, MassAction) and
-            self.c == other.c
+            self.constant == other.constant
         )
 
     def __hash__(self):
         if not self._hash:
             self._hash = hash((
                 super(MassAction, self).__hash__(),
-                self.c
+                self.constant
             ))
         return self._hash
 
-
+    
 class Event(Transition):
     """Deterministic transitions.
 
@@ -260,8 +263,8 @@ class Event(Transition):
         if frequency < 0:
             raise ValueError("dt must be greater than (or equal to) 0.")
         super(Event, self).__init__(reactants, products)
-        self.t = time
-        self.dt = frequency
+        self.time = time
+        self.frequency = frequency
 
     def __eq__(self, other):
         """Structural congruence
@@ -272,15 +275,15 @@ class Event(Transition):
         return (
             super(Event, self).__eq__(other) and
             isinstance(other, Event) and
-            self.t == other.t and
-            self.dt == other.dt
+            self.time == other.time and
+            self.frequency == other.frequency
         )
 
     def __hash__(self):
         if not self._hash:
             self._hash = hash((
                 super(Event, self).__hash__(),
-                self.t, self.dt
+                self.time, self.frequency
             ))
         return self._hash
 
@@ -290,12 +293,12 @@ class Event(Transition):
         If the event does not re-occur, returns float('inf').
         Calling next_occurrence leaves the event unmodified.
         """
-        if self.dt:
-            t = time + (self.t-time)%self.dt
-            return t if self.last_occurrence != time else t+self.dt
-        elif time < self.t:
-            return self.t
-        elif time == self.t and self.last_occurrence != time:
+        if self.frequency:
+            future = time + (self.time-time)%self.frequency
+            return future if self.last_occurrence != time else future+self.frequency
+        elif time < self.time:
+            return self.time
+        elif time == self.time and self.last_occurrence != time:
             return time
         else:
             return float('inf')
@@ -366,6 +369,11 @@ class ReactionRule(Rule):
 
         see help(type(self)) for an explanation of the algorithm.
         """
+        if not isinstance(last_products, multiset):
+            warnings.warn("last_products must be a multiset.", DeprecationWarning)
+        if not isinstance(state, multiset):
+            warnings.warn("state must be a multiset.", DeprecationWarning)
+
         def combinations(reactants, novel_species, novel):
             """recursively expand reactants from novel_species"""
             if len(reactants) == self.order:
@@ -421,15 +429,18 @@ class Process(object):
         self.transitions = transitions or []
         self.rules = rules or []
 
-    def trajectory(self, state, t=0., tmax=float('inf'), steps=None):
+    def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None):
         """Create trajectory sampler for given state
 
         If any static or infered transition is deterministic, this returns
         the FirstReactionMethod, otherwise the DirectMethod."""
+        if t:
+            warnings.warn("pass start time as tstart", DeprecationWarning)
+        tstart = tstart or t
+
         if (all(isinstance(r, Reaction) for r in self.transitions)
                 and all(issubclass(r.Transition, Reaction) for r in self.rules)):
             from .algorithms import DirectMethod as Sampler
         else:
             from .algorithms import FirstReactionMethod as Sampler
-        return Sampler(self, state, t, tmax, steps)
-
+        return Sampler(self, state, tstart, tmax, steps)
