@@ -47,3 +47,17 @@ implementations of defined interfaces (abstract classes), such as
 Transition or Rule, stocal.test.abstract_test offers an infrastructure
 to derive implementation test cases from interface test cases. See
 `pydoc stocal.tests` for more information.
+
+
+## Releases
+
+When preparing a new release, these steps should be followed
+
+ * git flow release start
+ * ensure an optimal code coverage of the test suite
+ * ensure that all tests pass
+ * ensure that documentation (README, tutorial, etc.) is up to date
+ * bump the version number
+ * git flow release finish
+ * sudo setup.py sdist upload
+ * publish release on github

@@ -77,7 +77,7 @@ properly updated:
 <pre class="source">
 &gt;&gt;&gt; trajectory = process.trajectory({'A':100}, steps=1000)
 &gt;&gt;&gt; for transition in trajectory :
-...     print trajectory.time, trajectory.state.get('A', 0), trajectory.state.get('A2', 0)
+...     print trajectory.time, trajectory.state['A'], trajectory.state['A2']
 </pre>
 This writes out the time and state of the first 1000 steps of the
 stochastic trajectory as tab separated data.
@@ -151,9 +151,6 @@ attributes:</p>
 	<dt>Transition:</dt>
 	<dd>The type of Transition that the rule generates.
 	Here, this is the <tt>MassAction</tt> type.</dd>
-	<dt>order:</dt>
-	<dd>The reaction order (i.e. the total number of reacting molecules)
-	of generated reactions. Here, this equlas to 1.</dd>
 	<dt>novel_reactions:</dt>
 	<dd>A method that generates an iterable of transitions for the given
 	reactants.</dd>
@@ -162,7 +159,6 @@ Taking this all together, we define the following Dilution rule:
 <pre class="source">
 class Dilution(ReactionRule) :
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, species) :
         yield self.Transition([species], [], 0.001)
@@ -201,7 +197,6 @@ generates a Polymerization reaction for any two reactants:</p>
 <pre class="source">
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [k+l], 10.)
@@ -220,7 +215,6 @@ in the middle.</p>
 <pre class="source">
 class Hydrolysis(ReactionRule) :
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, k) :
         for i in xrange(1, len(k)) :
@@ -344,7 +338,6 @@ both reactions:</p>
 <pre class="source">
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [k+l], 5.)
@@ -390,7 +383,6 @@ class Polymer(str) :
 <pre class="source">
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [Polymer(k+l)], 10.)

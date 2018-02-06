@@ -38,7 +38,6 @@ initial_state = {c: 200000 for c in 'ab'}
 class DegradationRule(stocal.ReactionRule):
     """Break a string into any two nonempty substrings"""
     Transition = stocal.MassAction
-    order = 1
 
     def __str__(self):
         return 'kl --> k+l'
@@ -53,7 +52,6 @@ class DegradationRule(stocal.ReactionRule):
 class LigationRule(stocal.ReactionRule):
     """Join any two strings into their concatenations"""
     Transition = stocal.MassAction
-    order = 2
 
     def __str__(self):
         return 'k+l --> kl'
@@ -66,13 +64,12 @@ class LigationRule(stocal.ReactionRule):
 class AutoCatalysisRule(stocal.ReactionRule):
     """Replicate any string from two matching substrings"""
     Transition = stocal.MassAction
-    order = 3
 
     def __str__(self):
         return 'k+l+kl --> 2*kl'
 
-    def novel_reactions(self, *reactants):
-        k, l, m = sorted(reactants, key=len)
+    def novel_reactions(self, k, l, m):
+        k, l, m = sorted([k, l, m], key=len)
         if k+l == m:
             yield self.Transition([k, l, m], {m: 2}, beta)
         if l+k == m:

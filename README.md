@@ -33,7 +33,7 @@ process = stocal.Process([
 # Sample a stochastic trajectory of the process
 initial_state = {}
 trajectory = process.trajectory(initial_state, tmax=100) :
-	print trajectory.time, trajectory.state.get('A2', 0)
+	print trajectory.time, trajectory.state['A2']
 ```
 
 

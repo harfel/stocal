@@ -344,14 +344,6 @@ class ReactionRule(Rule):
     every reaction that takes the novel species as reactants.
     """
 
-    @abc.abstractproperty
-    def order(self):
-        """Reaction order of infered reactions.
-
-        The order of a reaction is the number of reactant molecules.
-        To be defined by a subclass."""
-        return int()
-
     @abc.abstractmethod
     def novel_reactions(self, *reactants):
         """Infer reactions for the given unordered list of reactants.
@@ -359,6 +351,15 @@ class ReactionRule(Rule):
         To be implemented by a subclass.
         """
         raise StopIteration
+
+    @property
+    def order(self):
+        """Reaction order of infered reactions.
+
+        The order of a reaction is the number of reactant molecules.
+        To be defined by a subclass."""
+        import inspect
+        return len(inspect.getargspec(self.novel_reactions).args) - 1
 
     def infer_transitions(self, last_products, state):
         """Standard inference algorithm for Reactions.

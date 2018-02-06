@@ -29,7 +29,7 @@ We can use this process, to sample stochastic trajectories. The method `Process.
 ```python
 trajectory = process.trajectory({'A':100}, steps=1000)
 for transition in trajectory :
-    print trajectory.time, trajectory.state.get('A', 0), trajectory.state.get('A2', 0)
+    print trajectory.time, trajectory.state['A'], trajectory.state['A2']
 ```
 This writes out the time and state of the first 1000 steps of the stochastic trajectory as white space separated data.
 
@@ -73,14 +73,12 @@ Defining a rule requires to create a python [class](https://docs.python.org/2/tu
 | attribute | description |
 | --------- | ----------- |
 | `Transition` | The type of Transition that the rule generates. Here, this is the `MassAction` type |
-| `order` | The reaction order (i.e. the total number of reacting molecules) of generated reactions. Here, this equals to 1. |
 | `novel_reactions` | A method that generates an iterable of transitions for the given reactants. |
 
 Taking this all together, we define the following Dilution rule: 
 ```python
 class Dilution(ReactionRule) :
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, species) :
         yield self.Transition([species], [], 0.001)
@@ -107,7 +105,6 @@ To model this, we define a rule class for the polymerization that generates a Po
 ```python
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [k+l], 10.)
@@ -118,7 +115,6 @@ To complete this example, we also generalize the reverse reactions and define a 
 ```python
 class Hydrolysis(ReactionRule) :
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, k) :
         for i in xrange(1, len(k)) :
@@ -185,7 +181,6 @@ In the case of directional bonds, two polymers _k_ and _l_ can potentially form 
 ```python
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [k+l], 5.)
@@ -207,7 +202,6 @@ The nondirectional Polymerization rule now becomes:
 ```python
 class Polymerization(ReactionRule) :
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l) :
         yield self.Transition([k,l], [Polymer(k+l)], 10.)

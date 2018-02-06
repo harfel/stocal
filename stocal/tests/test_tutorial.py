@@ -7,7 +7,6 @@ from stocal import MassAction, Event, ReactionRule, Process
 class Dilution(ReactionRule):
     """Dilution rule"""
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, species):
         yield self.Transition([species], [], 0.001)
@@ -15,7 +14,6 @@ class Dilution(ReactionRule):
 class Polymerization(ReactionRule):
     """Polymerization rule"""
     Transition = MassAction
-    order = 2
 
     def novel_reactions(self, k, l):
         yield self.Transition([k, l], [k+l], 10.)
@@ -23,7 +21,6 @@ class Polymerization(ReactionRule):
 class Hydrolysis(ReactionRule):
     """Hydrolysis rule"""
     Transition = MassAction
-    order = 1
 
     def novel_reactions(self, k):
         for i in xrange(1, len(k)):

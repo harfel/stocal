@@ -4,7 +4,7 @@ Most tests simply check that the example can be run without error.
 """
 import unittest
 import sys
-from .test_transitions import TestReactionRule, TestMassAction
+from stocal.tests.test_transitions import TestReactionRule, TestMassAction
 
 from stocal.examples.pre2017 import DegradationRule
 from stocal.examples.pre2017 import LigationRule

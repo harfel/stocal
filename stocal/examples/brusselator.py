@@ -22,4 +22,4 @@ traj = stocal.Process([
 
 print "# time\tx\ty\tc\td"
 for transition in traj:
-    print traj.time, '\t'.join(str(traj.state.get(s, 0)) for s in "xycd")
+    print traj.time, '\t'.join(str(traj.state[s]) for s in "xycd")

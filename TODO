@@ -1,4 +1,3 @@
-- infer ReactionRule.order from novel_reactions interface
 - python3 compatibility
 - statistical verification tests
 - volume awareness

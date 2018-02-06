@@ -1,5 +1,7 @@
 """Tests for the stocal.transitions module"""
 import unittest
+import inspect
+
 from .abstract_test import AbstractTestCase
 import stocal
 
@@ -67,8 +69,12 @@ class TestReactionRule(TestRule):
 
     def test_order_positive(self):
         """Rule.order must be greater than 0"""
-        self.assertGreater(self.Rule.order, 0)
+        self.assertGreater(self.Rule().order, 0)
 
+    def test_novel_reaction_inferface(self):
+        """Rule.novel_reactions must not use variable argument list"""
+        signature = inspect.getargspec(self.Rule.novel_reactions)
+        self.assertIsNone(signature.varargs)
 
 class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
     """Test stocal.Transition interface
