@@ -26,11 +26,13 @@ interface by subclassing this abstract base class.
 """
 
 import abc
+from six import with_metaclass
 
 from .structures import multiset
 from .transitions import Event, Reaction
 
-class TrajectorySampler(object):
+
+class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
     """Abstract base class for stochastic trajectory samplers.
 
     This is the interface for stochastic trajectory samplers, i.e.
@@ -44,8 +46,6 @@ class TrajectorySampler(object):
     >>> for transition in trajectory:
     ...     print trajectory.time, trajectory.state, transition
     """
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
         """Initialize the sampler for the given Process and state.
 
@@ -59,7 +59,7 @@ class TrajectorySampler(object):
             raise ValueError("tmax must not be negative.")
         if steps is not None and steps < 0:
             raise ValueError("steps must not be negative.")
-        if any(n <= 0 for n in state.itervalues()):
+        if any(n <= 0 for n in state.values()):
             raise ValueError("state copy numbers must be positive")
 
         self.process = process
@@ -147,7 +147,6 @@ class DirectMethod(TrajectorySampler):
     def __iter__(self):
         from random import random
         from math import log
-        from itertools import izip
 
         while True:
             if self.steps is not None and self.step == self.steps:
@@ -163,7 +162,7 @@ class DirectMethod(TrajectorySampler):
 
             # housekeeping: remove depleted transitions
             depleted = [
-                i for i, (p, t) in enumerate(izip(propensities, self.transitions))
+                i for i, (p, t) in enumerate(zip(propensities, self.transitions))
                 if p == 0. and t.rule
             ]
             for i in reversed(depleted):
@@ -178,7 +177,7 @@ class DirectMethod(TrajectorySampler):
             else:
                 transition = None
                 pick = random()*total_propensity
-                for propensity, transition in izip(propensities, self.transitions):
+                for propensity, transition in zip(propensities, self.transitions):
                     pick -= propensity
                     if pick < 0.:
                         break
@@ -215,7 +214,7 @@ class FirstReactionMethod(TrajectorySampler):
 
             if not firings:
                 break
-            time, transition = min(firings)
+            time, transition = min(firings, key=lambda item: item[0])
 
             # housekeeping: remove depleted transitions
             depleted = [

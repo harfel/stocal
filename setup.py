@@ -25,5 +25,8 @@ setup(name = "stocal",
       license='MIT',
       packages = ["stocal", "stocal.examples", "stocal.tests"],
       include_package_data=True,
+      install_requires=[
+          'six',
+      ],
       zip_safe = True,
       test_suite = 'stocal.tests')

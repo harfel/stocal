@@ -1,6 +1,6 @@
 """Tests for stocal.algorithms"""
 import unittest
-from .abstract_test import AbstractTestCase
+from stocal.tests.abstract_test import AbstractTestCase
 import stocal
 
 
@@ -45,14 +45,14 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         sampler = self.Sampler(stocal.Process([]), {'a':1})
         transition = stocal.MassAction({'a':1}, {}, 1.)
         sampler.add_transition(transition)
-        self.assertIs(iter(sampler).next(), transition)
+        self.assertIs(next(iter(sampler)), transition)
 
     def test_update_state_enables_static(self):
         """update_state can enable static transitions"""
         transition = stocal.MassAction({'a':1}, {}, 1.)
         sampler = self.Sampler(stocal.Process([transition]), {})
         sampler.update_state({'a':1})
-        self.assertIs(iter(sampler).next(), transition)
+        self.assertIs(next(iter(sampler)), transition)
 
     def test_update_state_disables_static(self):
         """update_state can disable static transitions"""
@@ -60,7 +60,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         sampler = self.Sampler(stocal.Process([transition]), {'a':1})
         sampler.update_state({'a':0})
         with self.assertRaises(StopIteration):
-            iter(sampler).next()
+            next(iter(sampler))
 
     def test_update_state_enables_infered(self):
         """update_state can enable infered transitions"""
@@ -73,7 +73,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
 
         sampler = self.Sampler(stocal.Process([], [Rule()]), {})
         sampler.update_state({'a':1})
-        self.assert_(isinstance(iter(sampler).next(), Rule.Transition))
+        self.assertTrue(isinstance(next(iter(sampler)), Rule.Transition))
 
     def test_update_state_disables_infered(self):
         """update_state can disable infered transitions"""
@@ -87,13 +87,13 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         sampler = self.Sampler(stocal.Process([], [Rule()]), {'a':1})
         sampler.update_state({'a':0})
         with self.assertRaises(StopIteration):
-            iter(sampler).next()
+            next(iter(sampler))
 
     def test_iter_empty(self):
         """The empty process stops iteration immediately"""
         sampler = self.Sampler(stocal.Process([]), {'a':100})
         with self.assertRaises(StopIteration):
-            iter(sampler).next()
+            next(iter(sampler))
         self.assertEqual(sampler.step, 0)
         self.assertEqual(sampler.time, 0.)
 
@@ -101,7 +101,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         """If tmax is given, sampler.time advances to it"""
         sampler = self.Sampler(stocal.Process([]), {'a':100}, tmax=100.)
         with self.assertRaises(StopIteration):
-            iter(sampler).next()
+            next(iter(sampler))
         self.assertEqual(sampler.step, 0)
         self.assertEqual(sampler.time, 100.)
 
@@ -122,7 +122,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         proc = stocal.Process([transition])
         sampler = self.Sampler(proc, {'a':100}, steps=0, tmax=10.)
         with self.assertRaises(StopIteration):
-            iter(sampler).next()
+            next(iter(sampler))
         self.assertEqual(sampler.step, 0)
         self.assertEqual(sampler.time, 0.)
 

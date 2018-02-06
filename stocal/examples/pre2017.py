@@ -43,7 +43,7 @@ class DegradationRule(stocal.ReactionRule):
         return 'kl --> k+l'
 
     def novel_reactions(self, kl):
-        for i in xrange(1, len(kl)):
+        for i in range(1, len(kl)):
             k = kl[:i]
             l = kl[i:]
             yield self.Transition([kl], [k, l], 1.)
@@ -84,4 +84,4 @@ process = stocal.Process(
 if __name__ == '__main__':
     traj = process.trajectory(initial_state, tmax=100.)
     for _ in traj:
-        print traj.time, traj.state
+        print(traj.time, traj.state)

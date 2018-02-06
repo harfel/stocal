@@ -117,7 +117,7 @@ class Hydrolysis(ReactionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k) :
-        for i in xrange(1, len(k)) :
+        for i in range(1, len(k)) :
             c = 10.*i*(len(k)-i)
             yield self.Transition([k], [k[:i], k[i:]], c)
 ```
