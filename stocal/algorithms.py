@@ -26,8 +26,8 @@ interface by subclassing this abstract base class.
 """
 
 import abc
-from six import with_metaclass
 
+from .utils import with_metaclass
 from .structures import multiset
 from .transitions import Event, Reaction
 

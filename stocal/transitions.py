@@ -27,8 +27,8 @@ novel transitions during the course of a stochastic simulation.
 
 import abc
 import warnings
-from six import with_metaclass
 
+from .utils import with_metaclass
 from .structures import multiset
 
 
@@ -252,7 +252,7 @@ class MassAction(Reaction):
             ))
         return self._hash
 
-    
+
 class Event(Transition):
     """Deterministic transitions.
 
