@@ -15,6 +15,7 @@ class TestMassAction(TestTransition):
 would test the Transition interface for the MassAction class.
 """
 import unittest
+import inspect
 
 def AbstractTestCase(name, cls):
     """Support tests for abstract base classes.
@@ -28,7 +29,7 @@ def AbstractTestCase(name, cls):
         """TestCase that is skipped if the tested class is abstract."""
         def run(self, *args, **opts):
             """Run the test case only for non-abstract test classes."""
-            if getattr(self, name).__abstractmethods__:
+            if inspect.isabstract(getattr(self, name)):
                 return
             else:
                 return super(BaseTestCase, self).run(*args, **opts)

@@ -50,7 +50,7 @@ class TestRule(AbstractTestCase('Rule', stocal.Rule)):
 
     def test_infer_transitions_null(self):
         """Rule.infer_transitions infers nothing if new_species is empty."""
-        if self.Rule.__abstractmethods__:
+        if inspect.isabstract(self.Rule):
             return
         rule = self.Rule()
         self.assertFalse(list(rule.infer_transitions({}, {})))
@@ -73,8 +73,15 @@ class TestReactionRule(TestRule):
 
     def test_novel_reaction_inferface(self):
         """Rule.novel_reactions must not use variable argument list"""
-        signature = inspect.getargspec(self.Rule.novel_reactions)
-        self.assertIsNone(signature.varargs)
+        try:
+            # python 3.5
+            parameters = inspect.signature(self.Rule.novel_reactions).parameters
+            self.assertFalse(any(par for par in parameters.values()
+                             if par.kind == inspect.Parameter.VAR_POSITIONAL))
+        except AttributeError:
+            # python 2.7
+            signature = inspect.getargspec(self.Rule.novel_reactions)
+            self.assertIsNone(signature.varargs)
 
 class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
     """Test stocal.Transition interface
@@ -150,7 +157,7 @@ class TestEvent(TestTransition):
         offset = 0.1
         delta_t = 1.
         event = self.Transition({}, {'a':1}, offset, delta_t)
-        for time in xrange(100):
+        for time in range(100):
             self.assertAlmostEqual(event.next_occurrence(time), time+offset)
 
 

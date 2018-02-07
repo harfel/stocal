@@ -18,7 +18,7 @@ class multiset(dict):
         else:
             items = {item:arg.count(item) for item in set(arg)}
             super(multiset, self).__init__(items, **opts)
-        if not all(isinstance(value, Number) for value in self.itervalues()):
+        if not all(isinstance(value, Number) for value in self.values()):
             raise TypeError("multiset values must be numbers.")
 
     @property
@@ -30,18 +30,30 @@ class multiset(dict):
         return '%s(%s)' % (type(self).__name__, super(multiset, self).__repr__())
 
     def __eq__(self, other):
-        return (all(other[item] == count for item, count in self.iteritems())
-                and all(self[item] == count for item, count in other.iteritems()))
+        return (all(other[item] == count for item, count in self.items())
+                and all(self[item] == count for item, count in other.items()))
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __le__(self, other):
+        return all(other[item] >= count for item, count in self.items())
+
+    def __lt__(self, other):
+        return self <= other and self != other
+
+    def __ge__(self, other):
+        return other <= self
+
+    def __gt__(self, other):
+        return other < self
+
     def __len__(self):
-        return sum(self.itervalues())
+        return sum(self.values())
 
     def __contains__(self, item):
         if isinstance(item, multiset):
-            return self >= item
+            return item <= self
         else:
             return super(multiset, self).__contains__(item)
 
@@ -64,7 +76,7 @@ class multiset(dict):
         return result
 
     def __iadd__(self, other):
-        for item, count in other.iteritems():
+        for item, count in other.items():
             self[item] += count
         return self
 
@@ -74,7 +86,7 @@ class multiset(dict):
         return result
 
     def __isub__(self, other):
-        for item, count in other.iteritems():
+        for item, count in other.items():
             if self[item] > count:
                 self[item] -= count
             else:
@@ -114,9 +126,9 @@ class multiset(dict):
     def update(self, *args, **opts):
         """update multiset with values from mappings"""
         super(multiset, self).update(*args, **opts)
-        for item, count in self.items():
-            if not count:
-                del self[item]
+        deletes = [item for item, count in self.items() if not count]
+        for item in deletes:
+            del self[item]
 
     def union(self, *mappings):
         """The union (sum) of self and all other multisets"""
@@ -136,7 +148,7 @@ class multiset(dict):
         """The symmetric difference of self and all other multisets"""
         result = type(self)(self)
         for mapping in mappings:
-            for item, count in mapping.iteritems():
+            for item, count in mapping.items():
                 if result[item] > count:
                     result[item] -= count
                 elif result[item] < count:

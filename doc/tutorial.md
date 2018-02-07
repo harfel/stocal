@@ -1,5 +1,6 @@
 # stocal tutorial
-stocal is a python library for rule-based stochastic simulation (AKA [Gillespie simulations](https://en.wikipedia.org/wiki/Gillespie_algorithm)). It is currently only available for python2.7. 
+stocal is a python library for rule-based stochastic simulation (AKA [Gillespie simulations](https://en.wikipedia.org/wiki/Gillespie_algorithm)). 
+Stocal works with python version 2.7 as well as version 3.5.
 
 ## Download and Installation
 The latest stable release of stocal is available from the python package index:
@@ -117,7 +118,7 @@ class Hydrolysis(ReactionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k) :
-        for i in xrange(1, len(k)) :
+        for i in range(1, len(k)) :
             c = 10.*i*(len(k)-i)
             yield self.Transition([k], [k[:i], k[i:]], c)
 ```

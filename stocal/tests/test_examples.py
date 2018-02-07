@@ -52,6 +52,7 @@ class TestPre2017Rule(TestReactionRule):
         """Number of transitions returned by novel_reactions"""
         return sum(1 for _ in self.rule.novel_reactions(*reactants))
 
+
 class TestPre2017DegradationRule(TestPre2017Rule):
     """Tests pre2017.DegradationRule"""
     Rule = DegradationRule
@@ -67,7 +68,7 @@ class TestPre2017DegradationRule(TestPre2017Rule):
         for i in range(1, 11):
             reactant = i*'a'
             for trans in self.rule.novel_reactions(reactant):
-                l = sum(n*len(p) for p, n in trans.products.iteritems())
+                l = sum(n*len(p) for p, n in trans.products.items())
                 self.assertEqual(l, i)
 
 

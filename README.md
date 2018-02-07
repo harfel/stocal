@@ -14,7 +14,7 @@ Features of stocal:
 * support for rules that generate novel reactions on the fly
 * support for complex chemical states
 
-Stocal is currently only available for python version 2.7.
+Stocal works with python version 2.7 as well as version 3.5.
 
 
 ### Basic Usage

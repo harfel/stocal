@@ -28,10 +28,11 @@ novel transitions during the course of a stochastic simulation.
 import abc
 import warnings
 
+from .utils import with_metaclass
 from .structures import multiset
 
 
-class Transition(object):
+class Transition(with_metaclass(abc.ABCMeta, object)):
     """Abstract base class for transformations of reactants into products.
 
     Transitions define reactants and products, but not the kinetic
@@ -52,7 +53,6 @@ class Transition(object):
     Modiying any of these attributes after initialization is an error
     and leads to undefined behavior.
     """
-    __metaclass__ = abc.ABCMeta
 
     rule = None
 
@@ -66,9 +66,9 @@ class Transition(object):
         reactants = multiset(reactants)
         products = multiset(products)
 
-        if not all(n > 0 for n in reactants.itervalues()):
+        if not all(n > 0 for n in reactants.values()):
             raise ValueError("reactant stoichiometries must be positive.")
-        if not all(n > 0 for n in products.itervalues()):
+        if not all(n > 0 for n in products.values()):
             raise ValueError("product stoichiometries must be positive.")
         if not reactants and not products:
             raise ValueError(
@@ -119,7 +119,7 @@ class Transition(object):
         def dct2str(dct):
             """render multiset as sum of elements"""
             return ' + '.join(
-                s if n == 1 else '%s*%s' % (n, s) for s, n in dct.iteritems()
+                s if n == 1 else '%s*%s' % (n, s) for s, n in dct.items()
             )
         try:
             return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
@@ -218,15 +218,17 @@ class MassAction(Reaction):
 
         Calling propensity does not modify the underlying reaction.
         """
+        from functools import reduce
+
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
 
         def choose(n, k):
             """binomial coefficient"""
-            return reduce(lambda x, i: x*(n+1-i)/i, xrange(1, k+1), 1)
+            return reduce(lambda x, i: x*(n+1-i)/i, range(1, k+1), 1)
         return reduce(
             lambda a, b: a*b,
-            (choose(state.get(s, 0), n) for s, n in self.reactants.iteritems()),
+            (choose(state.get(s, 0), n) for s, n in self.reactants.items()),
             self.constant
         )
 
@@ -250,7 +252,7 @@ class MassAction(Reaction):
             ))
         return self._hash
 
-    
+
 class Event(Transition):
     """Deterministic transitions.
 
@@ -304,7 +306,7 @@ class Event(Transition):
             return float('inf')
 
 
-class Rule(object):
+class Rule(with_metaclass(abc.ABCMeta, object)):
     """Abstract base class for rules
 
     Subclasses must provide a class attribute called Transition,
@@ -312,7 +314,6 @@ class Rule(object):
     They also must provide a method infer_transitions which performs
     the actual transition inference.
     """
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractproperty
     def Transition(self):
@@ -362,7 +363,14 @@ class ReactionRule(Rule):
         The order of a reaction is the number of reactant molecules.
         To be defined by a subclass."""
         import inspect
-        return len(inspect.getargspec(self.novel_reactions).args) - 1
+        try:
+            # python 3
+            parameters = inspect.signature(self.novel_reactions).parameters
+            return sum(1 for par in parameters.values()
+                       if par.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        except AttributeError:
+            # python 2.7
+            return len(inspect.getargspec(self.novel_reactions).args) - 1
 
     def infer_transitions(self, last_products, state):
         """Standard inference algorithm for Reactions.
@@ -392,7 +400,7 @@ class ReactionRule(Rule):
                # build reactants without current species
                 yield combination
             m = min(self.order-len(reactants), end)
-            for i in xrange(1, m+1):
+            for i in range(1, m+1):
                # build reactants with current species
                 reactants.append(species)
                 for combination in combinations(reactants, list(novel_species), novel or i >= end):
@@ -404,13 +412,13 @@ class ReactionRule(Rule):
         # novel_species = sorted((
         #     (species, state[species]+1, min(next_state[species], self.order))
         #     for species in set(last_products).union(state)
-        # ), key=lambda (species, n, m): n-m)
+        # ), key=lambda item: item[1]-item[2])
 
         novel_species = sorted((
             (species, state.get(species, 0)+1,
              min(last_products.get(species, 0)+state.get(species, 0), self.order))
             for species in set(last_products).union(state)
-        ), key=lambda (species, n, m): n-m)
+        ), key=lambda item: item[1]-item[2])
         for reactants in combinations([], novel_species, False):
             for trans in self.novel_reactions(*reactants):
                 yield trans

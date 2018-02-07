@@ -29,6 +29,7 @@ The test suite for stocal is contained in `stocal.tests` and can be
 run using
 ```bash
 python setup.py test
+python3 setup.py test
 ```
 
 Passing of all tests is an enforced requirement for all code merged

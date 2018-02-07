@@ -18,4 +18,4 @@ process = stocal.Process([
 if __name__ == '__main__':
     traj = process.trajectory({}, tmax=100)
     for _ in traj:
-        print traj.time, traj.state['A'], traj.state['A2']
+        print(traj.time, traj.state['A'], traj.state['A2'])
