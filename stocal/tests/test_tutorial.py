@@ -67,3 +67,7 @@ class TestTutorial(unittest.TestCase):
         trajectory = process.trajectory({}, steps=100)
         for _ in trajectory:
             pass
+
+
+if __name__ == '__main__':
+    unittest.main()

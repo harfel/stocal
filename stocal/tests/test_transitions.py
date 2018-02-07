@@ -73,8 +73,15 @@ class TestReactionRule(TestRule):
 
     def test_novel_reaction_inferface(self):
         """Rule.novel_reactions must not use variable argument list"""
-        signature = inspect.getargspec(self.Rule.novel_reactions)
-        self.assertIsNone(signature.varargs)
+        try:
+            # python 3.5
+            parameters = inspect.signature(self.Rule.novel_reactions).parameters
+            self.assertFalse(any(par for par in parameters.values()
+                             if par.kind == inspect.Parameter.VAR_POSITIONAL))
+        except AttributeError:
+            # python 2.7
+            signature = inspect.getargspec(self.Rule.novel_reactions)
+            self.assertIsNone(signature.varargs)
 
 class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
     """Test stocal.Transition interface

@@ -363,7 +363,14 @@ class ReactionRule(Rule):
         The order of a reaction is the number of reactant molecules.
         To be defined by a subclass."""
         import inspect
-        return len(inspect.getargspec(self.novel_reactions).args) - 1
+        try:
+            # python 3
+            parameters = inspect.signature(self.novel_reactions).parameters
+            return sum(1 for par in parameters.values()
+                       if par.kind == inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        except AttributeError:
+            # python 2.7
+            return len(inspect.getargspec(self.novel_reactions).args) - 1
 
     def infer_transitions(self, last_products, state):
         """Standard inference algorithm for Reactions.
