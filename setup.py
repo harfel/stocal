@@ -8,7 +8,7 @@ def readme():
 
 
 setup(name = "stocal",
-      version = "1.0.1",
+      version = "1.0.2",
       description = "simple rule-based stochastic simulation",
       long_description = readme(),
       classifiers=[
