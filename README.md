@@ -6,7 +6,7 @@ A python framework for regular and rule-based stochastic simulations.
 ## What is Stocal?
 
 Stocal is a framework for stochastic simulation of continuous
-time Markov processes (also known as Gillespie simulations). 
+time Markov processes (also known as [Gillespie simulations](https://en.wikipedia.org/wiki/Gillespie_algorithm)). 
 
 Features of stocal:
 * support for reactions of any order
@@ -14,7 +14,7 @@ Features of stocal:
 * support for rules that generate novel reactions on the fly
 * support for complex chemical states
 
-Stocal is currently only available for python version 2.7.
+Stocal works with python version 2.7 as well as version 3.5.
 
 
 ### Basic Usage
@@ -33,32 +33,32 @@ process = stocal.Process([
 # Sample a stochastic trajectory of the process
 initial_state = {}
 trajectory = process.trajectory(initial_state, tmax=100) :
-	print trajectory.time, trajectory.state.get('A2', 0)
+	print trajectory.time, trajectory.state['A2']
 ```
 
 
 ### API / Tutorial
 
-A tutorial on how to use stocal can be found in stocal/doc/tutorial.html
+A tutorial on how to use stocal can be found [here](https://github.com/harfel/stocal/wiki).
 Various usage examples are provided in stocal/examples.
 The package API is thoroughly documented and can be accessed through
-pydoc.
+pydoc. The behavior of stocal is specified via tests. The test suite
+can be run with `python setup.py test`.
 
 
 ### Installation
 
-The latest stable version of stocal can be obtained from github
-using the following commands:
-```bash
+The latest stable release of stocal is available from the python package index:
+```shell
+pip install stocal
+```
+The development version can be obtained from github using the following commands:
+```shell
 git clone https://github.com/harfel/stocal.git
 cd stocal
+git checkout develop
 sudo python setup.py install
 ```
-If you want to obtain the development version, simply
-```bash
-&gt; git checkout develop
-```
-before installing.
 
 
 ## Issue Reporting and Contributing
