@@ -160,6 +160,21 @@ class TestEvent(TestTransition):
         for time in range(100):
             self.assertAlmostEqual(event.next_occurrence(time), time+offset)
 
+    def test_text_occurrence_delayed(self):
+        """assert that repeated events do not fire before first occurrence
+        
+        test closes issue #1
+        """
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(0), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(0.5), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(1), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(1.5), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(0), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(1), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(1.5), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(2), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(2.5), 3)
+
 
 class TestReaction(TestTransition):
     """Test stocal.Reaction interface"""

@@ -295,11 +295,11 @@ class Event(Transition):
         If the event does not re-occur, returns float('inf').
         Calling next_occurrence leaves the event unmodified.
         """
-        if self.frequency:
+        if time < self.time:
+            return self.time
+        elif self.frequency:
             future = time + (self.time-time)%self.frequency
             return future if self.last_occurrence != time else future+self.frequency
-        elif time < self.time:
-            return self.time
         elif time == self.time and self.last_occurrence != time:
             return time
         else:
