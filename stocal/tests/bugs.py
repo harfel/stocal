@@ -17,6 +17,7 @@ class Issue2(unittest.TestCase):
     """Issue 2 [OPEN]: https://github.com/harfel/stocal/issues/2
 
     Opened 08-02-2018
+    Closed 08-02-2018
 
     traj.transitions is [ 2*a --> aa, 2*b --> bb] with two elements,
     but should be [ 2*a --> aa, 2*a --> aa, a + b --> ab, a + b --> ba,

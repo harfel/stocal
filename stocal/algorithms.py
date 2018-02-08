@@ -139,9 +139,8 @@ class DirectMethod(TrajectorySampler):
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
-                if trans not in self.transitions:
-                    trans.rule = rule
-                    self.add_transition(trans)
+                trans.rule = rule
+                self.add_transition(trans)
         self.state.update(dct)
 
     def __iter__(self):
@@ -243,7 +242,6 @@ class FirstReactionMethod(TrajectorySampler):
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
-                if trans not in self.transitions:
-                    trans.rule = rule
-                    self.add_transition(trans)
+                trans.rule = rule
+                self.add_transition(trans)
         self.state.update(dct)

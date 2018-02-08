@@ -403,7 +403,7 @@ class ReactionRule(Rule):
             for i in range(1, m+1):
                # build reactants with current species
                 reactants.append(species)
-                for combination in combinations(reactants, list(novel_species), novel or i >= end):
+                for combination in combinations(reactants, list(novel_species), novel or i >= start):
                     yield combination
             del reactants[-m:]
 
