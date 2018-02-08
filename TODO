@@ -1,3 +1,5 @@
+* fix issue #2
+=
 - volume/temperature awareness
 - string rewrite rule support
 - libSBML integration
