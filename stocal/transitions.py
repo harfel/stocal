@@ -385,26 +385,23 @@ class ReactionRule(Rule):
         def combinations(reactants, novel_species, novel):
             """recursively expand reactants from novel_species"""
             if len(reactants) == self.order:
-               # reactants complete
+               # yield complete reactants if novel
                 if novel:
                     yield reactants
                 return
             if not novel_species:
-               # no more choices
+               # abort if no more choices
                 return
             species, start, end = novel_species.pop(0)
             if not novel and start > end:
-               # cannot build novel reactants anymore
+               # abort if no possibility for further novelty
                 return
-            for combination in combinations(reactants, list(novel_species), novel):
-               # build reactants without current species
-                yield combination
-            m = min(self.order-len(reactants), end)
-            for i in range(1, m+1):
-               # build reactants with current species
-                reactants.append(species)
-                for combination in combinations(reactants, list(novel_species), novel or i >= end):
+            m = min(self.order-len(reactants), end) + 1
+            for i in range(0, m):
+               # recursively build combinations with more and more of the current species
+                for combination in combinations(reactants, list(novel_species), novel or i >= start):
                     yield combination
+                reactants.append(species)
             del reactants[-m:]
 
         # could be simplified if specification would enforce multiset state:
