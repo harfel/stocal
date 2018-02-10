@@ -1,11 +1,11 @@
-* fix issue #2
-=
-- volume/temperature awareness
+- typed ReactionRules
 - string rewrite rule support
+- volume/temperature awareness
+- non-autonomous transitions
+- support for proper delay events
 - libSBML integration
 - statistical verification tests
 - every/until filters and other stop criteria
-- non-autonomous transitions
 - curried reactions (determine products only upon application)
 - other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations

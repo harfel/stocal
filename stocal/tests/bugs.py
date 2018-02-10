@@ -14,7 +14,7 @@ class Issue1(unittest.TestCase):
 
 
 class Issue2(unittest.TestCase):
-    """Issue 2 [OPEN]: https://github.com/harfel/stocal/issues/2
+    """Issue 2 [CLOSED]: https://github.com/harfel/stocal/issues/2
 
     Opened 08-02-2018
     Closed 08-02-2018
