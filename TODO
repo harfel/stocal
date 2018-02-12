@@ -1,7 +1,7 @@
 - TypedReactionRule tests
 - TypedReactionRule implementation
-- TypedReactionRule example
 - TypedReactionRule documentation/tutorial
+? signature from type annotations
 =
 - string rewrite rule support
 - volume/temperature awareness

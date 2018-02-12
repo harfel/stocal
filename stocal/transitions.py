@@ -372,6 +372,10 @@ class ReactionRule(Rule):
             # python 2.7
             return len(inspect.getargspec(self.novel_reactions).args) - 1
 
+    @property
+    def signature(self):
+        return self.order * [object]
+
     def infer_transitions(self, last_products, state):
         """Standard inference algorithm for Reactions.
 
