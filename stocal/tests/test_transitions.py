@@ -67,10 +67,6 @@ class TestReactionRule(TestRule):
     """
     Rule = stocal.ReactionRule
 
-    def test_order_positive(self):
-        """Rule.order must be greater than 0"""
-        self.assertGreater(self.Rule().order, 0)
-
     def test_novel_reaction_inferface(self):
         """Rule.novel_reactions must not use variable argument list"""
         try:
