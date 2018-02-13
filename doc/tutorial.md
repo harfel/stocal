@@ -89,6 +89,16 @@ Note the use of `yield` in the `novel_reactions` method. This [python keyword](h
     def novel_reactions(self, species) :
         return [ self.Transition([species], [], 0.001) ]
 ```
+
+*New in version 1.1:* In python3, the transition type of a rule can alternatively be provided as return type annotation of the `novel_reactions` method. For example:
+```python
+from typing import Iterator
+
+class Dilution(ReactionRule) :
+    def novel_reactions(self, species) -> Iterator[MassAction]:
+        yield MassAction([species], [], 0.001)
+```
+
 Having defined a new rule, we can create a rule-based stochastic process by giving a second argument the Process constructor:
 ```python
 process = Process([r1, r2, feed], [Dilution()])
@@ -216,6 +226,8 @@ In summary, when modeling chemistries in stocal, the user does not need to bothe
 
 ## Typed Reactions
 
+*New in version 1.1.*
+
 If you want reaction rules to only generate reactions among certain types of molecular species, stocal
 supports molecular types and typed reaction rules. For this example, we look into modelling the association
 of proteins with mRNA's. We want to define a rule for the association of an arbitrary protein with an
@@ -226,8 +238,8 @@ With the above ReactionRule's we would need to constantly check whether the spec
 Not knowing which argument of the reactant combination is the protein and which the RNA further complicates
 the code.
 ```python
-class Association(stocal.ReactionRule):
-    Transition = stocal.MassAction
+class Association(ReactionRule):
+    Transition = MassAction
 
     def novel_reactions(self, k, l):
         if is_protein(k) and is_rna(l):
@@ -252,14 +264,24 @@ ReactoinRule attribute `signature` to the list of types that the rule should acc
 When defining a signature, it must have the same number of elements than the `novel_reactions` method.
 `novel_reactions` will now only be called with arguments that adhere to the type given in the signature.
 In our case, writing the rule becomes as simple as:
-```python    
-class Association(stocal.ReactionRule):
-    Transition = stocal.MassAction
+```python
+class Association(ReactionRule):
+    Transition = MassAction
     signature = [Protein, Rna]
 
     def novel_reactions(self, protein, rna):
         yield self.Transition([protein, rna], [(protein,rna)], 1.)
 ```
+
+In python3, type annotations can alternatively be used to specify the rule signature:
+```python
+from typing import Iterator
+
+class Association(ReactionRule):
+    def novel_reactions(self, protein: Protein, rna: Rna) -> Iterator[MassAction]:
+        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+```
+
 
 ## Further Documentation
 The full API of stocal is available via pydoc:

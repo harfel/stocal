@@ -1,5 +1,4 @@
 - TypedReactionRule tests
-? signature from type annotations
 =
 - string rewrite rule support
 - volume/temperature awareness
@@ -32,23 +31,12 @@ novel_reactions should be invoked for the combination reactants only
 if all(isinstance(species, typ) for species, typ in
        zip(reactants, self.signature))
 
-Alternatively, signature could be an optional keyword argument to
-novel_reactants:
-
 class MyTypedRule(stocal.ReactionRule):
     Transition = stocal.MassAction
     signature = [str, tuple]
 
     def novel_reactions(self, k, l):
         pass # [...]
-
-
-class MyTypedRule(stocal.ReactionRule):
-    Transition = stocal.MassAction
-
-    def novel_reactions(self, k, l, signature=[str, tuple]):
-        pass # [...]
-
 
 At the same time, if a Rule signature is given, it should be explicitly
 allowed to use variable arguments in novel_reactants, as in
@@ -59,55 +47,3 @@ class MyTypedRule(stocal.ReactionRule):
 
     def novel_reactions(self, *reactants):
         pass # [...]
-
-
-Example
--------
-
-class Complex(namedtuple('Complex', ['template', 'left', 'right'])):
-    def __repr__(self):
-        return '<Complex %s:%s:%s>' % (self)
-
-class LigationRule(stocal.ReactionRule):
-    """Join any two strings into their concatenations"""
-    Transition = stocal.MassAction
-    signature = [str, str]
-    rate = 1e-3
-
-    def novel_reactions(self, k, l):
-        yield self.Transition([k, l], [k+l], self.rate)
-        yield self.Transition([k, l], [l+k], self.rate)
-
-class FirstHybridizationRule(stocal.ReactionRule):
-    Transition = stocal.MassAction
-    signature = [str, str]
-    rate = 1e-4
-
-    def novel_reactions(self, k, l):
-		# two polymers can form a complex if the shorter polymer
-		# matches the longer at either end
-		if len(k)<len(l):
-			k, l = l, k
-		if k.startswith(l):
-			yield self.Transition([k, l],
-								  [Complex(k, l, None)], 2*self.rate)
-		if k.endswith(l) and k!=l:
-			yield self.Transition([k, l],
-								  [Complex(k, None, l)], 2*self.rate)
-
-class SecondHybridizationRule(stocal.ReactionRule):
-    Transition = stocal.MassAction
-    signature = [str, Complex]
-    rate = 1e-4
-
-    def novel_reactions(self, k, l):
-        # if a polymer matches the free site of a complex, it can bind
-        if not l.left and k+l.right == l.template:
-            yield self.Transition([k, Complex(l.template, None, l.right)],
-                                  [Complex(l.template, k, l.right)],
-                                  self.rate)
-        if not l.right and l.left+k == l.template:
-            yield self.Transition([k, Complex(l.template, l.left, None)],
-                                  [Complex(l.template, l.left, k)],
-                                  self.rate)
-

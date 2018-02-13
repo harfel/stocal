@@ -345,7 +345,7 @@ class ReactionRule(Rule):
     of type objects. Combinations are then only formed among reactants
     that are instances of the given type.
     For each combination, the inference algorithm calls
-    ReactionRule.novel_transitions. This method, to be implemented by a
+    ReactionRule.novel_reactions. This method, to be implemented by a
     subclass, should return an iterable over every reaction that takes
     the novel species as reactants.
     """
@@ -357,6 +357,34 @@ class ReactionRule(Rule):
         To be implemented by a subclass.
         """
         raise StopIteration
+
+    @property
+    def Transition(self):
+        """Return transition type from novel_reactions return annotation
+
+        In python3, ReactionRule.Transition is optional and can alternatively
+        be provided as novel_reactions return type annotation:
+
+        from typing import Iterator
+        class MyRule(stocal.ReactionRule):
+            def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
+
+        In python2, the property raises an AttributeError.
+        """
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            ret_ann = signature.return_annotation
+            cls = ret_ann.__args__[0]
+            if not issubclass(cls, Transition):
+                raise TypeError("%s is not a subclass of stocal.Transition"
+                                % cls.__name__)
+            else:
+                return cls
+        except AttributeError:
+            raise TypeError("%s.Transition not defined and not inferable from novel_reactions signature"
+                            % type(self).__name__)
 
     @property
     def order(self):
@@ -378,10 +406,22 @@ class ReactionRule(Rule):
     def signature(self):
         """Type signature of ReactionRule.novel_reactions
 
-        Defaults to self.order*[object]. Override if you want nove_reactions
-        to only be called for specific reactant type.
+        In python2, this defaults to self.order*[object]. Override the
+        attribute in a subclass to constrain reactant types of
+        novel_reactions.
+
+        In python3, the signature is inferred from type annotations
+        of the novel_reactions parameters (defaulting to object for
+        every non-annotated parameter).
         """
-        return self.order*[object]
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            return [p.annotation if p.annotation != inspect.Parameter.empty else object
+                    for p in signature.parameters.values()]
+        except AttributeError:
+            return self.order*[object]
 
     def infer_transitions(self, new_species, state):
         """Standard inference algorithm for Reactions.

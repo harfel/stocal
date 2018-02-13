@@ -21,8 +21,6 @@ class Polymerization(stocal.ReactionRule):
     signature = [ABlock, BBlock]
 
     def novel_reactions(self, a, b):
-        assert all(isinstance(species, typ) for species, typ in zip(
-            (a, b), self.signature))
         yield self.Transition([a, b], [BBlock(a+b)], 1.)
         yield self.Transition([a, b], [ABlock(b+a)], 1.)
 
