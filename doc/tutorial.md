@@ -16,7 +16,7 @@ sudo python setup.py install
 ```
 
 ## A Simple Example
-We start by defining a simple stochastic process that describes the reversible dimerization of two molecules of type A into a dimer A2. Reactions are supposed to follow mass action kinetics.
+We start by defining a simple stochastic process that describes the reversible dimerization of two molecules A into a dimer A2. Reactions are supposed to follow mass action kinetics.
 
 To model this in stocal, we define two MassAction reactions, one that transforms two A molecules into one molecule A2 with stochastic rate constant 1.0, and one that transforms one molecule of A2 into two A molecules with stochastic rate constant 10.0. We then create a Process that groups these two reactions.
 ```python
@@ -49,7 +49,7 @@ Propensities of reactions are calculated by multiplying the stochastic rate cons
 | A + A + B | reaction.c\*state['A']\*(state['A']-1])\*state['B']/2.      |
 | A + A + A | reaction.c\*state['A']\*(state['A']-1])\*(state['A']-2])/6. |
 
-In general, the propensity of a reaction is the stochastic rate constant times the product of the binomial coefficients to choose _n_ reaction partners, _n_ being the stoichiometry of the reactant, out of _m_ molecules, _m_ being the copy number of that reactant in the system state, for each reactant type.
+In general, the propensity of a reaction is the stochastic rate constant times the product of the binomial coefficients to choose _n_ reaction partners, _n_ being the stoichiometry of the reactant, out of _m_ molecules, _m_ being the copy number of that reactant in the system state, for each reactant species.
 
 ## Events
 stocal supports deterministic transitions that happen at a specific time, either once or periodically with a given frequency. 
@@ -89,13 +89,23 @@ Note the use of `yield` in the `novel_reactions` method. This [python keyword](h
     def novel_reactions(self, species) :
         return [ self.Transition([species], [], 0.001) ]
 ```
+
+*New in version 1.1:* In python3, the transition type of a rule can alternatively be provided as return type annotation of the `novel_reactions` method. For example:
+```python
+from typing import Iterator
+
+class Dilution(ReactionRule) :
+    def novel_reactions(self, species) -> Iterator[MassAction]:
+        yield MassAction([species], [], 0.001)
+```
+
 Having defined a new rule, we can create a rule-based stochastic process by giving a second argument the Process constructor:
 ```python
 process = Process([r1, r2, feed], [Dilution()])
 ```
 Note here, that the second argument is a list of rule _instances_ rather than classes.
 
-For clarity, `Process` allows its arguments to be named, and we could have written the same processes instantiation as
+For clarity, `Process` allows its arguments to be named, and we could have written the same process instantiation as
 ```python
 process = Process(transitions=[r1, r2, feed], rules=[Dilution()])
 ```
@@ -126,9 +136,11 @@ This time our rule employs a `for` loop to generate several reactions for each r
 
 The total stochastic process, including feeding, polymerization, hybridization, and dilution is then defined by:
 ```python
-process = Process(transitions=[feed], rules=[Dilution(), Polymerization(), Hydrolysis()])
+process = Process(transitions=[feed],
+                  rules=[Dilution(), Polymerization(), Hydrolysis()])
 ```
 Note that no change is necessary for the dilution rule, since it already generates a reaction for every chemical in the system.
+
 
 ## Complex States
 So far, all our molecular species have been character sequences, either in the form of simple labels such as "A" and "A2", or in the form of strings. However, stocal does not require chemicals to be strings. Any immutable object can be used as a valid chemical species. Examples would be tuples, `frozensets`, or custom python classes that define a `__hash__` method and do not allow the user to alter the state of an instance. This functionality is handy when modeling chemistries that are more complex than simple molecules and polymers.
@@ -210,6 +222,66 @@ class Polymerization(ReactionRule) :
 In this case, propensities are calculated as in the standard Gillespie algorithm, where the propensity of a reaction with distinguishable partners is twice as big as the propensity of reactions with indistinguishable partners.
 
 In summary, when modeling chemistries in stocal, the user does not need to bother about calculating propensities, as this is dealt with by the framework. In contrast, what the user has to pay attention to is that the textual representation of molecules properly captures the physical aspects of the modeled chemistry, i.e. define proper structural congruence relations.
+
+
+## Typed Reactions
+
+*New in version 1.1.*
+
+If you want reaction rules to only generate reactions among certain types of molecular species, stocal
+supports molecular types and typed reaction rules. For this example, we look into modelling the association
+of proteins with mRNA's. We want to define a rule for the association of an arbitrary protein with an
+arbitrary mRNA. 
+
+With the above ReactionRule's we would need to constantly check whether the species supplied to
+`ReactionRule.novel_reactions` are indeed proteins and RNA's and only yield a transition in case they are.
+Not knowing which argument of the reactant combination is the protein and which the RNA further complicates
+the code.
+```python
+class Association(ReactionRule):
+    Transition = MassAction
+
+    def novel_reactions(self, k, l):
+        if is_protein(k) and is_rna(l):
+            yield self.Transition([k, l], (k,l), 1.)
+        elif is_rna(k) and is_protein(l):
+            yield self.Transition([k, l], (l,k), 1.)
+```
+
+For these common situations, stocal offers species types and typed rules. In stocal, the type of a species
+is simply its python type. So far, we have encountered species typed as strings, Complexes, and Polymers.
+Here, we define two molecule types `Protein` and `Rna` which are simply subclasses of `str`:
+```python
+class Protein(str):
+    pass
+
+class Rna(str):
+    pass
+```
+
+We can now write a typed `ReactionRule` for their association, simply by setting the optional
+ReactoinRule attribute `signature` to the list of types that the rule should accept.
+When defining a signature, it must have the same number of elements than the `novel_reactions` method.
+`novel_reactions` will now only be called with arguments that adhere to the type given in the signature.
+In our case, writing the rule becomes as simple as:
+```python
+class Association(ReactionRule):
+    Transition = MassAction
+    signature = [Protein, Rna]
+
+    def novel_reactions(self, protein, rna):
+        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+```
+
+In python3, type annotations can alternatively be used to specify the rule signature:
+```python
+from typing import Iterator
+
+class Association(ReactionRule):
+    def novel_reactions(self, protein: Protein, rna: Rna) -> Iterator[MassAction]:
+        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+```
+
 
 ## Further Documentation
 The full API of stocal is available via pydoc:

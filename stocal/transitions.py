@@ -337,15 +337,17 @@ class ReactionRule(Rule):
     """Abstract base class that facilitates inference of Reactions
 
     This class provides a standard implementation of infer_transitions
-    that generates all combinations of length self.order which containt
-    spieces in state and or new_species, and which became possible only
-    with the last transition, but where not possible using species of
-    state alone. I.e. at least one molecule in the combination must
-    come from new_species.
-    The inference algorithm then calls ReactionRule.novel_transitions,
-    passing in each novel combination as an unordered list. This method,
-    to be implemented by a subclass, should return an iterable over
-    every reaction that takes the novel species as reactants.
+    that generates all possible reactant combinations from species in
+    state and new_species, that only became possible because of species
+    in new_species, and could not have been formed by reactants in state
+    alone.
+    If ReactionRule.signature is given, it must evaluate to a sequence
+    of type objects. Combinations are then only formed among reactants
+    that are instances of the given type.
+    For each combination, the inference algorithm calls
+    ReactionRule.novel_reactions. This method, to be implemented by a
+    subclass, should return an iterable over every reaction that takes
+    the novel species as reactants.
     """
 
     @abc.abstractmethod
@@ -355,6 +357,34 @@ class ReactionRule(Rule):
         To be implemented by a subclass.
         """
         raise StopIteration
+
+    @property
+    def Transition(self):
+        """Return transition type from novel_reactions return annotation
+
+        In python3, ReactionRule.Transition is optional and can alternatively
+        be provided as novel_reactions return type annotation:
+
+        from typing import Iterator
+        class MyRule(stocal.ReactionRule):
+            def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
+
+        In python2, the property raises an AttributeError.
+        """
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            ret_ann = signature.return_annotation
+            cls = ret_ann.__args__[0]
+            if not issubclass(cls, Transition):
+                raise TypeError("%s is not a subclass of stocal.Transition"
+                                % cls.__name__)
+            else:
+                return cls
+        except AttributeError:
+            raise TypeError("%s.Transition not defined and not inferable from novel_reactions signature"
+                            % type(self).__name__)
 
     @property
     def order(self):
@@ -372,53 +402,82 @@ class ReactionRule(Rule):
             # python 2.7
             return len(inspect.getargspec(self.novel_reactions).args) - 1
 
-    def infer_transitions(self, last_products, state):
+    @property
+    def signature(self):
+        """Type signature of ReactionRule.novel_reactions
+
+        In python2, this defaults to self.order*[object]. Override the
+        attribute in a subclass to constrain reactant types of
+        novel_reactions.
+
+        In python3, the signature is inferred from type annotations
+        of the novel_reactions parameters (defaulting to object for
+        every non-annotated parameter).
+        """
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            return [p.annotation if p.annotation != inspect.Parameter.empty else object
+                    for p in signature.parameters.values()]
+        except AttributeError:
+            return self.order*[object]
+
+    def infer_transitions(self, new_species, state):
         """Standard inference algorithm for Reactions.
 
         see help(type(self)) for an explanation of the algorithm.
         """
-        if not isinstance(last_products, multiset):
+        if not isinstance(new_species, multiset):
             warnings.warn("last_products must be a multiset.", DeprecationWarning)
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
 
-        def combinations(reactants, novel_species, novel):
-            """recursively expand reactants from novel_species"""
-            if len(reactants) == self.order:
-               # yield complete reactants if novel
+        def combinations(reactants, signature, annotated_species, novel):
+            if not signature:
                 if novel:
                     yield reactants
                 return
-            if not novel_species:
-               # abort if no more choices
-                return
-            species, start, end = novel_species.pop(0)
-            if not novel and start > end:
-               # abort if no possibility for further novelty
-                return
-            m = min(self.order-len(reactants), end) + 1
-            for i in range(0, m):
-               # recursively build combinations with more and more of the current species
-                for combination in combinations(reactants, list(novel_species), novel or i >= start):
-                    yield combination
-                reactants.append(species)
-            del reactants[-m:]
+
+            skipped = []
+            while annotated_species:
+                species, start, end = annotated_species.pop(0)
+                if isinstance(species, signature[0]):
+                    break
+                else:
+                    skipped.append((species, start, end))
+            else :
+                if not annotated_species:
+                    return
+
+            for combination in combinations(reactants, signature, skipped+annotated_species, novel):
+                yield combination
+            if end > 1:
+                annotated_species.insert(0, (species, start-1, end-1))
+            #elif start > end:
+            #    return
+            for combination in combinations(reactants+[species], signature[1:], skipped+annotated_species, novel or start==1):
+                yield combination
 
         # could be simplified if specification would enforce multiset state:
         # next_state = state + last_products
         # novel_species = sorted((
-        #     (species, state[species]+1, min(next_state[species], self.order))
-        #     for species in set(last_products).union(state)
-        # ), key=lambda item: item[1]-item[2])
+        #    (species, state[species]+1,
+        #     min(next_state[species],
+        #         len([typ for typ in self.signature if isinstance(species, typ)])))
+        #    for species in set(new_species).union(state)
+        #), key=lambda item: item[1]-item[2])
 
         novel_species = sorted((
             (species, state.get(species, 0)+1,
-             min(last_products.get(species, 0)+state.get(species, 0), self.order))
-            for species in set(last_products).union(state)
+             min(new_species.get(species, 0)+state.get(species, 0),
+                 len([typ for typ in self.signature if isinstance(species, typ)])))
+            for species in set(new_species).union(state)
         ), key=lambda item: item[1]-item[2])
-        for reactants in combinations([], novel_species, False):
+        for reactants in combinations([], self.signature, novel_species, False):
             for trans in self.novel_reactions(*reactants):
                 yield trans
+
 
 
 class Process(object):

@@ -19,22 +19,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""A framework for rule-based stochastic simulation
+"""Molecular types"""
 
-This package offers functionalities to perform stochastic simulations
-over regular as well as rule-based systems.
 
-Example uses can be found in the stocal.examples package.
+def molecular_type(name, bases=(str,)):
+    """Define a new molecular type
 
-The behavior of all stocal classes is specified via tests, which are
-located in the stocal.tests package.
-"""
-
-from .types import molecular_type
-from .transitions import Transition, Reaction, MassAction, Event
-from .transitions import Rule, ReactionRule, Process
-
-from . import types
-from . import algorithms
-from . import examples
-from . import tests
+    The optional argument bases (defaults to str) can be any python
+    type or tuple of types.
+    """
+    if not isinstance(bases, tuple):
+        bases = (bases,)
+    return type(name, bases, {})

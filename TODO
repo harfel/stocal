@@ -1,4 +1,4 @@
-- typed ReactionRules
+* reactions involving complexes cannot be printed
 - string rewrite rule support
 - volume/temperature awareness
 - non-autonomous transitions

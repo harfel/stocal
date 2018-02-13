@@ -28,6 +28,20 @@ class Hydrolysis(ReactionRule):
             yield self.Transition([k], [k[:i], k[i:]], constant)
 
 
+class Protein(str):
+    pass
+
+class Rna(str):
+    pass
+
+class Association(ReactionRule):
+    Transition = MassAction
+    signature = [Protein, Rna]
+
+    def novel_reactions(self, protein, rna):
+        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+
+
 class TestTutorial(unittest.TestCase):
     """Test every code example of the tutorial"""
 
@@ -65,6 +79,14 @@ class TestTutorial(unittest.TestCase):
         feed = Event([], ['A'], 0.0, 1.0)
         process = Process(transitions=[feed], rules=[Dilution(), Polymerization(), Hydrolysis()])
         trajectory = process.trajectory({}, steps=100)
+        for _ in trajectory:
+            pass
+
+    def test_types(self):
+        """Specifying types via ReactionRule.signature"""
+        process = Process(rules=[Association()])
+        trajectory = process.trajectory({Protein('TF'):40, Rna('mRNA_a'):10, Rna('mRNA_b'):10}, steps=100)
+        self.assertEqual(len(trajectory.transitions), 2)
         for _ in trajectory:
             pass
 
