@@ -58,6 +58,7 @@ When preparing a new release, these steps should be followed
  * ensure an optimal code coverage of the test suite
  * ensure that all tests pass
  * ensure that documentation (README, tutorial, etc.) is up to date
+ * update CHANGELOG.md
  * bump the version number
  * git flow release finish
  * sudo setup.py sdist upload
