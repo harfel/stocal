@@ -2,12 +2,18 @@
 """
 import stocal
 
-ABlock = type("ABlock", (str,), {})
-BBlock = type("BBlock", (str,), {})
+ABlock = stocal.molecular_type("ABlock")
+BBlock = stocal.molecular_type("ABlock")
 
 
-state = {ABlock(t): 100 for t in "xyz"}
-state.update({BBlock(t): 100 for t in "uvw"})
+state = {
+    ABlock('x'): 100,
+    ABlock('y'): 100,
+    ABlock('z'): 100,
+    BBlock('u'): 100,
+    BBlock('v'): 100,
+    BBlock('w'): 100,
+}
 
 
 class Polymerization(stocal.ReactionRule):
