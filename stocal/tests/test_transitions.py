@@ -112,6 +112,13 @@ class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
         self.assertEqual(self.Transition(['a'], ['z']), self.Transition({'a':1}, {'z':1}))
         self.assertEqual(self.Transition(['a', 'a'], ['z']), self.Transition({'a':2}, {'z':1}))
 
+    def test_str(self):
+        """Transition.str returns a string object"""
+        self.assertIsInstance(str(self.Transition({}, ['a'])), str)
+        self.assertIsInstance(str(self.Transition(['a'], {'a':2})), str)
+        self.assertIsInstance(str(self.Transition([], [('a',)])), str)
+        self.assertIsInstance(str(self.Transition([('a',)], [])), str)
+
     def test_equality(self):
         """Transitions are equal if their reactants and products are equal"""
         trans = self.Transition({'a':1}, {'z':1})

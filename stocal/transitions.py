@@ -119,7 +119,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
         def dct2str(dct):
             """render multiset as sum of elements"""
             return ' + '.join(
-                s if n == 1 else '%s*%s' % (n, s) for s, n in dct.items()
+                str(s) if n == 1 else '%s*%s' % (n, s) for s, n in dct.items()
             )
         try:
             return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))

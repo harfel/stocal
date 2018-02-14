@@ -3,6 +3,8 @@
 import unittest
 from stocal import MassAction, Event, ReactionRule, Process
 
+from stocal.tests.test_transitions import TestReactionRule
+
 
 class Dilution(ReactionRule):
     """Dilution rule"""
@@ -11,12 +13,19 @@ class Dilution(ReactionRule):
     def novel_reactions(self, species):
         yield self.Transition([species], [], 0.001)
 
+class TestDilution(TestReactionRule):
+    Rule = Dilution
+
+
 class Polymerization(ReactionRule):
     """Polymerization rule"""
     Transition = MassAction
 
     def novel_reactions(self, k, l):
         yield self.Transition([k, l], [k+l], 10.)
+
+class TestPolymerization(TestReactionRule):
+    Rule = Polymerization
 
 class Hydrolysis(ReactionRule):
     """Hydrolysis rule"""
@@ -26,6 +35,9 @@ class Hydrolysis(ReactionRule):
         for i in range(1, len(k)):
             constant = 10.*i*(len(k)-i)
             yield self.Transition([k], [k[:i], k[i:]], constant)
+
+class TestHydrolysis(TestReactionRule):
+    Rule = Hydrolysis
 
 
 class Protein(str):
@@ -40,6 +52,10 @@ class Association(ReactionRule):
 
     def novel_reactions(self, protein, rna):
         yield self.Transition([protein, rna], [(protein,rna)], 1.)
+
+class TestAssociation(TestReactionRule):
+    Rule = Association
+
 
 
 class TestTutorial(unittest.TestCase):
