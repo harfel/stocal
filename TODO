@@ -1,6 +1,10 @@
+- interface for time-dependent transitions
+- implement Anderson's next reaction method
+- make AndersonNRM work with events
+- examples of volume and temperature dependent process
+- documentation in tutorial
+=
 - string rewrite rule support
-- volume/temperature awareness
-- non-autonomous transitions
 - support for proper delay events
 - libSBML integration
 - statistical verification tests
