@@ -2,3 +2,6 @@
 build/
 dist/
 stocal.egg-info/
+
+*.idea
+.DS_Store

@@ -27,4 +27,5 @@ setup(name = "stocal",
       packages = ["stocal", "stocal.examples", "stocal.tests"],
       include_package_data=True,
       zip_safe = True,
-      test_suite = 'stocal.tests')
+      test_suite = 'stocal.tests',
+      install_requires={"pqdict"})

@@ -125,6 +125,10 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
             return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
         except AttributeError:
             return super(Transition, self).__str__()
+        
+    @property
+    def affected_species(self):
+        return {self.true_reactants, self.true_products}
 
     @abc.abstractmethod
     def next_occurrence(self, time, state):
