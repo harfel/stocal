@@ -166,7 +166,7 @@ class Dilution(ReactionRule) :
 ```
 
 Having defined a new rule, we can create a rule-based stochastic process
-by giving a second argument the Process constructor:
+by giving a second argument to the Process constructor:
 
 ```python
 process = Process([r1, r2, feed], [Dilution()])
@@ -198,12 +198,12 @@ class Polymerization(ReactionRule) :
         yield self.Transition([k,l], [k+l], 10.)
 ```
 
-This time, `novel_reactions` receives two reactants, `a` and `b` and
+This time, `novel_reactions` receives two reactants, `k` and `l` and
 yields a reaction that produces their concatenation. This way, rules
 can create molecular species that had not been previously in the system
 state!
 
-To complete this example, we also generalize the reverse reactions and
+To complete this example, we also generalize the reverse reaction and
 define a Hydrolysis rule that breaks a polymer at any bond. To make the
 model a little more interesting, we decide that the stochastic rate
 constants of these reactions depends on the lengths of the hydrolysis
@@ -320,7 +320,7 @@ process = Process(
 
 However, we need to decide what polymerization means and need to
 slightly adapt the code of our model. A (linear) polymer is a chain of
-interlinked polymers. Links could either be directional or
+interlinked monomers. Links could either be directional or
 non-directional. Chemical examples of directional links are ester bonds,
 peptide bonds, nucleic acid bonds, or any other bond where one can
 clearly identify a left-hand and a right-hand side in the polymer. Ether
@@ -330,7 +330,7 @@ along the binding site.
 
 We have to decide whether our model features directional or
 non-directional polymerization. Our choice will determine which route we
-need to take to model polymerization accordingly.
+need to take to model polymerization appropriately.
 
 In the case of directional bonds, two polymers _k_ and _l_ can
 potentially form two different polymerization products: _k+l_ and _l+k_.
@@ -444,9 +444,9 @@ class Rna(str):
 ```
 
 We can now write a typed `ReactionRule` for their association, simply by
-setting the optional ReactoinRule attribute `signature` to the list of
+setting the optional ReactionRule attribute `signature` to the list of
 types that the rule should accept. When defining a signature, it must
-have the same number of elements than the `novel_reactions` method.
+have the same number of elements as the `novel_reactions` method.
 `novel_reactions` will now only be called with arguments that adhere to
 the type given in the signature. In our case, writing the rule becomes
 as simple as:
@@ -468,7 +468,7 @@ from typing import Iterator
 
 class Association(ReactionRule):
     def novel_reactions(self, protein: Protein, rna: Rna) -> Iterator[MassAction]:
-        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+        yield MassAction([protein, rna], [(protein,rna)], 1.)
 ```
 
 ## Further Documentation
