@@ -141,7 +141,22 @@ class Reaction(Transition):
 
     Stochastic transitions are those that occur with a certain
     proponsity within a given time interval.
-    Subclasses must implement the propensity method.
+    Subclasses must implement the propensity method. For autonomous
+    reactions, i.e. where the propensity does only depend on the state
+    but not on time, the propensity method must have the signature
+    
+    def propensity(self, state):
+        ...
+    
+    If the propensity of a reaction does depend on time, the propensity
+    method must have the signature
+    
+    def propensity(self, state, time):
+        ...
+
+    In the latter case, the user can additionally override the methods 
+    Reaction.propensity_integral and Reaction.propensity_meets_target,
+    for example with analytic solutions.
     """
     def __eq__(self, other):
         """Structural congruence
@@ -162,6 +177,20 @@ class Reaction(Transition):
                 type(self).propensity
             ))
         return self._hash
+
+    @property
+    def is_autonomous(self):
+        """True if propensity does not depend on time.
+        
+        The value of this property is inferred from the signature
+        of the propensity method. See help(Reaction) for details."""
+        import inspect
+        try:
+            # python 3
+            return len(inspect.signature(self.propensity).parameters) == 1
+        except AttributeError:
+            # python 2.7
+            return len(inspect.getargspec(self.propensity).args) == 2
 
     @abc.abstractmethod
     def propensity(self, state):
@@ -188,6 +217,48 @@ class Reaction(Transition):
             return float('inf')
         else:
             return time - log(random())/propensity
+
+    def propensity_integral(self, state, time, delta_t):
+        """Integrate propensity function from time to time+delta_t
+
+        If the reaction is autonomous, this method returns
+        self.propensity(state)*delta_t. If it is non-autonomous,
+        the integral is calculated numerically. Override this method
+        if the propensity function can be integrated analytically.
+        (Requires scipy).
+        """
+        if self.is_autonomous:
+            return self.propensity(state)*delta_t
+        elif delta_t == float('inf'):
+            return float('inf')
+        else:
+            from scipy.integrate import quad as integral
+            propensity = lambda t: self.propensity(state, t)
+            return integral(propensity, time, time+delta_t)[0]
+
+    def propensity_meets_target(self, state, time, target):
+        """Time window at which propensity integral meets a given target
+
+        If the reaction is autonomous, this method returns
+        target/self.propensity(state). If it is non-autonomous, the
+        time window dt is numerically evaluated as the interval dt
+        at which
+        
+        integral_t^{t+dt} a(X(t), s) ds = target.
+
+        Override this method if an analytic solution to the integral
+        can be obtained.
+        (Requires scipy).
+        """
+        if self.is_autonomous:
+            a = self.propensity(state)
+            return target/a if a else float('inf')
+        elif self.reactants not in state:
+            return float('inf')
+        else:
+            from scipy.optimize import minimize_scalar as minimize
+            fun = lambda dt: (self.propensity_integral(state, time, dt)-target)**2
+            return minimize(fun).x
 
 
 class MassAction(Reaction):
@@ -259,6 +330,8 @@ class Event(Transition):
     Events are Transition's that occur either once at a specified time,
     or periodically with a given frequency starting at a specified time.
     """
+    is_autonomous = True
+
     def __init__(self, reactants, products, time, frequency=0):
         if time < 0:
             raise ValueError("time must be greater than 0.")
@@ -496,15 +569,29 @@ class Process(object):
     def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None):
         """Create trajectory sampler for given state
 
-        If any static or infered transition is deterministic, this returns
-        the FirstReactionMethod, otherwise the DirectMethod."""
+        The method automatically chooses a suitable sampler for the
+        given stochastic process, initialized with the given state
+        and time.
+        """
         if t:
             warnings.warn("pass start time as tstart", DeprecationWarning)
         tstart = tstart or t
 
-        if (all(isinstance(r, Reaction) for r in self.transitions)
-                and all(issubclass(r.Transition, Reaction) for r in self.rules)):
+        def transition_types():
+            for trans in self.transitions:
+                yield trans
+            for rule in self.rules:
+                yield rule.Transition
+
+        # DirectMethod for process with normal reactions
+        if all(isinstance(r, Reaction) and r.is_autonomous
+               for r in transition_types()):
             from .algorithms import DirectMethod as Sampler
-        else:
+        # FirstReactionMethod if all reactions are autonomous
+        elif all(r.is_autonomous for r in transition_types()):
             from .algorithms import FirstReactionMethod as Sampler
+        # AndersonNRM if reactions are non-autonomous
+        else:
+            from .algorithms import AndersonNRM as Sampler
+
         return Sampler(self, state, tstart, tmax, steps)

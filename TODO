@@ -1,4 +1,3 @@
-- interface for time-dependent transitions
 - implement Anderson's next reaction method
 - make AndersonNRM work with events
 - examples of volume and temperature dependent process
