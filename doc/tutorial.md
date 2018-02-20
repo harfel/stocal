@@ -89,7 +89,7 @@ state, for each reactant species.
 
 ## Events
 
-stocal supports deterministic transitions that happen at a specific
+Stocal supports deterministic transitions that happen at a specific
 time, either once or periodically with a given frequency. 
 
 ```python
@@ -470,6 +470,49 @@ class Association(ReactionRule):
     def novel_reactions(self, protein: Protein, rna: Rna) -> Iterator[MassAction]:
         yield MassAction([protein, rna], [(protein,rna)], 1.)
 ```
+
+## Reactions with time-dependent reaction rates
+
+*New in version 1.1.*
+
+Stocal supports the definition of reactions with time-dependent reaction
+rates. Reactions of this kind appear naturally when  parameters of the
+reaction environment such as temperature or volume change over time.
+
+As an example, let us consider reactions taking placing in a linearly
+expanding reaction vessel:
+```python
+def volume(time, V0=1.0, dV=0.1):
+    return V0 + dV*time
+```
+
+We can now define a volume dependent variant of mass action reactions.
+To do so, we define a subclass of `MassAction` that overloads the
+`propensity` method.
+For autonomous reactions (those whose reaction rate constant is
+independent of time), this function takes the `state` as sole argument.
+For non-autonomous reactions, the signature is expanded to take the
+`time` as a second argument. The `propensity` method can then make
+use of the time argument however the user sees fit.
+
+To accurately model volume dependency, we need to divide the reaction
+rate by the volume for all but one of the reactions, i.e.
+unimolecular reactions are volume independent, bimolecular reactions
+are inversely proportional to the volume, a.s.o.
+
+Taking it all together, the Reaction class reads:
+```python
+class VolumeDependentMassAction(MassAction):
+    def propensity(self, state, time):
+        a = super(VolumeDependentMassAction, self).propensity(state)
+        order = sum(self.reactants.values())
+        return a / volume(time)**(order-1)
+```
+
+We can now use `VoulmeDependentMassAction` in any place where we
+have used default `MassAction` reactions before.
+stocal/examples/temperature_cycle.py gives an example of how reactions
+can be modified to take changing temperature instead of volumes instead.
 
 ## Further Documentation
 

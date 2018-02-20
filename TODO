@@ -1,5 +1,4 @@
 - make AndersonNRM work with events
-- documentation in tutorial
 =
 - string rewrite rule support
 - support for proper delay events

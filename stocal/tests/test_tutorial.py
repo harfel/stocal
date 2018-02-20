@@ -57,6 +57,15 @@ class TestAssociation(TestReactionRule):
     Rule = Association
 
 
+def volume(time, V0=1.0, dV=0.1):
+    return V0 + dV*time
+
+class VolumeDependentMassAction(MassAction):
+    def propensity(self, state, time):
+        a = super(VolumeDependentMassAction, self).propensity(state)
+        order = sum(self.reactants.values())
+        return a / volume(time)**(order-1)
+
 
 class TestTutorial(unittest.TestCase):
     """Test every code example of the tutorial"""
@@ -103,6 +112,13 @@ class TestTutorial(unittest.TestCase):
         process = Process(rules=[Association()])
         trajectory = process.trajectory({Protein('TF'):40, Rna('mRNA_a'):10, Rna('mRNA_b'):10}, steps=100)
         self.assertEqual(len(trajectory.transitions), 2)
+        for _ in trajectory:
+            pass
+
+    def test_time_dependence(self):
+        """Specifying volume-dependent reactions"""
+        process = Process([VolumeDependentMassAction(['x', 'x'], ['x2'], 1.)])
+        trajectory = process.trajectory({'x':100}, steps=100)
         for _ in trajectory:
             pass
 
