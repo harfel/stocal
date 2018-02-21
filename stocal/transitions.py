@@ -128,7 +128,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
         
     @property
     def affected_species(self):
-        return {self.true_reactants, self.true_products}
+        return [self.true_reactants, self.true_products]
 
     @abc.abstractmethod
     def next_occurrence(self, time, state):

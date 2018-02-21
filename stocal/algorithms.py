@@ -28,8 +28,9 @@ interface by subclassing this abstract base class.
 import abc
 
 from ._utils import with_metaclass
-from .structures import multiset
+from .structures import multiset, DependencyGraph
 from .transitions import Event, Reaction
+from pqdict import pqdict
 
 
 class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
@@ -376,3 +377,59 @@ class AndersonNRM(FirstReactionMethod):
                   zip(self.T, self.transitions)]
         self.P[mu] -= log(self.rng.random())
         super(AndersonNRM, self).perform_transition(time, transition)
+
+
+class NextReactionMethod(TrajectorySampler):
+    def __init__(self, process, state):
+        super().__init__(process, state)
+
+        self.dependency_graph = DependencyGraph(process.transitions)
+        self.queue = pqdict()
+
+        for transition in process.transitions:
+            self.queue[transition] = transition.next_occurrence()
+
+    def __iter__(self):
+        while True:
+            if self.steps is not None and self.step == self.steps:
+                return
+            # if self.time >= self.tmax:
+            #    break
+            if not self.queue:
+                return
+
+            time, transition = self.queue.popitem()
+
+            if time > self.tmax:
+                break
+            else:
+                self.step += 1
+                self.time = time
+                transition.last_occurrence = time
+                self._perform_transition(transition)
+                yield transition
+
+        if self.tmax < float('inf'):
+            self.time = self.tmax
+
+    def add_transition(self, transition):
+        self.transitions.append(transition)
+        self.dependency_graph.add_reaction(transition)
+        self.queue.additem(transition, transition.next_occurrence())
+
+    def update_state(self, dct):
+        for rule in self.process.rules:
+            for trans in rule.infer_transitions(dct, self.state):
+                if trans not in self.transitions:
+                    trans.rule = rule
+                    self.add_transition(trans)
+        self.state.update(dct)
+
+    def prune_transitions(self):
+        depleted = [
+            i for i, (t, r) in enumerate(self.queue)
+            if t == float('inf') and (r.rule or isinstance(r, Event))
+        ]
+        for i in reversed(depleted):
+            del self.transitions[i]
+            del self.dependency_graph

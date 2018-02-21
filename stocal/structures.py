@@ -2,6 +2,8 @@
 
 from collections import Mapping
 from numbers import Number
+from pqdict import pqdict
+
 
 class multiset(dict):
     """A multiset implementation
@@ -159,55 +161,17 @@ class multiset(dict):
 
 
 class DependencyGraph:
-    def __init__(self, *reactions):
+    def __init__(self, reactions):
 
         self.graph = dict()
 
-        """Possible set comprehension"""
         for reaction in reactions:
             self.add_reaction(reaction)
 
     def add_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph[reactant] = reaction
+            self.graph.setdefault(reactant.domain.pop(), set()).add(reaction)
 
-# class Node:
-#     def __init__(self, reaction):
-#
-#         self.reaction = reaction
-#         self.affects = list()
-#         self.dependants = list()
-#
-#     def addedge(self, destination):
-#         self.affects.append(destination)
-#         destination.dependants.append(self)
-#
-#     def removeedge(self, destination):
-#         self.affects.remove(destination)
-#         destination.dependants.remove(self)
-#
-#     """Is this the right way to specify how something is deleted?"""
-#     def __delete__(self):
-#         for edge in self.affects:
-#             self.removeedge(edge)
-
-
-# class DependencyGraph:
-#     def __init__(self, *massactions):
-#
-#         self.nodes = list()
-#
-#         for reaction in massactions:
-#             self.nodes.append(Node(reaction))
-#
-#         for node in self.nodes:
-#             for product in node.reaction.products:
-#                 for productNode in self.nodes:
-#                     if productNode.reaction.reactants.contains(product):
-#                         """Remember to change ^ - if A+B=A+C then A is unchanged"""
-#                         node.addedge(self, productNode)
-
-
-
-
-
+    def remove_reation(self, reaction):
+        for reactant in reaction.affected_species:
+            self.graph.update()

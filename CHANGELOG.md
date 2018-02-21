@@ -8,6 +8,7 @@
 ### Added
 - Modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
+- Gibson & Bruck's NextReactionMethod
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.

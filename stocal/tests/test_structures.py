@@ -274,21 +274,16 @@ class TestMultiset(unittest.TestCase):
         self.assertIs(mset_a, mset_c)
 
 
-class DependencyGraphTests(unittest.TestCase):
+class TestDependencyGraph(unittest.TestCase):
 
     def test_correct(self):
-        transitionlist = list()
+        test_graph = DependencyGraph([
+            MassAction({"x": 1}, {"y": 1}, 1.),
+            MassAction({"x": 1}, {"z": 1}, 1.),
+            MassAction({"z": 1}, {"x": 1}, 1.),
+        ])
 
-        transition_a = MassAction({"x": 1}, {"y": 1}, 1.)
-        transition_b = MassAction({"x": 1}, {"z": 1}, 1.)
-        transition_c = MassAction({"z": 1}, {"x": 1}, 1.)
-        transitionlist.append(transition_a)
-        transitionlist.append(transition_b)
-        transitionlist.append(transition_c)
-
-        test_graph = DependencyGraph(self, transitionlist)
-
-        self.assertEqual(test_graph.nodes.count(), 3)
+        self.assertEqual(len(test_graph.graph.keys()), 3)
 
 
 if __name__ == '__main__':
