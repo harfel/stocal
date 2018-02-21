@@ -1,6 +1,4 @@
 - string rewrite rule support
-- volume/temperature awareness
-- non-autonomous transitions
 - support for proper delay events
 - libSBML integration
 - statistical verification tests

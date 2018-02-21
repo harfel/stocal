@@ -136,5 +136,15 @@ class TestTypedRules(TestReactionRule):
                                                   {self.ABlock('a'): 1, self.BBlock('z'): 1}))
         self.assertEqual(len(transitions), 0)
 
+
+class TestTemperatureCycle(unittest.TestCase):
+    """Test temperature_cycle example"""
+    def test_example(self):
+        """test process instantiation"""
+        from stocal.examples.temperature_cycle import process
+        for _ in process.trajectory({}, steps=100):
+            pass
+
+
 if __name__ == '__main__':
     unittest.main()

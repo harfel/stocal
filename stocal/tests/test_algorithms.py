@@ -168,5 +168,10 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertAlmostEqual(sampler.time, 10)
 
 
+class TestAndersonNRM(TestFirstReactionMethod):
+    """Test stocal.algorithms.AndersonNRM"""
+    Sampler = stocal.algorithms.AndersonNRM
+
+
 if __name__ == '__main__':
     unittest.main()

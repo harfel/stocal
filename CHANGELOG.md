@@ -8,6 +8,7 @@
 
 ### Added
 - Added type support of reaction rules via ReactionRule.signature
+- Added support for time dependent reaction rates
 
 ### Changed
 - ReactionRule.Transition can alternatively be specified through return type annotation in python3
