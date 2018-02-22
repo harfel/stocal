@@ -49,4 +49,4 @@ state = {'x2': x_tot/3, 'x': x_tot-2*x_tot/3}
 if __name__ == '__main__':
     traj = process.trajectory(state, tmax=125.)
     for trans in traj:
-        print traj.time, traj.state['x'], traj.state['x2'], temp(traj.time)
+        print(traj.time, traj.state['x'], traj.state['x2'], temp(traj.time))
