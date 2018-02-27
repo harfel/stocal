@@ -584,7 +584,7 @@ class Process(object):
                 yield rule.Transition
 
         # DirectMethod for process with normal reactions
-        if all(isinstance(r, Reaction) and r.is_autonomous
+        if all(issubclass(r, Reaction) and r.is_autonomous
                for r in transition_types()):
             from .algorithms import DirectMethod as Sampler
         # FirstReactionMethod if all reactions are autonomous
