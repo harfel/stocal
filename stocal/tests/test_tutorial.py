@@ -51,7 +51,7 @@ class Association(ReactionRule):
     signature = [Protein, Rna]
 
     def novel_reactions(self, protein, rna):
-        yield self.Transition([protein, rna], [(protein,rna)], 1.)
+        yield self.Transition([protein, rna], [(protein, rna)], 1.)
 
 class TestAssociation(TestReactionRule):
     Rule = Association
@@ -110,7 +110,10 @@ class TestTutorial(unittest.TestCase):
     def test_types(self):
         """Specifying types via ReactionRule.signature"""
         process = Process(rules=[Association()])
-        trajectory = process.trajectory({Protein('TF'):40, Rna('mRNA_a'):10, Rna('mRNA_b'):10}, steps=100)
+        trajectory = process.trajectory({Protein('TF'):40,
+                                         Rna('mRNA_a'):10,
+                                         Rna('mRNA_b'):10},
+                                        steps=100)
         self.assertEqual(len(trajectory.transitions), 2)
         for _ in trajectory:
             pass

@@ -264,19 +264,21 @@ class AndersonNRM(FirstReactionMethod):
         from random import random
 
         def eq_13(trans, target):
+            """Determine timestep for a transition in global time scale"""
             if isinstance(trans, Event):
                 return trans.next_occurrence(self.time) - self.time
             else:
                 return trans.propensity_meets_target(self.state, self.time, target)
 
         def int_a_dt(trans, delta_t):
+            """Integrate propensity for given delta_t"""
             if isinstance(trans, Event):
                 return 0
             else:
                 return trans.propensity_integral(self.state, self.time, delta_t)
 
-        T = [ 0 for trans in self.transitions ]
-        P = [ -log(random()) for trans in self.transitions ]
+        T = [0 for trans in self.transitions]
+        P = [-log(random()) for trans in self.transitions]
 
         while True:
             if self.steps is not None and self.step == self.steps:

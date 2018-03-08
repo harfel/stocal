@@ -1,3 +1,5 @@
+"""Bugs reported in github issue tracker
+"""
 import unittest
 import stocal
 

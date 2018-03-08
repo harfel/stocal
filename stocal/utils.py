@@ -29,8 +29,8 @@ def with_metaclass(meta, *bases):
     # This requires a bit of explanation: the basic idea is to make a dummy
     # metaclass for one level of class instantiation that replaces itself with
     # the actual metaclass.
-    class metaclass(meta):
-
+    class MetaClass(meta):
+        """The dummy metaclass"""
         def __new__(cls, name, _, doc):
             return meta(name, bases, doc)
-    return type.__new__(metaclass, 'temporary_class', (), {})
+    return type.__new__(MetaClass, 'temporary_class', (), {})

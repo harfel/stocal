@@ -1,10 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [1.1] - 2018-03-08
 
 ### Fixed
 - Fixed issue 1 in Event.next_occurrence
 - Fixed issue 2 in ReactionRule.infer_transitions
+- Fixed issue with printing transitions with non-string reactants
 
 ### Added
 - Added type support of reaction rules via ReactionRule.signature

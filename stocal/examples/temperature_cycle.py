@@ -10,8 +10,8 @@ To do so, we observe that the quilibrium constant
 is temperature dependent and allows us calculate a temperature-dependent
 backward rate for a fixed forward rate.
 """
-import stocal
 from math import exp, log, sin, pi
+import stocal
 
 k_forward = .1      # the fixed forward rate
 x_tot = 100         # total number of molecules
@@ -26,7 +26,7 @@ def temp(t, low=0.5, high=1.5, period=50):
 
 class Dissociation(stocal.MassAction):
     """Temperature dependent dissocition
-    
+
     The normal mass action propensity is modulated by a factor that
     accounts for the system temperature at any time. The stochastic
     rate constant is therefore k = k_forward * exp((dH-T*dS)/T).
