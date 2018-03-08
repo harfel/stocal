@@ -144,17 +144,17 @@ class Reaction(Transition):
     Subclasses must implement the propensity method. For autonomous
     reactions, i.e. where the propensity does only depend on the state
     but not on time, the propensity method must have the signature
-    
+
     def propensity(self, state):
         ...
-    
+
     If the propensity of a reaction does depend on time, the propensity
     method must have the signature
-    
+
     def propensity(self, state, time):
         ...
 
-    In the latter case, the user can additionally override the methods 
+    In the latter case, the user can additionally override the methods
     Reaction.propensity_integral and Reaction.propensity_meets_target,
     for example with analytic solutions.
     """
@@ -181,7 +181,7 @@ class Reaction(Transition):
     @property
     def is_autonomous(self):
         """True if propensity does not depend on time.
-        
+
         The value of this property is inferred from the signature
         of the propensity method. See help(Reaction) for details."""
         import inspect
@@ -243,7 +243,7 @@ class Reaction(Transition):
         target/self.propensity(state). If it is non-autonomous, the
         time window dt is numerically evaluated as the interval dt
         at which
-        
+
         integral_t^{t+dt} a(X(t), s) ds = target.
 
         Override this method if an analytic solution to the integral
@@ -251,8 +251,8 @@ class Reaction(Transition):
         (Requires scipy).
         """
         if self.is_autonomous:
-            a = self.propensity(state)
-            return target/a if a else float('inf')
+            propensity = self.propensity(state)
+            return target/propensity if propensity else float('inf')
         elif self.reactants not in state:
             return float('inf')
         else:
@@ -289,7 +289,7 @@ class MassAction(Reaction):
 
         Calling propensity does not modify the underlying reaction.
         """
-        from functools import reduce
+        from functools import reduce # for python3 compatibility
 
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
@@ -372,7 +372,9 @@ class Event(Transition):
             return self.time
         elif self.frequency:
             future = time + (self.time-time)%self.frequency
-            return future if self.last_occurrence != time else future+self.frequency
+            return (future
+                    if self.last_occurrence != time
+                    else future+self.frequency)
         elif time == self.time and self.last_occurrence != time:
             return time
         else:
@@ -456,7 +458,8 @@ class ReactionRule(Rule):
             else:
                 return cls
         except AttributeError:
-            raise TypeError("%s.Transition not defined and not inferable from novel_reactions signature"
+            raise TypeError("%s.Transition not defined and not inferable"
+                            +" from novel_reactions signature"
                             % type(self).__name__)
 
     @property
@@ -507,6 +510,9 @@ class ReactionRule(Rule):
             warnings.warn("state must be a multiset.", DeprecationWarning)
 
         def combinations(reactants, signature, annotated_species, novel):
+            """Yield all novel combinations comaptible with signature
+
+            See class doc for details."""
             if not signature:
                 if novel:
                     yield reactants
@@ -519,17 +525,21 @@ class ReactionRule(Rule):
                     break
                 else:
                     skipped.append((species, start, end))
-            else :
+            else:
                 if not annotated_species:
                     return
 
-            for combination in combinations(reactants, signature, skipped+annotated_species, novel):
+            for combination in combinations(reactants,
+                                            signature,
+                                            skipped+annotated_species,
+                                            novel):
                 yield combination
             if end > 1:
                 annotated_species.insert(0, (species, start-1, end-1))
-            #elif start > end:
-            #    return
-            for combination in combinations(reactants+[species], signature[1:], skipped+annotated_species, novel or start==1):
+            for combination in combinations(reactants+[species],
+                                            signature[1:],
+                                            skipped+annotated_species,
+                                            novel or start == 1):
                 yield combination
 
         # could be simplified if specification would enforce multiset state:
@@ -578,6 +588,7 @@ class Process(object):
         tstart = tstart or t
 
         def transition_types():
+            """Yield all generated transtion types of the process"""
             for trans in self.transitions:
                 yield trans
             for rule in self.rules:
