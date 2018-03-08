@@ -11,6 +11,7 @@ time Markov processes (also known as [Gillespie simulations](https://en.wikipedi
 Features of stocal:
 * support for reactions of any order
 * support for unique and periodic (deterministic) events
+* support for time-dependent reaction rates
 * support for rules that generate novel reactions on the fly
 * support for complex chemical states
 

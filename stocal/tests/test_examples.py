@@ -122,5 +122,29 @@ class TestPre2017AutoCatalysis(TestMassAction):
                 reactants, products, c)
 
 
+class TestTypedRules(TestReactionRule):
+    from stocal.examples.typed_rules import Polymerization as Rule
+    from stocal.examples.typed_rules import ABlock, BBlock
+
+    def test_infer_transitions_signature(self):
+        rule = self.Rule()
+        transitions = list(rule.infer_transitions({self.ABlock('a'): 2},
+                                                  {self.BBlock('z'): 1}))
+        self.assertEqual(len(transitions), 2)
+
+        transitions = list(rule.infer_transitions({self.ABlock('a'): 1},
+                                                  {self.ABlock('a'): 1, self.BBlock('z'): 1}))
+        self.assertEqual(len(transitions), 0)
+
+
+class TestTemperatureCycle(unittest.TestCase):
+    """Test temperature_cycle example"""
+    def test_example(self):
+        """test process instantiation"""
+        from stocal.examples.temperature_cycle import process
+        for _ in process.trajectory({}, steps=100):
+            pass
+
+
 if __name__ == '__main__':
     unittest.main()

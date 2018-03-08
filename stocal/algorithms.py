@@ -139,9 +139,8 @@ class DirectMethod(TrajectorySampler):
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
-                if trans not in self.transitions:
-                    trans.rule = rule
-                    self.add_transition(trans)
+                trans.rule = rule
+                self.add_transition(trans)
         self.state.update(dct)
 
     def __iter__(self):
@@ -243,7 +242,83 @@ class FirstReactionMethod(TrajectorySampler):
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
-                if trans not in self.transitions:
-                    trans.rule = rule
-                    self.add_transition(trans)
+                trans.rule = rule
+                self.add_transition(trans)
         self.state.update(dct)
+
+
+class AndersonNRM(FirstReactionMethod):
+    """Next reaction method modified for time-dependent processes
+
+    A stochastic simulation algorithm, published in
+    D. F. Anderson, J. Chem. Phys. 127, 214107 (2007)
+    as Algorithm (3) 'modified next reaction method'.
+
+    This sampler correctly treats non-autonomous transitions, i.e.
+    transitions with time dependent stochastic rates.
+
+    See help(TrajectorySampler) for usage information.
+    """
+    def __iter__(self):
+        from math import log
+        from random import random
+
+        def eq_13(trans, target):
+            """Determine timestep for a transition in global time scale"""
+            if isinstance(trans, Event):
+                return trans.next_occurrence(self.time) - self.time
+            else:
+                return trans.propensity_meets_target(self.state, self.time, target)
+
+        def int_a_dt(trans, delta_t):
+            """Integrate propensity for given delta_t"""
+            if isinstance(trans, Event):
+                return 0
+            else:
+                return trans.propensity_integral(self.state, self.time, delta_t)
+
+        T = [0 for trans in self.transitions]
+        P = [-log(random()) for trans in self.transitions]
+
+        while True:
+            if self.steps is not None and self.step == self.steps:
+                return
+            if self.time >= self.tmax:
+                break
+            if not self.transitions:
+                break
+
+            occurrences = [
+                (eq_13(trans, Pk-Tk), trans, k)
+                for k, (trans, Pk, Tk)
+                in enumerate(zip(self.transitions, P, T))
+            ]
+
+            delta_t, transition, mu = min(occurrences, key=lambda item: item[0])
+
+            T = [Tk+int_a_dt(trans, delta_t) for Tk, trans in
+                 zip(T, self.transitions)]
+            P[mu] -= log(random())
+
+            # housekeeping: remove depleted transitions
+            depleted = [
+                k for t, r, k in occurrences
+                if t == float('inf') and (r.rule or isinstance(r, Event))
+            ]
+            for k in reversed(depleted):
+                del self.transitions[k]
+                del T[k]
+                del P[k]
+
+            if self.time+delta_t >= self.tmax:
+                break
+            else:
+                self.step += 1
+                self.time += delta_t
+                transition.last_occurrence = self.time
+                self._perform_transition(transition)
+                yield transition
+
+
+        if self.tmax < float('inf'):
+            self.time = self.tmax

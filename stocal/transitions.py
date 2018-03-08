@@ -119,7 +119,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
         def dct2str(dct):
             """render multiset as sum of elements"""
             return ' + '.join(
-                s if n == 1 else '%s*%s' % (n, s) for s, n in dct.items()
+                str(s) if n == 1 else '%s*%s' % (n, s) for s, n in dct.items()
             )
         try:
             return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
@@ -141,7 +141,22 @@ class Reaction(Transition):
 
     Stochastic transitions are those that occur with a certain
     proponsity within a given time interval.
-    Subclasses must implement the propensity method.
+    Subclasses must implement the propensity method. For autonomous
+    reactions, i.e. where the propensity does only depend on the state
+    but not on time, the propensity method must have the signature
+
+    def propensity(self, state):
+        ...
+
+    If the propensity of a reaction does depend on time, the propensity
+    method must have the signature
+
+    def propensity(self, state, time):
+        ...
+
+    In the latter case, the user can additionally override the methods
+    Reaction.propensity_integral and Reaction.propensity_meets_target,
+    for example with analytic solutions.
     """
     def __eq__(self, other):
         """Structural congruence
@@ -162,6 +177,20 @@ class Reaction(Transition):
                 type(self).propensity
             ))
         return self._hash
+
+    @property
+    def is_autonomous(self):
+        """True if propensity does not depend on time.
+
+        The value of this property is inferred from the signature
+        of the propensity method. See help(Reaction) for details."""
+        import inspect
+        try:
+            # python 3
+            return len(inspect.signature(self.propensity).parameters) == 1
+        except AttributeError:
+            # python 2.7
+            return len(inspect.getargspec(self.propensity).args) == 2
 
     @abc.abstractmethod
     def propensity(self, state):
@@ -188,6 +217,48 @@ class Reaction(Transition):
             return float('inf')
         else:
             return time - log(random())/propensity
+
+    def propensity_integral(self, state, time, delta_t):
+        """Integrate propensity function from time to time+delta_t
+
+        If the reaction is autonomous, this method returns
+        self.propensity(state)*delta_t. If it is non-autonomous,
+        the integral is calculated numerically. Override this method
+        if the propensity function can be integrated analytically.
+        (Requires scipy).
+        """
+        if self.is_autonomous:
+            return self.propensity(state)*delta_t
+        elif delta_t == float('inf'):
+            return float('inf')
+        else:
+            from scipy.integrate import quad as integral
+            propensity = lambda t: self.propensity(state, t)
+            return integral(propensity, time, time+delta_t)[0]
+
+    def propensity_meets_target(self, state, time, target):
+        """Time window at which propensity integral meets a given target
+
+        If the reaction is autonomous, this method returns
+        target/self.propensity(state). If it is non-autonomous, the
+        time window dt is numerically evaluated as the interval dt
+        at which
+
+        integral_t^{t+dt} a(X(t), s) ds = target.
+
+        Override this method if an analytic solution to the integral
+        can be obtained.
+        (Requires scipy).
+        """
+        if self.is_autonomous:
+            propensity = self.propensity(state)
+            return target/propensity if propensity else float('inf')
+        elif self.reactants not in state:
+            return float('inf')
+        else:
+            from scipy.optimize import minimize_scalar as minimize
+            fun = lambda dt: (self.propensity_integral(state, time, dt)-target)**2
+            return minimize(fun).x
 
 
 class MassAction(Reaction):
@@ -218,7 +289,7 @@ class MassAction(Reaction):
 
         Calling propensity does not modify the underlying reaction.
         """
-        from functools import reduce
+        from functools import reduce # for python3 compatibility
 
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
@@ -259,6 +330,8 @@ class Event(Transition):
     Events are Transition's that occur either once at a specified time,
     or periodically with a given frequency starting at a specified time.
     """
+    is_autonomous = True
+
     def __init__(self, reactants, products, time, frequency=0):
         if time < 0:
             raise ValueError("time must be greater than 0.")
@@ -295,11 +368,13 @@ class Event(Transition):
         If the event does not re-occur, returns float('inf').
         Calling next_occurrence leaves the event unmodified.
         """
-        if self.frequency:
-            future = time + (self.time-time)%self.frequency
-            return future if self.last_occurrence != time else future+self.frequency
-        elif time < self.time:
+        if time < self.time:
             return self.time
+        elif self.frequency:
+            future = time + (self.time-time)%self.frequency
+            return (future
+                    if self.last_occurrence != time
+                    else future+self.frequency)
         elif time == self.time and self.last_occurrence != time:
             return time
         else:
@@ -337,15 +412,17 @@ class ReactionRule(Rule):
     """Abstract base class that facilitates inference of Reactions
 
     This class provides a standard implementation of infer_transitions
-    that generates all combinations of length self.order which containt
-    spieces in state and or new_species, and which became possible only
-    with the last transition, but where not possible using species of
-    state alone. I.e. at least one molecule in the combination must
-    come from new_species.
-    The inference algorithm then calls ReactionRule.novel_transitions,
-    passing in each novel combination as an unordered list. This method,
-    to be implemented by a subclass, should return an iterable over
-    every reaction that takes the novel species as reactants.
+    that generates all possible reactant combinations from species in
+    state and new_species, that only became possible because of species
+    in new_species, and could not have been formed by reactants in state
+    alone.
+    If ReactionRule.signature is given, it must evaluate to a sequence
+    of type objects. Combinations are then only formed among reactants
+    that are instances of the given type.
+    For each combination, the inference algorithm calls
+    ReactionRule.novel_reactions. This method, to be implemented by a
+    subclass, should return an iterable over every reaction that takes
+    the novel species as reactants.
     """
 
     @abc.abstractmethod
@@ -355,6 +432,35 @@ class ReactionRule(Rule):
         To be implemented by a subclass.
         """
         raise StopIteration
+
+    @property
+    def Transition(self):
+        """Return transition type from novel_reactions return annotation
+
+        In python3, ReactionRule.Transition is optional and can alternatively
+        be provided as novel_reactions return type annotation:
+
+        from typing import Iterator
+        class MyRule(stocal.ReactionRule):
+            def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
+
+        In python2, the property raises an AttributeError.
+        """
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            ret_ann = signature.return_annotation
+            cls = ret_ann.__args__[0]
+            if not issubclass(cls, Transition):
+                raise TypeError("%s is not a subclass of stocal.Transition"
+                                % cls.__name__)
+            else:
+                return cls
+        except AttributeError:
+            raise TypeError("%s.Transition not defined and not inferable"
+                            +" from novel_reactions signature"
+                            % type(self).__name__)
 
     @property
     def order(self):
@@ -372,56 +478,89 @@ class ReactionRule(Rule):
             # python 2.7
             return len(inspect.getargspec(self.novel_reactions).args) - 1
 
-    def infer_transitions(self, last_products, state):
+    @property
+    def signature(self):
+        """Type signature of ReactionRule.novel_reactions
+
+        In python2, this defaults to self.order*[object]. Override the
+        attribute in a subclass to constrain reactant types of
+        novel_reactions.
+
+        In python3, the signature is inferred from type annotations
+        of the novel_reactions parameters (defaulting to object for
+        every non-annotated parameter).
+        """
+        import inspect
+        try:
+            # python 3
+            signature = inspect.signature(self.novel_reactions)
+            return [p.annotation if p.annotation != inspect.Parameter.empty else object
+                    for p in signature.parameters.values()]
+        except AttributeError:
+            return self.order*[object]
+
+    def infer_transitions(self, new_species, state):
         """Standard inference algorithm for Reactions.
 
         see help(type(self)) for an explanation of the algorithm.
         """
-        if not isinstance(last_products, multiset):
+        if not isinstance(new_species, multiset):
             warnings.warn("last_products must be a multiset.", DeprecationWarning)
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
 
-        def combinations(reactants, novel_species, novel):
-            """recursively expand reactants from novel_species"""
-            if len(reactants) == self.order:
-               # reactants complete
+        def combinations(reactants, signature, annotated_species, novel):
+            """Yield all novel combinations comaptible with signature
+
+            See class doc for details."""
+            if not signature:
                 if novel:
                     yield reactants
                 return
-            if not novel_species:
-               # no more choices
-                return
-            species, start, end = novel_species.pop(0)
-            if not novel and start > end:
-               # cannot build novel reactants anymore
-                return
-            for combination in combinations(reactants, list(novel_species), novel):
-               # build reactants without current species
+
+            skipped = []
+            while annotated_species:
+                species, start, end = annotated_species.pop(0)
+                if isinstance(species, signature[0]):
+                    break
+                else:
+                    skipped.append((species, start, end))
+            else:
+                if not annotated_species:
+                    return
+
+            for combination in combinations(reactants,
+                                            signature,
+                                            skipped+annotated_species,
+                                            novel):
                 yield combination
-            m = min(self.order-len(reactants), end)
-            for i in range(1, m+1):
-               # build reactants with current species
-                reactants.append(species)
-                for combination in combinations(reactants, list(novel_species), novel or i >= end):
-                    yield combination
-            del reactants[-m:]
+            if end > 1:
+                annotated_species.insert(0, (species, start-1, end-1))
+            for combination in combinations(reactants+[species],
+                                            signature[1:],
+                                            skipped+annotated_species,
+                                            novel or start == 1):
+                yield combination
 
         # could be simplified if specification would enforce multiset state:
         # next_state = state + last_products
         # novel_species = sorted((
-        #     (species, state[species]+1, min(next_state[species], self.order))
-        #     for species in set(last_products).union(state)
-        # ), key=lambda item: item[1]-item[2])
+        #    (species, state[species]+1,
+        #     min(next_state[species],
+        #         len([typ for typ in self.signature if isinstance(species, typ)])))
+        #    for species in set(new_species).union(state)
+        #), key=lambda item: item[1]-item[2])
 
         novel_species = sorted((
             (species, state.get(species, 0)+1,
-             min(last_products.get(species, 0)+state.get(species, 0), self.order))
-            for species in set(last_products).union(state)
+             min(new_species.get(species, 0)+state.get(species, 0),
+                 len([typ for typ in self.signature if isinstance(species, typ)])))
+            for species in set(new_species).union(state)
         ), key=lambda item: item[1]-item[2])
-        for reactants in combinations([], novel_species, False):
+        for reactants in combinations([], self.signature, novel_species, False):
             for trans in self.novel_reactions(*reactants):
                 yield trans
+
 
 
 class Process(object):
@@ -440,15 +579,30 @@ class Process(object):
     def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None):
         """Create trajectory sampler for given state
 
-        If any static or infered transition is deterministic, this returns
-        the FirstReactionMethod, otherwise the DirectMethod."""
+        The method automatically chooses a suitable sampler for the
+        given stochastic process, initialized with the given state
+        and time.
+        """
         if t:
             warnings.warn("pass start time as tstart", DeprecationWarning)
         tstart = tstart or t
 
-        if (all(isinstance(r, Reaction) for r in self.transitions)
-                and all(issubclass(r.Transition, Reaction) for r in self.rules)):
+        def transition_types():
+            """Yield all generated transtion types of the process"""
+            for trans in self.transitions:
+                yield trans
+            for rule in self.rules:
+                yield rule.Transition
+
+        # DirectMethod for process with normal reactions
+        if all(issubclass(r, Reaction) and r.is_autonomous
+               for r in transition_types()):
             from .algorithms import DirectMethod as Sampler
-        else:
+        # FirstReactionMethod if all reactions are autonomous
+        elif all(r.is_autonomous for r in transition_types()):
             from .algorithms import FirstReactionMethod as Sampler
+        # AndersonNRM if reactions are non-autonomous
+        else:
+            from .algorithms import AndersonNRM as Sampler
+
         return Sampler(self, state, tstart, tmax, steps)

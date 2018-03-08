@@ -2,7 +2,7 @@
 import unittest
 import inspect
 
-from .abstract_test import AbstractTestCase
+from stocal.tests.abstract_test import AbstractTestCase
 import stocal
 
 
@@ -67,21 +67,18 @@ class TestReactionRule(TestRule):
     """
     Rule = stocal.ReactionRule
 
-    def test_order_positive(self):
-        """Rule.order must be greater than 0"""
-        self.assertGreater(self.Rule().order, 0)
-
     def test_novel_reaction_inferface(self):
         """Rule.novel_reactions must not use variable argument list"""
         try:
             # python 3.5
-            parameters = inspect.signature(self.Rule.novel_reactions).parameters
-            self.assertFalse(any(par for par in parameters.values()
-                             if par.kind == inspect.Parameter.VAR_POSITIONAL))
+            signature = inspect.signature(self.Rule.novel_reactions)
+            self.assertFalse(any(par for par in signature.parameters.values()
+                                 if par.kind == inspect.Parameter.VAR_POSITIONAL))
         except AttributeError:
             # python 2.7
             signature = inspect.getargspec(self.Rule.novel_reactions)
             self.assertIsNone(signature.varargs)
+
 
 class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
     """Test stocal.Transition interface
@@ -114,6 +111,13 @@ class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
         """Transitions can be intialized with dicts or sequences"""
         self.assertEqual(self.Transition(['a'], ['z']), self.Transition({'a':1}, {'z':1}))
         self.assertEqual(self.Transition(['a', 'a'], ['z']), self.Transition({'a':2}, {'z':1}))
+
+    def test_str(self):
+        """Transition.str returns a string object"""
+        self.assertIsInstance(str(self.Transition({}, ['a'])), str)
+        self.assertIsInstance(str(self.Transition(['a'], {'a':2})), str)
+        self.assertIsInstance(str(self.Transition([], [('a',)])), str)
+        self.assertIsInstance(str(self.Transition([('a',)], [])), str)
 
     def test_equality(self):
         """Transitions are equal if their reactants and products are equal"""
@@ -159,6 +163,21 @@ class TestEvent(TestTransition):
         event = self.Transition({}, {'a':1}, offset, delta_t)
         for time in range(100):
             self.assertAlmostEqual(event.next_occurrence(time), time+offset)
+
+    def test_text_occurrence_delayed(self):
+        """assert that repeated events do not fire before first occurrence
+
+        test closes issue #1
+        """
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(0), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(0.5), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(1), 1)
+        self.assertEqual(stocal.Event(['a'], ['z'], 1, 1).next_occurrence(1.5), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(0), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(1), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(1.5), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(2), 2)
+        self.assertEqual(stocal.Event(['a'], ['z'], 2, 1).next_occurrence(2.5), 3)
 
 
 class TestReaction(TestTransition):

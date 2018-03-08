@@ -30,9 +30,11 @@ The behavior of all stocal classes is specified via tests, which are
 located in the stocal.tests package.
 """
 
+from .types import molecular_type
 from .transitions import Transition, Reaction, MassAction, Event
 from .transitions import Rule, ReactionRule, Process
 
+from . import types
 from . import algorithms
 from . import examples
 from . import tests

@@ -1,9 +1,8 @@
-- volume/temperature awareness
 - string rewrite rule support
+- support for proper delay events
 - libSBML integration
 - statistical verification tests
 - every/until filters and other stop criteria
-- non-autonomous transitions
 - curried reactions (determine products only upon application)
 - other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations

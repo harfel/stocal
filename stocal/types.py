@@ -19,18 +19,15 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""Collection of utilities"""
+"""Molecular types"""
 
-def with_metaclass(meta, *bases):
-    """Create a base class with a metaclass.
 
-    Code taken from six (https://pypi.python.org/pypi/six).
+def molecular_type(name, bases=(str,)):
+    """Define a new molecular type
+
+    The optional argument bases (defaults to str) can be any python
+    type or tuple of types.
     """
-    # This requires a bit of explanation: the basic idea is to make a dummy
-    # metaclass for one level of class instantiation that replaces itself with
-    # the actual metaclass.
-    class MetaClass(meta):
-        """The dummy metaclass"""
-        def __new__(cls, name, _, doc):
-            return meta(name, bases, doc)
-    return type.__new__(MetaClass, 'temporary_class', (), {})
+    if not isinstance(bases, tuple):
+        bases = (bases,)
+    return type(name, bases, {})
