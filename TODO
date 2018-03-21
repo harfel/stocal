@@ -1,4 +1,3 @@
-* MassAction.__repr__ accesses self.c instead of self.constant
 * Is there an error in TrajectorySampler.update_state???
 =
 - string rewrite rule support

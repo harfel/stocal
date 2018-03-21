@@ -279,7 +279,7 @@ class MassAction(Reaction):
     def __repr__(self):
         try:
             return '%s(%s, %s, %g)' % (
-                type(self).__name__, self.reactants, self.products, self.c
+                type(self).__name__, self.reactants, self.products, self.constant
             )
         except AttributeError:
             return super(MassAction, self).__repr__()
