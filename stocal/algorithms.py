@@ -259,6 +259,12 @@ class AndersonNRM(FirstReactionMethod):
 
     See help(TrajectorySampler) for usage information.
     """
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
+        self.T = []
+        self.P = []
+        super(AndersonNRM, self).__init__(process, state, t, tmax, steps)
+
+
     def __iter__(self):
         from math import log
         from random import random
@@ -277,9 +283,6 @@ class AndersonNRM(FirstReactionMethod):
             else:
                 return trans.propensity_integral(self.state, self.time, delta_t)
 
-        T = [0 for trans in self.transitions]
-        P = [-log(random()) for trans in self.transitions]
-
         while True:
             if self.steps is not None and self.step == self.steps:
                 return
@@ -291,14 +294,14 @@ class AndersonNRM(FirstReactionMethod):
             occurrences = [
                 (eq_13(trans, Pk-Tk), trans, k)
                 for k, (trans, Pk, Tk)
-                in enumerate(zip(self.transitions, P, T))
+                in enumerate(zip(self.transitions, self.P, self.T))
             ]
 
             delta_t, transition, mu = min(occurrences, key=lambda item: item[0])
 
-            T = [Tk+int_a_dt(trans, delta_t) for Tk, trans in
-                 zip(T, self.transitions)]
-            P[mu] -= log(random())
+            self.T = [Tk+int_a_dt(trans, delta_t) for Tk, trans in
+                 zip(self.T, self.transitions)]
+            self.P[mu] -= log(random())
 
             # housekeeping: remove depleted transitions
             depleted = [
@@ -307,8 +310,8 @@ class AndersonNRM(FirstReactionMethod):
             ]
             for k in reversed(depleted):
                 del self.transitions[k]
-                del T[k]
-                del P[k]
+                del self.T[k]
+                del self.P[k]
 
             if self.time+delta_t >= self.tmax:
                 break
@@ -322,3 +325,11 @@ class AndersonNRM(FirstReactionMethod):
 
         if self.tmax < float('inf'):
             self.time = self.tmax
+
+    def add_transition(self, transition):
+        from math import log
+        from random import random
+
+        super(AndersonNRM, self).add_transition(transition)
+        self.T.append(0)
+        self.P.append(-log(random()))

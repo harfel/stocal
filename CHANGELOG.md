@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1]
+
+### Fixed
+- Fixed issue 3 in AndersonNRM
+
+
 ## [1.1] - 2018-03-08
 
 ### Fixed

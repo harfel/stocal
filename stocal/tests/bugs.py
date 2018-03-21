@@ -33,9 +33,10 @@ class Issue2(unittest.TestCase):
 
 
 class Issue3(unittest.TestCase):
-    """Issue 3 [OPEN]: https://github.com/harfel/stocal/issues/3
+    """Issue 3 [CLOSED]: https://github.com/harfel/stocal/issues/3
 
     Opened 21-03-2018
+    Closed 21-03-2018
     """
     class Rule(stocal.ReactionRule):
         Transition = stocal.Event
