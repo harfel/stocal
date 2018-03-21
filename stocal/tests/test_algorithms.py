@@ -167,6 +167,34 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertEqual(sampler.step, 10)
         self.assertAlmostEqual(sampler.time, 10)
 
+    def test_fire_inferred_event(self):
+        class Rule(stocal.ReactionRule):
+            Transition = stocal.Event
+    
+            def novel_reactions(self, x):
+                if x=='a':
+                    yield self.Transition(['a'], [], 10)
+
+        process = stocal.Process(transitions=[stocal.Event([], ['a'], 1)],
+                                 rules=[Rule()])
+
+        traj = stocal.algorithms.AndersonNRM(process, {})
+        it = iter(traj)
+
+        try:
+            trans = it.next()
+        except StopIteration:
+            self.fail("Static event not fired.")
+        self.assertEqual(traj.time, 1)
+        self.assertEqual(traj.state, {'a': 1})
+
+        try:
+            trans = it.next()
+        except StopIteration:
+            self.fail("Infered event not fired.")
+        self.assertEqual(traj.time, 10)
+        self.assertEqual(traj.state, {})
+
 
 class TestAndersonNRM(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
