@@ -1,5 +1,3 @@
-* Is there an error in TrajectorySampler.update_state???
-=
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration
