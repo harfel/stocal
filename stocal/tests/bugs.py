@@ -32,5 +32,41 @@ class Issue2(unittest.TestCase):
         self.assertEqual(len(traj.transitions), 6)
 
 
+class Issue3(unittest.TestCase):
+    """Issue 3 [CLOSED]: https://github.com/harfel/stocal/issues/3
+
+    Opened 21-03-2018
+    Closed 21-03-2018
+    """
+    class Rule(stocal.ReactionRule):
+        Transition = stocal.Event
+
+        def novel_reactions(self, x):
+            if x=='a':
+                yield self.Transition(['a'], [], 10)
+
+    def setUp(self):
+        self.process = stocal.Process(transitions=[stocal.Event([], ['a'], 1)],
+                                      rules=[self.Rule()])
+
+    def test_expanding_anderson_nrm(self):
+        traj = stocal.algorithms.AndersonNRM(self.process, {})
+        it = iter(traj)
+
+        try:
+            trans = it.next()
+        except StopIteration:
+            self.fail("Static event not fired.")
+        self.assertEqual(traj.time, 1)
+        self.assertEqual(traj.state, {'a': 1})
+
+        try:
+            trans = it.next()
+        except StopIteration:
+            self.fail("Infered event not fired.")
+        self.assertEqual(traj.time, 10)
+        self.assertEqual(traj.state, {})
+
+
 if __name__ == '__main__':
     unittest.main()
