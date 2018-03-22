@@ -128,7 +128,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
         
     @property
     def affected_species(self):
-        return [self.true_reactants, self.true_products]
+        return [self.true_reactants.union(self.true_products)] # Not a union this way
 
     @abc.abstractmethod
     def next_occurrence(self, time, state):
@@ -603,7 +603,7 @@ class Process(object):
             from .algorithms import DirectMethod as Sampler
         # FirstReactionMethod if all reactions are autonomous
         elif all(r.is_autonomous for r in transition_types()):
-            from .algorithms import FirstReactionMethod as Sampler
+            from .algorithms import FirstReactionMethod as Sampler # XXX NRM
         # AndersonNRM if reactions are non-autonomous
         else:
             from .algorithms import AndersonNRM as Sampler

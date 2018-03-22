@@ -170,8 +170,11 @@ class DependencyGraph:
 
     def add_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph.setdefault(reactant.domain.pop(), set()).add(reaction)
+            if reactant.domain:
+                self.graph.setdefault(reactant.domain.pop(), set()).add(reaction)
+            else:
+                self.graph.setdefault('', set()).add(reaction)
 
-    def remove_reation(self, reaction):
+    def remove_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph.update()
+            self.graph.get(reactant.domain.pop()).discard(reaction)
