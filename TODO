@@ -1,13 +1,28 @@
+- test based Sampler specification
+- chainable Sampler interface
+- stop criteria
+- every filter
+- transition filter
+- averages
+- FilteredSampler for rules
+- random seed as TrajectorySampler argument
+- deprecate optional TrajectorySampler arguments
+- deprecate Process.trajectory
+- move samplers into stocal.experimental and undo deprecations
+- documentation
+= feature/sampling
+* Events fire even if their reactants are not present!!!
+* stocal/examples/typed_rules.py does not do what it claims to do
+- utilities to simplify scipy/matplotlib interaction
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration
 - statistical verification tests
-- every/until filters and other stop criteria
 - curried reactions (determine products only upon application)
 - other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations
 - C/C++/D implementation
-= version 1.1+
+= version 1.2+
 - deprecate dict support in MassAction.reactions and ReactionRule.infer_transitions
 - deprecate invalid-name arguments
 = version 2
