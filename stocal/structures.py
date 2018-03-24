@@ -197,5 +197,5 @@ class QueueWrapper:
             del self.queue[transition]
         else:
             self.queue.updateitem(transition, (transition.next_occurrence(time, state),
-                                               (self.queue.get(transition))[1] - 1))
+                                               self.queue.get(transition)[1] - 1))
 
