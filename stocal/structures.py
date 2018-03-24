@@ -171,10 +171,31 @@ class DependencyGraph:
     def add_reaction(self, reaction):
         for reactant in reaction.affected_species:
             if reactant.domain:
-                self.graph.setdefault(reactant.domain.pop(), set()).add(reaction)
+                self.graph.setdefault(next(iter(reactant.domain)), set()).add(reaction)
             else:
                 self.graph.setdefault('', set()).add(reaction)
 
     def remove_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph.get(reactant.domain.pop()).discard(reaction)
+            self.graph.get(next(iter(reactant.domain)).discard(reaction))
+
+
+class QueueWrapper:
+    def __init__(self):
+
+        self.queue = pqdict()
+
+    def add_transition(self, transition, time, state):
+        if self.queue.get(transition) is None:
+            self.queue.additem(transition, (transition.next_occurrence(time, state), 1))
+        else:
+            self.queue.updateitem(transition, (transition.next_occurrence(time, state),
+                                               self.queue.get(transition)[1] + 1))
+
+    def remove_transition(self, transition, time, state):
+        if (self.queue.get(transition))[1] == 1:
+            del self.queue[transition]
+        else:
+            self.queue.updateitem(transition, (transition.next_occurrence(time, state),
+                                               (self.queue.get(transition))[1] - 1))
+
