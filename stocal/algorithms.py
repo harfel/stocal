@@ -399,12 +399,10 @@ class NextReactionMethod(TrajectorySampler):
             if not self.queue_wrapper.queue.popkeys():
                 return
 
-            next_transition_item = self.queue_wrapper.queue.popitem()
+            next_transition_item = self.queue_wrapper.queue.popitem()  # removes top item from heap
 
             time = (next_transition_item[1])[0]
             transition = next_transition_item[0]
-
-            #time, transition = nextTransition[1], nextTransition[0]
 
             if time > self.tmax:
                 break
@@ -433,7 +431,7 @@ class NextReactionMethod(TrajectorySampler):
     def update_transition(self, transition):
         self.queue_wrapper.add_transition(transition, self.time, self.state)
         for reactant in transition.affected_species:
-            for transition in self.dependency_graph.graph[next(iter(reactant.domain))]:
+            for transition in self.dependency_graph.graph[next(iter(reactant))]:
                 self.queue_wrapper.queue.updateitem(transition, (transition.next_occurrence(self.time, self.state),
                                                                  (self.queue_wrapper.queue.get(transition))[1]))
 
