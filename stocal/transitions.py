@@ -606,3 +606,32 @@ class Process(object):
             from .algorithms import AndersonNRM as Sampler
 
         return Sampler(self, state, tstart, tmax, steps)
+
+    def sample(self, state, tstart=0., seed=None):
+        """Create trajectory sampler for given state
+        
+        This is the prefered method to sample trajectories, as
+        Process.trajectory might become deprecated.
+        """
+        if seed:
+            raise RuntimeError("XXX seed not implemented yet.")
+
+        def transition_types():
+            for trans in self.transitions:
+                yield trans
+            for rule in self.rules:
+                yield rule.Transition
+
+        # DirectMethod for process with normal reactions
+        if all(issubclass(r, Reaction) and r.is_autonomous
+               for r in transition_types()):
+            from .algorithms import DirectMethod as Algorithm
+        # FirstReactionMethod if all reactions are autonomous
+        elif all(r.is_autonomous for r in transition_types()):
+            from .algorithms import FirstReactionMethod as Algorithm
+        # AndersonNRM if reactions are non-autonomous
+        else:
+            from .algorithms import AndersonNRM as Algorithm
+
+        from .samplers import _Wrapper
+        return _Wrapper(Algorithm(self, state, tstart))

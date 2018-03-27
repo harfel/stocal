@@ -33,6 +33,7 @@ located in the stocal.tests package.
 from .types import molecular_type
 from .transitions import Transition, Reaction, MassAction, Event
 from .transitions import Rule, ReactionRule, Process
+from .structures import multiset
 
 from . import types
 from . import algorithms

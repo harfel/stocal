@@ -1,4 +1,3 @@
-- chainable Sampler interface
 - stop criteria
 - every filter
 - transition filter
