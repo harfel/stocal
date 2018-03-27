@@ -32,6 +32,15 @@ class TestProcess(unittest.TestCase):
         proc.trajectory({}, tmax=2.)
         proc.trajectory({}, steps=10)
 
+    def test_sample_arguments(self):
+        """Process.sample can be called with optional arguments"""
+        proc = self.Process([])
+        proc.sample({})
+        proc.sample({}, 1.)
+        proc.sample({}, 1., 10)
+        proc.sample({}, tstart=1.)
+        proc.sample({}, seed=10)
+
     def test_trajectory_with_events(self):
         """Partly deterministic processes return an appropriate sampler"""
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])

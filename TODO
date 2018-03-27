@@ -1,4 +1,3 @@
-- test based Sampler specification
 - chainable Sampler interface
 - stop criteria
 - every filter
@@ -6,6 +5,7 @@
 - averages
 - FilteredSampler for rules
 - random seed as TrajectorySampler argument
+- documentation
 - deprecate optional TrajectorySampler arguments
 - deprecate Process.trajectory
 - move samplers into stocal.experimental and undo deprecations

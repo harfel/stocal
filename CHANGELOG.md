@@ -1,12 +1,19 @@
 # Changelog
 
-## [1.1.1]
+## [1.2]
+
+### Added
+- Modular trajectory sampling interface stocal.samplers
+
+
+## [1.1.1] - 2018-03-21
 
 ### Fixed
 - Fixed issue 3 in AndersonNRM
 
 ### Changed
 - MassAction.__repr__ now also prints rate constant
+
 
 ## [1.1] - 2018-03-08
 
