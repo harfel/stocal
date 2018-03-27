@@ -216,3 +216,10 @@ class QueueWrapper:
             self.queue.updateitem(transition, (transition.next_occurrence(time, state),
                                                self.queue.get(transition)[1] - 1))
 
+    def update_transition(self, transition, time, state, dependency_graph):
+        self.add_transition(transition, time, state)
+        for reactant in transition.affected_species:
+            for transition in dependency_graph.graph[next(iter(reactant))]:
+                self.queue.updateitem(transition, (transition.next_occurrence(time, state),
+                                      (self.queue.get(transition))[1]))
+
