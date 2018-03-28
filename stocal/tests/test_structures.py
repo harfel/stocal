@@ -1,8 +1,8 @@
 """Tests for the stocal.structures"""
 import unittest
 
-from stocal.structures import multiset
-from stocal.structures import DependencyGraph
+from stocal.structures import multiset, DependencyGraph
+
 from stocal.transitions import MassAction
 
 

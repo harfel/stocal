@@ -30,7 +30,7 @@ amount of time.
 import stocal
 
 
-alpha = 1.e-10
+alpha = 1.e-2
 beta = 1000**-2
 initial_state = {c: 200000 for c in 'ab'}
 
@@ -82,6 +82,6 @@ process = stocal.Process(
 
 
 if __name__ == '__main__':
-    traj = process.trajectory(initial_state, tmax=100.)
+    traj = process.trajectory(initial_state, tmax=1.)
     for _ in traj:
         print(traj.time, traj.state)

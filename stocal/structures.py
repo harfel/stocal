@@ -168,15 +168,15 @@ class DependencyGraph:
         for reaction in reactions:
             self.add_reaction(reaction)
 
-    # def __str__(self):
-    #     for reaction in self.graph.items():
-    #         print("Species: " + reaction[0])
-    #         print("Transitions")
-    #
-    #         for transition in reaction[1]:
-    #             print(str(transition))
-    #
-    #     return "Graph"
+    def __str__(self):
+        for reaction in self.graph.items():
+            print("\nSpecies: " + reaction[0])
+            print("Transitions")
+
+            for transition in reaction[1]:
+                print(str(transition))
+
+        return "Graph"
 
     def add_reaction(self, reaction):
         for reactant in reaction.affected_species:
@@ -195,31 +195,44 @@ class QueueWrapper:
 
         self.queue = pqdict()
 
-    # def __str__(self):
-    #     for transition in self.queue.items():
-    #         print('Transition: ' + str(transition[0]))
-    #         print('Time ' + str((transition[1])[0]))
-    #         print('Multiplier: ' + str((transition[1])[1]))
-    #     return "Queue"
+    def __str__(self):
+        for transition in self.queue.items():
+            print('\nTransition: ' + str((transition[0])[0]))
+            print('Time ' + str(transition[1]))
+            print('Multiplier: ' + str((transition[0])[1]))
 
-    def add_transition(self, transition, time, state):
-        if self.queue.get(transition) is None:
-            self.queue.additem(transition, (transition.next_occurrence(time, state), 1))
+        return "Queue"
+
+    def initialise_step(self, time, state):
+        for transition_item in self.queue.items():
+            self.queue.updateitem(transition_item[0], (transition_item[0])[0].next_occurrence(time, state))
+
+    def add_transition(self, trans, time, state):
+        if self.queue.get((trans, 0)) is None:
+            self.queue.additem((trans, 0), trans.next_occurrence(time, state))
         else:
-            self.queue.updateitem(transition, (transition.next_occurrence(time, state),
-                                               self.queue.get(transition)[1] + 1))
+            self.queue.additem((trans, (self.max_multiplicity(trans) + 1)),
+                               trans.next_occurrence(time, state))
 
-    def remove_transition(self, transition, time, state):
-        if (self.queue.get(transition))[1] == 1:
-            del self.queue[transition]
+    def remove_transition(self, transition, multiplicity):
+        print("NOT IMPLEMENTED")
+        if self.max_multiplicity(transition) == 0:
+            del self.queue[(transition, multiplicity)]
         else:
-            self.queue.updateitem(transition, (transition.next_occurrence(time, state),
-                                               self.queue.get(transition)[1] - 1))
+            pass
 
-    def update_transition(self, transition, time, state, dependency_graph):
-        self.add_transition(transition, time, state)
-        for reactant in transition.affected_species:
+    def update_transitions(self, trans, time, state, dependency_graph):
+        self.add_transition(trans, time, state)
+        for reactant in trans.affected_species:
             for transition in dependency_graph.graph[next(iter(reactant))]:
-                self.queue.updateitem(transition, (transition.next_occurrence(time, state),
-                                      (self.queue.get(transition))[1]))
+                for n in range(self.max_multiplicity(transition) + 1):
+                    self.queue.updateitem((transition, n), (transition.next_occurrence(time, state)))
 
+    def max_multiplicity(self, transition):
+        counter = 0
+        while True:
+            if self.queue.get((transition, counter + 1)) is not None:
+                counter += 1
+            else:
+                break
+        return counter

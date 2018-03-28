@@ -76,10 +76,10 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         self.tmax = tmax
         self.rng = Random(seed)
 
+        self.transitions = []
         self.state = multiset()
         self.update_state(state)
 
-        self.transitions = []
         for transition in self.process.transitions:
             self.add_transition(transition)
 
@@ -390,6 +390,8 @@ class NextReactionMethod(TrajectorySampler):
 
         super(NextReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
+        self.queue_wrapper.initialise_step(self.time, self.state)
+
     def __iter__(self):
         while True:
             if self.steps is not None and self.step == self.steps:
@@ -399,16 +401,25 @@ class NextReactionMethod(TrajectorySampler):
             if not self.queue_wrapper.queue.popkeys():
                 return
 
-            next_transition_item = self.queue_wrapper.queue.popitem()  # removes top item from heap
+            # print(self.queue_wrapper)
+            # print(self.dependency_graph)
+            # print(self.transitions)
 
-            time = (next_transition_item[1])[0]
-            transition = next_transition_item[0]
+            next_transition_item = self.queue_wrapper.queue.popitem()
+
+            time = (next_transition_item[1])
+            transition = (next_transition_item[0])[0]
+            multiplicity = (next_transition_item[0])[1]
+
+            # print("Time: " + str(time))
+            # print("Transition:" + str(transition))
+            # print("Multiplicity: " + str(multiplicity))
 
             if time > self.tmax:
                 break
             else:
                 self.perform_transition(time, transition)
-                self.queue_wrapper.update_transition(transition, self.time, self.state, self.dependency_graph)
+                self.queue_wrapper.update_transitions(transition, self.time, self.state, self.dependency_graph)
 
                 yield transition
 
@@ -423,16 +434,18 @@ class NextReactionMethod(TrajectorySampler):
         self.dependency_graph.add_reaction(transition)
         self.queue_wrapper.add_transition(transition, self.time, self.state)
 
-    def remove_transition(self, transition):
+    def remove_transition(self, transition, multiplicity):
         self.transitions.remove(transition)
         self.dependency_graph.remove_reaction(transition)
-        self.queue_wrapper.remove_transition(transition, self.time, self.state)
+        self.queue_wrapper.remove_transition(transition, multiplicity)
 
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
                 if trans not in self.transitions:
                     trans.rule = rule
+                    self.add_transition(trans)
+                else:
                     self.add_transition(trans)
         self.state.update(dct)
 
