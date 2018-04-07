@@ -1,3 +1,6 @@
+- refactor TrajectorySampler's
+- update test_algorithms
+=
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration
