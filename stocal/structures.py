@@ -168,16 +168,6 @@ class DependencyGraph:
         for reaction in reactions:
             self.add_reaction(reaction)
 
-    def __str__(self):
-        for reaction in self.graph.items():
-            print("\nSpecies: " + reaction[0])
-            print("Transitions")
-
-            for transition in reaction[1]:
-                print(str(transition))
-
-        return "Graph"
-
     def add_reaction(self, reaction):
         for reactant in reaction.affected_species:
             if reactant is not None:
@@ -195,15 +185,7 @@ class QueueWrapper:
 
         self.queue = pqdict()
 
-    def __str__(self):
-        for transition in self.queue.items():
-            print('\nTransition: ' + str((transition[0])[0]))
-            print('Time ' + str(transition[1]))
-            print('Multiplier: ' + str((transition[0])[1]))
-
-        return "Queue"
-
-    def initialise_step(self, time, state):
+    def initialise_transitions(self, time, state):
         for transition_item in self.queue.items():
             self.queue.updateitem(transition_item[0], (transition_item[0])[0].next_occurrence(time, state))
 
@@ -221,12 +203,20 @@ class QueueWrapper:
         else:
             pass
 
-    def update_transitions(self, trans, time, state, dependency_graph):
-        self.add_transition(trans, time, state)
+    def update_transitions(self, trans, time, state, dependency_graph):  # Combine 2 functions?
         for reactant in trans.affected_species:
             for transition in dependency_graph.graph[next(iter(reactant))]:
                 for n in range(self.max_multiplicity(transition) + 1):
                     self.queue.updateitem((transition, n), (transition.next_occurrence(time, state)))
+
+    def update_state_transitions(self, dct, time, state, dependency_graph):
+        for reactant in dct.keys():
+            try:
+                for transition in dependency_graph.graph[next(iter(reactant))]:
+                    for n in range(self.max_multiplicity(transition) + 1):
+                        self.queue.updateitem((transition, n), (transition.next_occurrence(time, state)))
+            except KeyError:
+                pass
 
     def max_multiplicity(self, transition):
         counter = 0

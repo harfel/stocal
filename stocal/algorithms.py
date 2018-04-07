@@ -390,32 +390,23 @@ class NextReactionMethod(TrajectorySampler):
 
         super(NextReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
-        self.queue_wrapper.initialise_step(self.time, self.state)
+        self.queue_wrapper.initialise_transitions(self.time, self.state)
 
     def __iter__(self):
         while True:
             if self.steps is not None and self.step == self.steps:
                 return
-            # if self.time >= self.tmax:
-            #    break
-            if not self.queue_wrapper.queue.popkeys():
-                return
+            if self.time >= self.tmax:
+                break
+            if not self.queue_wrapper.queue:
+                break
 
-            # print(self.queue_wrapper)
-            # print(self.dependency_graph)
-            # print(self.transitions)
-
-            next_transition_item = self.queue_wrapper.queue.popitem()
+            next_transition_item = self.queue_wrapper.queue.topitem()
 
             time = (next_transition_item[1])
             transition = (next_transition_item[0])[0]
-            multiplicity = (next_transition_item[0])[1]
 
-            # print("Time: " + str(time))
-            # print("Transition:" + str(transition))
-            # print("Multiplicity: " + str(multiplicity))
-
-            if time > self.tmax:
+            if time >= self.tmax or time == float('inf'):
                 break
             else:
                 self.perform_transition(time, transition)
@@ -445,9 +436,8 @@ class NextReactionMethod(TrajectorySampler):
                 if trans not in self.transitions:
                     trans.rule = rule
                     self.add_transition(trans)
-                else:
-                    self.add_transition(trans)
         self.state.update(dct)
+        self.queue_wrapper.update_state_transitions(dct, self.time, self.state, self.dependency_graph)
 
     def prune_transitions(self):
         depleted = [
