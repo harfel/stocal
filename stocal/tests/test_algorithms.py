@@ -168,6 +168,7 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertAlmostEqual(sampler.time, 10)
 
     def test_fire_inferred_event(self):
+        """sampler fires inferred events"""
         class Rule(stocal.ReactionRule):
             Transition = stocal.Event
     
@@ -183,6 +184,8 @@ class TestFirstReactionMethod(TestTrajectorySampler):
 
         try:
             trans = it.next()
+        except AttributeError:
+            trans = it.__next__()
         except StopIteration:
             self.fail("Static event not fired.")
         self.assertEqual(traj.time, 1)
@@ -190,6 +193,8 @@ class TestFirstReactionMethod(TestTrajectorySampler):
 
         try:
             trans = it.next()
+        except AttributeError:
+            trans = it.__next__()
         except StopIteration:
             self.fail("Infered event not fired.")
         self.assertEqual(traj.time, 10)

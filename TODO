@@ -1,4 +1,3 @@
-- refactor TrajectorySampler's
 - update test_algorithms
 =
 - string rewrite rule support
