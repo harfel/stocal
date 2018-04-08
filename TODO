@@ -1,6 +1,3 @@
-- refactor stop criteria
-- lock sampler for iteration
-=
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration

@@ -135,6 +135,10 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
                 self.add_transition(trans)
         self.state += transition.true_products
 
+    def has_reached_end(self):
+        """True if given max steps or tmax are reached."""
+        return self.step == self.steps or self.time >= self.tmax
+
     def __iter__(self):
         """Sample stochastic trajectory.
 
@@ -143,25 +147,17 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         until one of the given stop criteria are met. During each
         iteration, the firnig transition is yielded.
         """
-        while True:
-            # XXX dedicated method for stop criteria?
-            if self.steps is not None and self.step == self.steps:
-                return
-            if self.time >= self.tmax:
-                break
-
+        while not self.has_reached_end():
             time, transition, args = self.propose_transition()
 
             if time >= self.tmax:
-                if self.tmax < float('inf'):
-                    self.time = self.tmax
-                return
+                break
             else:
                 self.perform_transition(time, transition, *args)
                 self.prune_transitions()
                 yield transition
 
-        if self.tmax < float('inf'):
+        if self.step != self.steps and self.tmax < float('inf'):
             self.time = self.tmax
 
 
