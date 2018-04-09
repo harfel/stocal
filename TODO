@@ -1,9 +1,9 @@
-- stop criteria
 - every filter
 - transition filter
 - averages
 - FilteredSampler for rules
 - random seed as TrajectorySampler argument
+- neat Process.sample interface: Process.sample(state, tstart, tmax, steps, every, seed)
 - documentation
 - deprecate optional TrajectorySampler arguments
 - deprecate Process.trajectory

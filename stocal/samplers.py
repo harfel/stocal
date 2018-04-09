@@ -105,6 +105,11 @@ See Sampler documentation for a full explanation of Sampler factory
 methods.
 """
 import abc
+try:
+    from itertools import izip as zip
+    range = xrange
+except ImportError:
+    pass
 from .utils import with_metaclass
 
 
@@ -183,7 +188,9 @@ class _Wrapper(Sampler):
         self.algorithm = sampler
 
     def __iter__(self):
-        raise StopIteration
+        traj = self.sampler
+        for transition in traj:
+            yield traj.time, traj.state, { transition: 1}
 
 
 class UntilTimeSampler(Sampler):
@@ -197,7 +204,16 @@ class UntilTimeSampler(Sampler):
         self.tmax = time
 
     def __iter__(self):
-        raise StopIteration
+        while True:
+            time, transition, args = self.propose_transition()
+
+            if time > self.tmax:
+                break
+            else:
+                self.perform_transition(time, transition, *args)
+                self.prune_transitions()
+                yield transition
+        self.algorithm.time = self.tmax
 
 
 class UntilStepSampler(Sampler):
@@ -210,7 +226,8 @@ class UntilStepSampler(Sampler):
         self.steps = steps
 
     def __iter__(self):
-        raise StopIteration
+        for n, data in zip(range(self.steps), self.sampler):
+            yield data
 
 
 class EveryTimeSampler(Sampler):
