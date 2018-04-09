@@ -110,7 +110,9 @@ try:
     range = xrange
 except ImportError:
     pass
+
 from .utils import with_metaclass
+from .structures import multiset
 
 
 class Sampler(with_metaclass(abc.ABCMeta, object)):
@@ -243,7 +245,24 @@ class EveryTimeSampler(Sampler):
         self.skip = skip
 
     def __iter__(self):
-        raise StopIteration
+        algorithm = self.algorithm
+        time = self.sampler.time
+        transitions = multiset()
+        while True:
+            ptime, trans, args = algorithm.propose_transition()
+            if ptime > time+self.dt:
+                time += self.dt
+                yield time, self.state, transitions
+                transitions = multiset()
+
+                if ptime == float('inf'):
+                    break
+                while self.skip and time+self.dt < ptime:
+                    time += self.dt
+
+            self.algorithm.perform_transition(ptime, trans, *args)
+            self.algorithm.prune_transitions() # XXX move call into perform_transition
+            transitions[trans] += 1
 
 
 class EveryStepSampler(Sampler):
@@ -257,7 +276,13 @@ class EveryStepSampler(Sampler):
         self.steps = steps
 
     def __iter__(self):
-        raise StopIteration
+        while True:
+            transitions = multiset()
+            for n, data in zip(range(self.steps), self.sampler):
+                transitions += data[2]
+            if not transitions:
+                break
+            yield self.time, self.state, transitions
 
 
 class AverageTimeSampler(EveryTimeSampler):
