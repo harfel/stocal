@@ -213,7 +213,6 @@ class UntilTimeSampler(Sampler):
                 break
             else:
                 self.perform_transition(time, transition, *args)
-                self.prune_transitions()
                 yield transition
         self.algorithm.time = self.tmax
 
@@ -262,7 +261,6 @@ class EveryTimeSampler(Sampler):
 
             transitions[trans] += 1
             self.algorithm.perform_transition(ptime, trans, *args)
-            self.algorithm.prune_transitions() # XXX move call into perform_transition
 
 
 class EveryStepSampler(Sampler):
@@ -315,7 +313,6 @@ class AverageTimeSampler(EveryTimeSampler):
             transitions[trans] += 1
             averages += (ptime-max(time, algorithm.time))*algorithm.state
             algorithm.perform_transition(ptime, trans, *args)
-            algorithm.prune_transitions() # XXX move call into perform_transition
 
 
 class AverageStepSampler(EveryStepSampler):

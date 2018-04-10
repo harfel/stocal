@@ -134,6 +134,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
                 trans.rule = rule
                 self.add_transition(trans)
         self.state += transition.true_products
+        self.prune_transitions()
 
     def has_reached_end(self):
         """True if given max steps or tmax are reached."""
@@ -154,7 +155,6 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
                 break
             else:
                 self.perform_transition(time, transition, *args)
-                self.prune_transitions()
                 yield transition
 
         if self.step != self.steps and self.tmax < float('inf'):
@@ -324,7 +324,7 @@ class AndersonNRM(FirstReactionMethod):
             else:
                 return trans.propensity_integral(self.state, self.time, delta_t)
 
-        super(AndersonNRM, self).perform_transition(time, transition)
         self.T = [Tk+int_a_dt(trans, time-self.time) for Tk, trans in
                   zip(self.T, self.transitions)]
         self.P[mu] -= log(random())
+        super(AndersonNRM, self).perform_transition(time, transition)
