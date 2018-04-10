@@ -345,4 +345,6 @@ class FilteredSampler(Sampler):
         self.transitions = transitions
 
     def __iter__(self):
-        raise StopIteration
+        for time, state, transitions in self.sampler:
+            if any(trans in transitions for trans in self.transitions):
+                yield time, state, transitions

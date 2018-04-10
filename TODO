@@ -1,8 +1,6 @@
-- transition filter
 - FilteredSampler for rules
 - random seed as TrajectorySampler argument
 - neat Process.sample interface: Process.sample(state, tstart, tmax, steps, every, seed)
-- documentation
 - deprecate optional TrajectorySampler arguments
 - deprecate Process.trajectory
 - move samplers into stocal.experimental and undo deprecations
@@ -23,3 +21,21 @@
 - deprecate dict support in MassAction.reactions and ReactionRule.infer_transitions
 - deprecate invalid-name arguments
 = version 2
+
+
+Samplers
+--------
+Sampler.every() currently accepts steps or time arguments.
+Sampler.average() follows the same pattern, but with different output.
+Sampler.filter() is planned to behave like Sampler.every with different stepping criterion
+
+Could filter instead be done as argument as well? To be able to do things like:
+	Sampler.until(fires=[...])
+	Sampler.every(fires=[...])
+	Sampler.average(fires=[...])
+
+In general, I want to
+- sample until a certain stop criterion is reached
+- step through the trajectory in flexible ways
+- aggregate the trajectory data for each step
+- yield aggregated summary information
