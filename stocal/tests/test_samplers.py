@@ -212,8 +212,18 @@ class TestAverageTimeSampler(TestEveryTimeSampler):
         process = stocal.Process([
             stocal.Event([], ['a'], 0., 3.),
             stocal.Event([], ['a'], 1., 2.)])
-        target = [2., 2., 4., 4., 5. ,6., 7., 7., 9., 9., 10., 11., 12.]
+        target = [1., 2., 2., 4., 4., 5. ,6., 7., 7., 9., 9., 10., 11.]
         sampler = self.Sampler(process.sample({}))
+        for a,b in zip((result[1]['a'] for result in sampler), target):
+            self.assertAlmostEqual(a, b)
+
+    def test_iter_correct_skipped_averages(self):
+        """Sampler.__iter__ calculates correct averages"""
+        process = stocal.Process([
+            stocal.Event([], ['a'], 0., 3.),
+            stocal.Event([], ['a'], 1., 2.)])
+        target = [1., 2., 4., 5. ,6., 7., 9., 10., 11.]
+        sampler = self.Sampler(process.sample({}), skip=True)
         for a,b in zip((result[1]['a'] for result in sampler), target):
             self.assertAlmostEqual(a, b)
 

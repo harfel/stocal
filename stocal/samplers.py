@@ -260,9 +260,9 @@ class EveryTimeSampler(Sampler):
                 while self.skip and time+self.dt < ptime:
                     time += self.dt
 
+            transitions[trans] += 1
             self.algorithm.perform_transition(ptime, trans, *args)
             self.algorithm.prune_transitions() # XXX move call into perform_transition
-            transitions[trans] += 1
 
 
 class EveryStepSampler(Sampler):
@@ -288,14 +288,34 @@ class EveryStepSampler(Sampler):
 class AverageTimeSampler(EveryTimeSampler):
     """Average samples over dt time units
 
-    Iterates over the underlying sampler and averages system state
+    Iterates over the underlying sampler and averages the system state
     over the given period of time. When averaging, each state is weighed
     by the time that it persisted.
-    
-    # XXX how does this work together with skip?
     """
     def __iter__(self):
-        raise StopIteration
+        algorithm = self.algorithm
+        time = self.sampler.time
+        transitions = multiset()
+        averages = multiset()
+        while True:
+            ptime, trans, args = algorithm.propose_transition()
+
+            if ptime > time+self.dt:
+                time += self.dt
+                yield time, 1./self.dt*averages, transitions
+                if ptime == float('inf'):
+                    break
+                transitions = multiset()
+                averages = multiset()
+                while ptime > time+self.dt:
+                    time += self.dt
+                    if not self.skip:
+                        yield time, self.state, {}
+
+            transitions[trans] += 1
+            averages += (ptime-max(time, algorithm.time))*algorithm.state
+            algorithm.perform_transition(ptime, trans, *args)
+            algorithm.prune_transitions() # XXX move call into perform_transition
 
 
 class AverageStepSampler(EveryStepSampler):
@@ -306,7 +326,15 @@ class AverageStepSampler(EveryStepSampler):
     average.
     """
     def __iter__(self):
-        raise StopIteration
+        while True:
+            transitions = multiset()
+            averages = multiset()
+            for n, data in zip(range(self.steps), self.sampler):
+                transitions += data[2]
+                averages += data[1]
+            if not transitions:
+                break
+            yield self.time, 1./self.steps*averages, transitions
 
 
 class FilteredSampler(Sampler):
