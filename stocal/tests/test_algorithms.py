@@ -96,6 +96,13 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         self.assertEqual(time, float('inf'))
         self.assertEqual(transition, None)
 
+    def test_propose_transition_seed(self):
+        """Samplers initialized with the same random seed propose equal transitions"""
+        process = stocal.Process([stocal.MassAction([], ['a'], 1.)])
+        sampler_a = self.Sampler(process, {'a':100}, seed=10)
+        sampler_b = self.Sampler(process, sampler_a.state, seed=10)
+        self.assertEqual(sampler_a.propose_transition(), sampler_b.propose_transition())
+
     def test_propose_transition_in_finite_time(self):
         """Proposed (time,transition) for empty process is (inf,None)"""
         process = stocal.Process([stocal.MassAction([], ['a'], 1.)])

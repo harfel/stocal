@@ -45,14 +45,21 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
     >>> trajectory = DirectMethod(process, state, steps=10000)
     >>> for transition in trajectory:
     ...     print trajectory.time, trajectory.state, transition
+
+    When implementing a novel TrajectorySampler, make sure to only
+    generate random numbers using the TrajectorySampler.rng random
+    number generator.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         """Initialize the sampler for the given Process and state.
 
         State is a dictionary that maps chemical species to positive
         integers denoting their copy number. An optional start time
-        t, end time tmax, and maximal number of steps can be provided.
+        t, end time tmax, maximal number of steps, and random seed
+        can be provided.
         """
+        from random import Random
+
         if t < 0:
             raise ValueError("t must not be negative.")
         if tmax < 0:
@@ -67,6 +74,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         self.steps = steps
         self.time = t
         self.tmax = tmax
+        self.rng = Random(seed)
 
         for transition in self.process.transitions:
             self.add_transition(transition)
@@ -178,14 +186,14 @@ class DirectMethod(TrajectorySampler):
 
     See help(TrajectorySampler) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         if any(not isinstance(r, Reaction) for r in process.transitions):
             raise ValueError("DirectMethod only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
             raise ValueError("DirectMethod only works with Reactions.")
         self.transitions = []
         self.propensities = []
-        super(DirectMethod, self).__init__(process, state, t, tmax, steps)
+        super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
         self.transitions.append(transition)
@@ -200,7 +208,6 @@ class DirectMethod(TrajectorySampler):
             del self.propensities[i]
 
     def propose_transition(self):
-        from random import random
         from math import log
 
         self.propensities = [r.propensity(self.state) for r in self.transitions]
@@ -208,10 +215,10 @@ class DirectMethod(TrajectorySampler):
         if not total_propensity:
             return float('inf'), None, tuple()
 
-        delta_t = -log(random())/total_propensity
+        delta_t = -log(self.rng.random())/total_propensity
 
         transition = None
-        pick = random()*total_propensity
+        pick = self.rng.random()*total_propensity
         for propensity, transition in zip(self.propensities, self.transitions):
             pick -= propensity
             if pick < 0.:
@@ -231,10 +238,10 @@ class FirstReactionMethod(TrajectorySampler):
 
     See help(TrajectorySampler) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self.transitions = []
         self.firings = []
-        super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps)
+        super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
         self.transitions.append(transition)
@@ -250,7 +257,7 @@ class FirstReactionMethod(TrajectorySampler):
 
     def propose_transition(self):
         self.firings = [
-            (trans.next_occurrence(self.time, self.state), trans, tuple())
+            (trans.next_occurrence(self.time, self.state, self.rng), trans, tuple())
             for trans in self.transitions
         ]
 
@@ -272,18 +279,17 @@ class AndersonNRM(FirstReactionMethod):
 
     See help(TrajectorySampler) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self.T = []
         self.P = []
-        super(AndersonNRM, self).__init__(process, state, t, tmax, steps)
+        super(AndersonNRM, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
         from math import log
-        from random import random
 
         super(AndersonNRM, self).add_transition(transition)
         self.T.append(0)
-        self.P.append(-log(random()))
+        self.P.append(-log(self.rng.random()))
 
     def prune_transitions(self):
         depleted = [
@@ -315,7 +321,6 @@ class AndersonNRM(FirstReactionMethod):
 
     def perform_transition(self, time, transition, mu):
         from math import log
-        from random import random
 
         def int_a_dt(trans, delta_t):
             """Integrate propensity for given delta_t"""
@@ -326,5 +331,5 @@ class AndersonNRM(FirstReactionMethod):
 
         self.T = [Tk+int_a_dt(trans, time-self.time) for Tk, trans in
                   zip(self.T, self.transitions)]
-        self.P[mu] -= log(random())
+        self.P[mu] -= log(self.rng.random())
         super(AndersonNRM, self).perform_transition(time, transition)

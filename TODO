@@ -1,8 +1,5 @@
-- FilteredSampler for rules
-- random seed as TrajectorySampler argument
 - neat Process.sample interface: Process.sample(state, tstart, tmax, steps, every, seed)
-- deprecate optional TrajectorySampler arguments
-- deprecate Process.trajectory
+- FilteredSampler for rules
 - move samplers into stocal.experimental and undo deprecations
 - documentation
 = feature/sampling
@@ -39,3 +36,16 @@ In general, I want to
 - step through the trajectory in flexible ways
 - aggregate the trajectory data for each step
 - yield aggregated summary information
+
+
+process = Process()
+trajectory = process.sample()
+trajectory.equilibrate().run()
+for x,y,z in trajectory.every(time=10).until(steps=1000000):
+   pass
+
+
+ensemble = [process.sample() for _ in xrange(N)]
+ensemble = map(ensemble, lambda t: t.equilibrate().run())
+for data in zip(t.every(time=10).until(steps=1000000) for t in ensemble):
+	print average(data)

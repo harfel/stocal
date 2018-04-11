@@ -4,6 +4,14 @@
 
 ### Added
 - Modular trajectory sampling interface stocal.samplers
+- TrajectorySampler instances accept an optional random seed
+
+### Deprecated
+- Deprecated Process.trajectory in favour of Process.sample
+- Deprecated optional TrajectorySampler arguments tmax and steps in favour of stocal.samplers
+
+### Changed
+- TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
 
 
 ## [1.1.1] - 2018-03-21

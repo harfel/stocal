@@ -202,7 +202,7 @@ class Reaction(Transition):
         """
         return 0.
 
-    def next_occurrence(self, time, state):
+    def next_occurrence(self, time, state, rng=None):
         """Determine next reaction firing time.
 
         This is a helper function to use Reactions in next-firing-time
@@ -210,13 +210,14 @@ class Reaction(Transition):
         from a Poisson distribution with mean propensity  and returns
         the given current time plus the delay.
         """
-        from random import random
         from math import log
+        if not rng:
+            import random as rng
         propensity = self.propensity(state)
         if not propensity:
             return float('inf')
         else:
-            return time - log(random())/propensity
+            return time - log(rng.random())/propensity
 
     def propensity_integral(self, state, time, delta_t):
         """Integrate propensity function from time to time+delta_t
@@ -362,7 +363,7 @@ class Event(Transition):
             ))
         return self._hash
 
-    def next_occurrence(self, time, state=None):
+    def next_occurrence(self, time, state=None, rng=None):
         """Next occurrence of the Event at or after time.
 
         If the event does not re-occur, returns float('inf').
@@ -562,7 +563,6 @@ class ReactionRule(Rule):
                 yield trans
 
 
-
 class Process(object):
     """Stochastic process class
 
@@ -608,14 +608,7 @@ class Process(object):
         return Sampler(self, state, tstart, tmax, steps)
 
     def sample(self, state, tstart=0., seed=None):
-        """Create trajectory sampler for given state
-        
-        This is the prefered method to sample trajectories, as
-        Process.trajectory might become deprecated.
-        """
-        if seed:
-            raise RuntimeError("XXX seed not implemented yet.")
-
+        """Create trajectory sampler for given state"""
         def transition_types():
             for trans in self.transitions:
                 yield trans
@@ -634,4 +627,4 @@ class Process(object):
             from .algorithms import AndersonNRM as Algorithm
 
         from .samplers import _Wrapper
-        return _Wrapper(Algorithm(self, state, tstart))
+        return _Wrapper(Algorithm(self, state, t=tstart, seed=seed))
