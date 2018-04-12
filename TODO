@@ -1,6 +1,5 @@
-- neat Process.sample interface: Process.sample(state, tstart, tmax, steps, every, seed)
-- FilteredSampler for rules
 - move samplers into stocal.experimental and undo deprecations
+- FilteredSampler for rules
 - documentation
 = feature/sampling
 * Events fire even if their reactants are not present!!!
