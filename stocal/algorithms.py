@@ -412,6 +412,9 @@ class NextReactionMethod(TrajectorySampler):
                 self.perform_transition(time, transition)
                 self.queue_wrapper.update_transitions(transition, self.time, self.state, self.dependency_graph)
 
+                if self.step % 1000 == 0:
+                    self.prune_transitions()
+
                 yield transition
 
         if self.tmax < float('inf'):
@@ -433,17 +436,12 @@ class NextReactionMethod(TrajectorySampler):
     def update_state(self, dct):
         for rule in self.process.rules:
             for trans in rule.infer_transitions(dct, self.state):
-                if trans not in self.transitions:
-                    trans.rule = rule
-                    self.add_transition(trans)
+                trans.rule = rule
+                self.add_transition(trans)
         self.state.update(dct)
         self.queue_wrapper.update_state_transitions(dct, self.time, self.state, self.dependency_graph)
 
     def prune_transitions(self):
-        depleted = [
-            i for i, (t, r) in enumerate(self.queue_wrapper.queue)
-            if t == float('inf') and (r.rule or isinstance(r, Event))
-        ]
-        for i in reversed(depleted):
-            self.dependency_graph.remove_reaction(self.transitions[i])
-            del self.transitions[i]
+        for item in self.queue_wrapper.queue.items():
+            if item[1] == float('inf'):
+                self.remove_transition((item[0])[0], (item[0])[1])

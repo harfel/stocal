@@ -177,7 +177,7 @@ class DependencyGraph:
 
     def remove_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph.get(next(iter(reactant)).discard(reaction))
+            self.graph.get(next(iter(reactant))).discard(reaction)
 
 
 class QueueWrapper:
@@ -197,11 +197,13 @@ class QueueWrapper:
                                trans.next_occurrence(time, state))
 
     def remove_transition(self, transition, multiplicity):
-        print("NOT IMPLEMENTED")
-        if self.max_multiplicity(transition) == 0:
+        if self.max_multiplicity(transition) == multiplicity:
             del self.queue[(transition, multiplicity)]
         else:
-            pass
+            del self.queue[(transition, self.max_multiplicity(transition))]
+            max_multiplicity = self.max_multiplicity(transition)
+            for index, v in enumerate(range(max_multiplicity - multiplicity)):
+                self.queue[(transition, index + multiplicity)] = self.queue[(transition, index + multiplicity + 1)]
 
     def update_transitions(self, trans, time, state, dependency_graph):  # Combine 2 functions?
         for reactant in trans.affected_species:

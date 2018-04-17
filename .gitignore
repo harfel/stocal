@@ -5,3 +5,5 @@ stocal.egg-info/
 
 *.idea
 .DS_Store
+stocal/examples/RunScript.py
+stocal/examples/results.txt
