@@ -3,7 +3,7 @@
 ## [1.2]
 
 ### Added
-- Modular trajectory sampling interface stocal.samplers
+- Modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
 
 ### Changed

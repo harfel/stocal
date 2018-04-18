@@ -32,24 +32,6 @@ class TestProcess(unittest.TestCase):
         proc.trajectory({}, tmax=2.)
         proc.trajectory({}, steps=10)
 
-    def test_sample_arguments(self):
-        """Process.sample can be called with optional arguments"""
-        proc = self.Process([])
-        proc.sample({})
-        proc.sample({}, tstart=1.)
-        proc.sample({}, tmax=1.)
-        proc.sample({}, steps=100)
-        proc.sample({}, tmax=1., steps=100)
-        proc.sample({}, tmax=1., every=0.1)
-        proc.sample({}, steps=100, every=10)
-        with self.assertRaises(ValueError):
-            proc.sample({}, every=0.5)
-        with self.assertRaises(ValueError):
-            proc.sample({}, steps=100, every=0.5)
-        with self.assertRaises(ValueError):
-            proc.sample({}, steps=100, tmax=10., every=1)
-        proc.sample({}, seed=10)
-
     def test_trajectory_with_events(self):
         """Partly deterministic processes return an appropriate sampler"""
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])

@@ -111,14 +111,75 @@ try:
 except ImportError:
     pass
 
-from .utils import with_metaclass
-from .structures import multiset
+import stocal.transitions
+from stocal.utils import with_metaclass
+from stocal.structures import multiset
+
+class Process(stocal.transitions.Process):
+    def sample(self, state, tstart=0., tmax=float('inf'), steps=None, every=None, seed=None):
+        """Create trajectory sampler for given state
+        
+        The method selects a suitable stochastic simulation algorithm
+        given the Process'es Transition's and Rule's, and wraps this
+        algorithm into a Sampler, specified via optional arguments.
+        If tmax is supplied, the sampler will terminate when the sampler
+        reaches the given time. If steps is specified, the sampler
+        terminates after the given number of steps instead. Both
+        stop criteria can be supplied to stop at whichever event occurs
+        first. If tmax or steps (bot not both) are given, every can be
+        used to specify a sampling interval. In conjunction with tmax,
+        the sampler will yield trajectory states in given time intervals.
+        In conjunction with steps, the sampler will yield results after
+        a given number of steps.
+        """
+        from stocal.transitions import Reaction
+        
+        def transition_types():
+            for trans in self.transitions:
+                yield trans
+            for rule in self.rules:
+                yield rule.Transition
+
+        # select suitable simulation algorithm
+        if all(issubclass(r, Reaction) and r.is_autonomous
+               for r in transition_types()):
+            # DirectMethod for process with normal reactions
+            from stocal.algorithms import DirectMethod as Algorithm
+        elif all(r.is_autonomous for r in transition_types()):
+            # FirstReactionMethod if all reactions are autonomous
+            from stocal.algorithms import FirstReactionMethod as Algorithm
+        else:
+            # AndersonNRM if reactions are non-autonomous
+            from stocal.algorithms import AndersonNRM as Algorithm
+
+        # instantiate requested sampling method
+        sampler = _Wrapper(Algorithm(self, state, t=tstart, seed=seed))
+        if every is not None:
+            if tmax != float('inf') and steps is not None:
+                raise ValueError("every can only be provided when either steps or tmax is given, not both.")
+            elif tmax != float('inf'):
+                return sampler.every(time=every).until(time=tmax)
+            elif steps is not None:
+                if not isinstance(every, int):
+                    raise ValueError("every must be an integer in combination with steps.")
+                return sampler.every(steps=every).until(steps=steps)
+            else:
+                raise ValueError("every can only be used in conjunction with a stop criterion.")
+        else:
+            if tmax != float('inf') and steps is not None:
+                return sampler.until(time=tmax, steps=steps)
+            elif tmax != float('inf'):
+                return sampler.until(time=tmax)
+            elif steps is not None:
+                return sampler.until(steps=steps)
+            else:
+                return sampler
 
 
 class Sampler(with_metaclass(abc.ABCMeta, object)):
     """Abstract base class for Samplers
     
-    Concetizations have to provide an __iter__ method.
+    Concretizations have to provide an __iter__ method.
     """
     def __init__(self, sampler):
         self.sampler = sampler

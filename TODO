@@ -1,4 +1,3 @@
-- move samplers into stocal.experimental and undo deprecations
 - FilteredSampler for rules
 - documentation
 = feature/sampling
