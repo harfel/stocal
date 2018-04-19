@@ -69,9 +69,10 @@ class Issue3(unittest.TestCase):
 
 
 class Issue4(unittest.TestCase):
-    """Issue 4 [OPEN]: https://github.com/harfel/stocal/issues/4
+    """Issue 4 [CLOSED]: https://github.com/harfel/stocal/issues/4
 
     Opened 12-04-2018
+    Closed 19-04-2018
     """
     def setUp(self):
         self.process = stocal.Process([stocal.Event(['a'], ['b'], 1)])

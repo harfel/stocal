@@ -82,7 +82,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
         self.true_reactants = reactants - products
         self.true_products = products - reactants
 
-        self.last_occurrence = -1.
+        self.last_occurrence = -float('inf')
         self._hash = 0
 
     def __eq__(self, other):

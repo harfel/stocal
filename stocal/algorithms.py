@@ -154,7 +154,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         This method iteratively picks an applicable transition by
         calling self.propose_transition and self.perform_transition,
         until one of the given stop criteria are met. During each
-        iteration, the firnig transition is yielded.
+        iteration, the firing transition is yielded.
         """
         while not self.has_reached_end():
             time, transition, args = self.propose_transition()
@@ -265,6 +265,42 @@ class FirstReactionMethod(TrajectorySampler):
             return min(self.firings, key=lambda item: item[0])
         else:
             return float('inf'), None, tuple()
+
+    def __iter__(self):
+        """Sample stochastic trajectory.
+
+        This method iteratively picks an applicable transition by
+        calling self.propose_transition and self.perform_transition,
+        until one of the given stop criteria are met. During each
+        iteration, the firing transition is yielded.
+        
+        This specialization asserts that propsed events are indeed
+        applicable and otherwise advances to the next transition.
+        """
+        # XXX clarification needed in interface specification
+        #
+        # I implicitly assumed that TrajectorySampler.propose_transition
+        # returns only valid (applicable) transitions. This assumption
+        # was indeed violated by FirstReactionMethod for Event's that
+        # lack reactants (see issue #4). The fix in this overloaded
+        # method is to detect such Event's and skip them, as preventing
+        # them from being proposed in the first complexifies the code
+        # enormously.
+
+        while not self.has_reached_end():
+            time, transition, args = self.propose_transition()
+
+            if time >= self.tmax:
+                break
+            elif isinstance(transition, Event) and not transition.reactants <= self.state:
+                self.time = time
+                transition.last_occurrence = time
+            else:
+                self.perform_transition(time, transition, *args)
+                yield transition
+
+        if self.step != self.steps and self.tmax < float('inf'):
+            self.time = self.tmax
 
 
 class AndersonNRM(FirstReactionMethod):

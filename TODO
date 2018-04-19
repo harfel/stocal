@@ -1,4 +1,4 @@
-* Events fire even if their reactants are not present!!!
+- reconsider TrajectorySampler interface and standard __iter__
 = bugfix/4
 * stocal/examples/typed_rules.py does not do what it claims to do
 - utilities to simplify scipy/matplotlib interaction
