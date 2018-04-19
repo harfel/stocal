@@ -19,23 +19,9 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-"""A framework for rule-based stochastic simulation
+"""Experimental stocal modules
 
-This package offers functionalities to perform stochastic simulations
-over regular as well as rule-based systems.
-
-Example uses can be found in the stocal.examples package.
-
-The behavior of all stocal classes is specified via tests, which are
-located in the stocal.tests package.
+Experimental modules provide functionality that is not yet part of the
+stable stocal framework. Experimental module API's are allowed to change
+in minor release updates without any prior announcement.
 """
-
-from .types import molecular_type
-from .transitions import Transition, Reaction, MassAction, Event
-from .transitions import Rule, ReactionRule, Process
-from .structures import multiset
-
-from . import types
-from . import algorithms
-from . import examples
-from . import tests

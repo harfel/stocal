@@ -28,8 +28,8 @@ If in doubt, pylint decides.
 The test suite for stocal is contained in `stocal.tests` and can be
 run using
 ```bash
-python setup.py test
-python3 setup.py test
+python -m unittest discover stocal.tests
+python3 -m unittest discover stocal.tests
 ```
 
 Passing of all tests is an enforced requirement for all code merged
