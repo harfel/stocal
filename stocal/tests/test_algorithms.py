@@ -239,6 +239,14 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertEqual(traj.time, 10)
         self.assertEqual(traj.state, {})
 
+    def test_do_not_apply_inapplicable_events(self):
+        """assert that Event does not fire if reactants are missing"""
+        process = stocal.Process([stocal.Event(['a'], ['b'], 1)])
+        traj = process.trajectory({})
+        for _ in traj:
+            pass
+        self.assertEqual(traj.state, stocal.structures.multiset({}))
+
 
 class TestAndersonNRM(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
