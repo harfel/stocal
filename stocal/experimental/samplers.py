@@ -20,11 +20,15 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """Chainable process samplers
 
-This model provides a convenient framework to sample stocal.Process
-instances. The framework is based on Sampler instances that can be
-chained to customize the way a trajectory is sampled. The simplest
-way to obtain a Sampler for a given process is to call the processes
-sample method:
+This module is currently experimental. Its API might change without
+notification, and there is no guarantee that it will be adopted by
+the stable stocal core.
+
+The samplers module provides a convenient framework to sample
+stocal.Process instances. The framework is based on Sampler instances
+that can be chained to customize the way a trajectory is sampled. The
+simplest way to obtain a Sampler for a given process is to call the
+processes sample method:
 
 >>> sampler = process.sample(initial_state, tstart=0)
 
@@ -101,7 +105,7 @@ blocks that feature trans.
 in contrast, will take only system states ater each trans transition
 and calculate averages of these states.
 
-See Sampler documentation for a full explanation of Sampler factory
+See the Sampler documentation for a full explanation of Sampler factory
 methods.
 """
 import abc
@@ -400,6 +404,12 @@ class FilteredSampler(Sampler):
 
     Iterates over the underlying sampler and returns time, state
     and transitions if one of the given transitions occurred.
+
+    TODO: In addition to Transition instances, this sampler could
+    accept Transition classes, Rule instances and Rule classes and
+    yield after any transition that equals any given Transition class,
+    isinstance of any given Transition class, or has been infered from
+    any given Rule instance or class.
     """
     def __init__(self, sampler, transitions):
         super(FilteredSampler, self).__init__(sampler)
