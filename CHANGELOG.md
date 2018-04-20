@@ -2,6 +2,9 @@
 
 ## [1.2]
 
+### Fixed
+- Fixed issue #4 in FirstReactionMethod
+
 ### Added
 - Modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
