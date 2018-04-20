@@ -116,7 +116,7 @@ except ImportError:
     pass
 
 import stocal.transitions
-from stocal.utils import with_metaclass
+from stocal._utils import with_metaclass
 from stocal.structures import multiset
 
 class Process(stocal.transitions.Process):

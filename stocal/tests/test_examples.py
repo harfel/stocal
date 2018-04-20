@@ -13,16 +13,11 @@ from stocal.examples.pre2017 import AutoCatalysisRule
 
 class TestBrusselator(unittest.TestCase):
     """Test examples.brusselator"""
-    def setUp(self):
-        self.stdout = sys.stdout
-        sys.stdout = open('/dev/null', 'w')
-
-    def tearDown(self):
-        sys.stdout = self.stdout
-
     def test_example(self):
-        """test running the module"""
-        import stocal.examples.brusselator
+        """test process instantiation"""
+        from stocal.examples.brusselator import process
+        for _ in process.trajectory({}, steps=100):
+            pass
 
 
 class TestEvents(unittest.TestCase):

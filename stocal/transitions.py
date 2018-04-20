@@ -28,7 +28,7 @@ novel transitions during the course of a stochastic simulation.
 import abc
 import warnings
 
-from .utils import with_metaclass
+from ._utils import with_metaclass
 from .structures import multiset
 
 
@@ -405,7 +405,6 @@ class Rule(with_metaclass(abc.ABCMeta, object)):
         from the state but before adding new_species as products.
         Implementations must return an iterable of Transition objects.
         """
-        # XXX Should this take last_transition?
         raise StopIteration
 
 

@@ -1,46 +1,17 @@
 * stocal/examples/typed_rules.py does not do what it claims to do
 * specify and test whether events at tmax are included in the trajectory or not
-- utilities to simplify scipy/matplotlib interaction
-- string rewrite rule support
+- deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - support for proper delay events
-- libSBML integration
+- tau leaping
 - statistical verification tests
-- curried reactions (determine products only upon application)
+- utilities to simplify scipy/matplotlib interaction
+- arithmetic operations for Process
+- string rewrite rule support
 - other kinetic laws, e.g. Hill function
-- SSA profiling and algorithm variations
+- libSBML integration
+- curried reactions (determine products only upon application)
 - C/C++/D implementation
 = version 1.2+
 - deprecate dict support in MassAction.reactions and ReactionRule.infer_transitions
 - deprecate invalid-name arguments
 = version 2
-
-
-Samplers
---------
-Sampler.every() currently accepts steps or time arguments.
-Sampler.average() follows the same pattern, but with different output.
-Sampler.filter() is planned to behave like Sampler.every with different stepping criterion
-
-Could filter instead be done as argument as well? To be able to do things like:
-	Sampler.until(fires=[...])
-	Sampler.every(fires=[...])
-	Sampler.average(fires=[...])
-
-In general, I want to
-- sample until a certain stop criterion is reached
-- step through the trajectory in flexible ways
-- aggregate the trajectory data for each step
-- yield aggregated summary information
-
-
-process = Process()
-trajectory = process.sample()
-trajectory.equilibrate().run()
-for x,y,z in trajectory.every(time=10).until(steps=1000000):
-   pass
-
-
-ensemble = [process.sample() for _ in xrange(N)]
-ensemble = map(ensemble, lambda t: t.equilibrate().run())
-for data in zip(t.every(time=10).until(steps=1000000) for t in ensemble):
-	print average(data)
