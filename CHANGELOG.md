@@ -1,6 +1,12 @@
 # Changelog
 
-## [1.1.1]
+## [1.1.2]
+
+### Fixed
+- Fixed issue #4 in FirstReactionMethod
+
+
+## [1.1.1] - 2018-03-21
 
 ### Fixed
 - Fixed issue 3 in AndersonNRM
