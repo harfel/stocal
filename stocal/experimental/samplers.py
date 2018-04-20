@@ -272,7 +272,7 @@ class UntilTimeSampler(Sampler):
 
     def __iter__(self):
         while True:
-            time, transition, args = self.propose_transition()
+            time, transition, args = self.propose_potential_transition()
 
             if time > self.tmax:
                 break
@@ -313,7 +313,7 @@ class EveryTimeSampler(Sampler):
         time = self.sampler.time
         transitions = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_transition()
+            ptime, trans, args = algorithm.propose_potential_transition()
             if ptime > time+self.dt:
                 time += self.dt
                 yield time, self.state, transitions
@@ -361,7 +361,7 @@ class AverageTimeSampler(EveryTimeSampler):
         transitions = multiset()
         averages = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_transition()
+            ptime, trans, args = algorithm.propose_potential_transition()
 
             if ptime > time+self.dt:
                 time += self.dt

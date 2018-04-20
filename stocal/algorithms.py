@@ -109,7 +109,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         pass
 
     @abc.abstractmethod
-    def propose_transition(self):
+    def propose_potential_transition(self):
         """Propose new transition
 
         Must be implemented by a subclass.
@@ -122,6 +122,16 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         """
         return float('inf'), None, tuple()
 
+    def is_applicable(self, time, transition, *args):
+        """True if the transition is applicable
+        
+        The standard implementation always returns True, i.e. it assumes
+        that any transition returned by propose_potential_transition is
+        applicable. Overwrite this method if you want to implement
+        accept/reject type of samplers such as composition-rejection.
+        """
+        return True
+
     def perform_transition(self, time, transition):
         """Perform the given transition.
 
@@ -131,7 +141,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         for every rule of the process.
         If overwritten by a subclass, the signature can have additional
         arguments which are populated with the argument tuple returned
-        by TrajectorySampler.propose_transition.
+        by TrajectorySampler.propose_potential_transition.
         """
         self.step += 1
         self.time = time
@@ -144,23 +154,40 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         self.state += transition.true_products
         self.prune_transitions()
 
+    def reject_transition(self, time, transition, *args):
+        """Do not execute the given transition.
+        
+        The default implementation does nothing. Overwrite this method
+        if you, for example, want to prevent the same transition from
+        being proposed again.
+        """
+        pass
+
     def has_reached_end(self):
         """True if given max steps or tmax are reached."""
         return self.step == self.steps or self.time >= self.tmax
 
     def __iter__(self):
-        """Sample stochastic trajectory.
+        """Standard interface to sample a stochastic trajectory.
 
-        This method iteratively picks an applicable transition by
-        calling self.propose_transition and self.perform_transition,
-        until one of the given stop criteria are met. During each
-        iteration, the firing transition is yielded.
+        Yields each performed transition of the stochastic trajectory.
+
+        This implementation first picks a potential transition.
+        If the transition is applicable, it is performed, otherwise
+        it is rejected. Iteration continues until a stop criterion
+        occurs.
+        Consider to overwrite self.propose_potential_transition,
+        self.is_applicable, self.perform_transition,
+        self.reject_transition or self.has_reached_end in favour of
+        overloading __iter__ when implementing a TrajectorySampler.
         """
         while not self.has_reached_end():
-            time, transition, args = self.propose_transition()
+            time, transition, args = self.propose_potential_transition()
 
             if time >= self.tmax:
                 break
+            elif not self.is_applicable(time, transition, *args):
+                self.reject_transition(time, transition, *args)
             else:
                 self.perform_transition(time, transition, *args)
                 yield transition
@@ -207,7 +234,7 @@ class DirectMethod(TrajectorySampler):
             del self.transitions[i]
             del self.propensities[i]
 
-    def propose_transition(self):
+    def propose_potential_transition(self):
         from math import log
 
         self.propensities = [r.propensity(self.state) for r in self.transitions]
@@ -255,7 +282,7 @@ class FirstReactionMethod(TrajectorySampler):
             del self.transitions[i]
             del self.firings[i]
 
-    def propose_transition(self):
+    def propose_potential_transition(self):
         self.firings = [
             (trans.next_occurrence(self.time, self.state, self.rng), trans, tuple())
             for trans in self.transitions
@@ -266,41 +293,21 @@ class FirstReactionMethod(TrajectorySampler):
         else:
             return float('inf'), None, tuple()
 
-    def __iter__(self):
-        """Sample stochastic trajectory.
+    def is_applicable(self, time, transition, *args):
+        """Returns False for Event's that lack their reactants."""
+        if isinstance(transition, Event):
+            return transition.reactants <= self.state
+        else :
+            return super(FirstReactionMethod, self).is_applicable(time, transition, *args)
 
-        This method iteratively picks an applicable transition by
-        calling self.propose_transition and self.perform_transition,
-        until one of the given stop criteria are met. During each
-        iteration, the firing transition is yielded.
+    def reject_transition(self, time, transition, *args):
+        """Reject inapplicable Event
         
-        This specialization asserts that propsed events are indeed
-        applicable and otherwise advances to the next transition.
+        Advance system time to transition time and pretend transition
+        had happened there, but do not change the state.
         """
-        # XXX clarification needed in interface specification
-        #
-        # I implicitly assumed that TrajectorySampler.propose_transition
-        # returns only valid (applicable) transitions. This assumption
-        # was indeed violated by FirstReactionMethod for Event's that
-        # lack reactants (see issue #4). The fix in this overloaded
-        # method is to detect such Event's and skip them, as preventing
-        # them from being proposed in the first complexifies the code
-        # enormously.
-
-        while not self.has_reached_end():
-            time, transition, args = self.propose_transition()
-
-            if time >= self.tmax:
-                break
-            elif isinstance(transition, Event) and not transition.reactants <= self.state:
-                self.time = time
-                transition.last_occurrence = time
-            else:
-                self.perform_transition(time, transition, *args)
-                yield transition
-
-        if self.step != self.steps and self.tmax < float('inf'):
-            self.time = self.tmax
+        self.time = time
+        transition.last_occurrence = time
 
 
 class AndersonNRM(FirstReactionMethod):
@@ -337,7 +344,7 @@ class AndersonNRM(FirstReactionMethod):
             del self.T[k]
             del self.P[k]
 
-    def propose_transition(self):
+    def propose_potential_transition(self):
         def eq_13(trans, target):
             """Determine timestep for a transition in global time scale"""
             if isinstance(trans, Event):

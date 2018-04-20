@@ -1,6 +1,5 @@
-- reconsider TrajectorySampler interface and standard __iter__
-= bugfix/4
 * stocal/examples/typed_rules.py does not do what it claims to do
+* specify and test whether events at tmax are included in the trajectory or not
 - utilities to simplify scipy/matplotlib interaction
 - string rewrite rule support
 - support for proper delay events
