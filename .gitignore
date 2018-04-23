@@ -7,3 +7,8 @@ stocal.egg-info/
 .DS_Store
 stocal/examples/RunScript.py
 stocal/examples/results.txt
+stocal/examples/results1.txt
+stocal/examples/results_graph.txt
+stocal/examples/results_graph_2.txt
+stocal/examples/results_graph_3.txt
+stocal/examples/results_graph_4.txt

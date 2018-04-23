@@ -443,5 +443,5 @@ class NextReactionMethod(TrajectorySampler):
 
     def prune_transitions(self):
         for item in self.queue_wrapper.queue.items():
-            if item[1] == float('inf'):
+            if item[1] == float('inf') and (item[0][0].rule or isinstance(item[0][0], Event)):
                 self.remove_transition((item[0])[0], (item[0])[1])
