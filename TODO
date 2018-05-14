@@ -1,6 +1,7 @@
 * stocal/examples/typed_rules.py does not do what it claims to do
 * specify and test whether events at tmax are included in the trajectory or not
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
+- integrate JoeSquishy's NRM code
 - support for proper delay events
 - tau leaping
 - statistical verification tests
