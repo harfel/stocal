@@ -509,7 +509,7 @@ class VolumeDependentMassAction(MassAction):
         return a / volume(time)**(order-1)
 ```
 
-We can now use `VoulmeDependentMassAction` in any place where we
+We can now use `VolumeDependentMassAction` in any place where we
 have used default `MassAction` reactions before.
 stocal/examples/temperature_cycle.py gives an example of how reactions
 can be modified to take changing temperature instead of volumes instead.

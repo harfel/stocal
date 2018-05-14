@@ -1,3 +1,6 @@
+* stocal/examples/typed_rules.py does not do what it claims to do
+* specify and test whether events at tmax are included in the trajectory or not
+= hotfix/1.1.2
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration
@@ -7,7 +10,7 @@
 - other kinetic laws, e.g. Hill function
 - SSA profiling and algorithm variations
 - C/C++/D implementation
-= version 1.1+
+= version 1.2+
 - deprecate dict support in MassAction.reactions and ReactionRule.infer_transitions
 - deprecate invalid-name arguments
 = version 2
