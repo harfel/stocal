@@ -235,7 +235,7 @@ class TestFirstReactionMethod(TestTrajectorySampler):
     def test_do_not_apply_inapplicable_events(self):
         """assert that Event does not fire if reactants are missing"""
         process = stocal.Process([stocal.Event(['a'], ['b'], 1)])
-        traj = process.trajectory({})
+        traj = self.Sampler(process, {})
         for _ in traj:
             pass
         self.assertEqual(traj.state, stocal.structures.multiset({}))
