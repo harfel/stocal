@@ -169,7 +169,7 @@ class DependencyGraph:
             self.add_reaction(reaction)
 
     def add_reaction(self, reaction):
-        for reactant in reaction.affected_species:
+        for reactant in reaction.reactants:
             if reactant is not None:
                 self.graph.setdefault(reactant, set()).add(reaction)
             else:
@@ -177,13 +177,8 @@ class DependencyGraph:
 
     def remove_reaction(self, reaction):
         for reactant in reaction.affected_species:
-            self.graph.get(reactant).discard(reaction)
-
-    def __str__(self):
-
-        for species in self.graph:
-            for reaction in self.graph[species]:
-                print(str(reaction))
+            if reactant in self.graph:
+                del self.graph[reactant]
 
 
 class QueueWrapper:
@@ -192,9 +187,9 @@ class QueueWrapper:
         self.queue = pqdict()
         self.max_mul = dict()
 
-    def initialise_transitions(self, time, state):
+    def initialise_transitions(self, time, state, rng):
         for transition_item in self.queue.items():
-            self.queue.updateitem(transition_item[0], (transition_item[0])[0].next_occurrence(time, state))
+            self.queue.updateitem(transition_item[0], (transition_item[0])[0].next_occurrence(time, state, rng))
 
     def add_transition(self, transition, time, state):
         if self.queue.get((transition, 0)) is None:
@@ -219,23 +214,24 @@ class QueueWrapper:
             for index, v in enumerate(range(max_multiplicity - multiplicity)):
                 self.queue[(transition, index + multiplicity)] = self.queue[(transition, index + multiplicity + 1)]
 
-    def update_transitions(self, trans, time, state, dependency_graph):
+    def update_transitions(self, trans, mult, time, state, dependency_graph, rng):
         transition_update_set = set()
         for reactant in trans.affected_species:
+            if reactant not in dependency_graph.graph:
+                continue
             for transition in dependency_graph.graph[reactant]:
                 for n in range(self.max_multiplicity(transition) + 1):
                     transition_update_set.add((transition, n))
-                    # self.queue.updateitem((transition, n), (transition.next_occurrence(time, state)))
         for transition in transition_update_set:
-            # self.queue.updateitem((transition[0], transition[1]), (transition[0].next_occurrence(time, state)))
-            self.queue[(transition[0], transition[1])] = transition[0].next_occurrence(time, state)
+            self.queue[transition] = transition[0].next_occurrence(time, state, rng)
+        self.queue[trans, mult] = trans.next_occurrence(time, state, rng)
 
-    def update_state_transitions(self, dct, time, state, dependency_graph):
+    def update_state_transitions(self, dct, time, state, dependency_graph, rng):
         for reactant in dct.keys():
             try:
                 for transition in dependency_graph.graph[reactant]:
                     for n in range(self.max_multiplicity(transition) + 1):
-                        self.queue.updateitem((transition, n), (transition.next_occurrence(time, state)))
+                        self.queue.updateitem((transition, n), (transition.next_occurrence(time, state, rng)))
             except KeyError:
                 pass
 

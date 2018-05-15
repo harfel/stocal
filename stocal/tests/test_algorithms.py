@@ -274,7 +274,7 @@ class TestAndersonNRM(TestFirstReactionMethod):
         self.assertEqual(sampler.state, {'a':1})
 
 
-class NextReactionMethod(TestFirstReactionMethod):
+class TestNextReactionMethod(TestFirstReactionMethod):
     """Test stocal.algorithms.DirectMethod
 
     This tests the regular TrajectorySampler interface."""

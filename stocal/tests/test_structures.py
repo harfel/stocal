@@ -283,7 +283,7 @@ class TestDependencyGraph(unittest.TestCase):
             MassAction({"z": 1}, {"x": 1}, 1.),
         ])
 
-        self.assertEqual(len(test_graph.graph.keys()), 3)
+        self.assertEqual(len(test_graph.graph.keys()), 2)
 
 
 if __name__ == '__main__':

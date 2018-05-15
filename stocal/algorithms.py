@@ -384,44 +384,32 @@ class AndersonNRM(FirstReactionMethod):
 
 class NextReactionMethod(TrajectorySampler):
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-
         self.dependency_graph = DependencyGraph(process.transitions)
         self.queue_wrapper = QueueWrapper()
-
         super(NextReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
-
-        self.queue_wrapper.initialise_transitions(self.time, self.state)
-
-    def __iter__(self):
-        while True:
-            if self.steps is not None and self.step == self.steps:
-                return
-            if self.time >= self.tmax:
-                break
-            if not self.queue_wrapper.queue:
-                break
-
-            next_transition_item = self.queue_wrapper.queue.topitem()
-
-            time = (next_transition_item[1])
-            transition = (next_transition_item[0])[0]
-
-            if time >= self.tmax or time == float('inf'):
-                break
-            else:
-                self.perform_transition(time, transition)
-                self.queue_wrapper.update_transitions(transition, self.time, self.state, self.dependency_graph)
-
-                if self.step % 1000 == 0:
-                    self.prune_transitions()
-
-                yield transition
-
-        if self.tmax < float('inf'):
-            self.time = self.tmax
+        self.queue_wrapper.initialise_transitions(self.time, self.state, self.rng)
 
     def propose_potential_transition(self):
-        raise RuntimeError('XXX not implemented yet.')
+        if self.queue_wrapper.queue:
+            trans, time = self.queue_wrapper.queue.topitem()
+            return time, trans[0], trans[1:]
+        else:
+            return float('inf'), None, tuple()
+
+    def is_applicable(self, time, transition, *args):
+        if isinstance(transition, Event):
+            return transition.reactants <= self.state
+        else :
+            return super(NextReactionMethod, self).is_applicable(time, transition, *args)
+
+    def perform_transition(self, time, transition, mult=0):
+        super(NextReactionMethod, self).perform_transition(time, transition)
+        self.queue_wrapper.update_transitions(transition, mult, time, self.state, self.dependency_graph, self.rng)
+
+    def reject_transition(self, time, transition, mult):
+        self.time = time
+        transition.last_occurrence = time
+        self.queue_wrapper.update_transitions(transition, mult, time, self.state, self.dependency_graph, self.rng)
 
     def add_transition(self, transition):
         self.transitions.append(transition)
@@ -439,9 +427,9 @@ class NextReactionMethod(TrajectorySampler):
                 trans.rule = rule
                 self.add_transition(trans)
         self.state.update(dct)
-        self.queue_wrapper.update_state_transitions(dct, self.time, self.state, self.dependency_graph)
+        self.queue_wrapper.update_state_transitions(dct, self.time, self.state, self.dependency_graph, self.rng)
 
     def prune_transitions(self):
-        for item in self.queue_wrapper.queue.items():
-            if item[1] == float('inf') and (item[0][0].rule or isinstance(item[0][0], Event)):
-                self.remove_transition((item[0])[0], (item[0])[1])
+        for trans, time in self.queue_wrapper.queue.items():
+            if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
+                self.remove_transition(*trans)
