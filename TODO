@@ -1,4 +1,3 @@
-- cleanup code
 - reuse dependency graph in DirectMethod and AndersonNRM
 - reuse binary tree in AndersonNRM
 = feature/nrm

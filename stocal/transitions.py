@@ -126,7 +126,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
             return '%s --> %s' % (dct2str(self.reactants), dct2str(self.products))
         except AttributeError:
             return super(Transition, self).__str__()
-        
+
     @abc.abstractmethod
     def next_occurrence(self, time, state):
         """Time of next occurrence after given time.

@@ -2,8 +2,6 @@
 
 from collections import Mapping
 from numbers import Number
-from pqdict import pqdict
-
 
 class multiset(dict):
     """A multiset implementation
@@ -158,94 +156,3 @@ class multiset(dict):
                 else:
                     del result[item]
         return result
-
-
-class DependencyGraph:
-    def __init__(self, reactions):
-
-        self.graph = dict()
-
-        for reaction in reactions:
-            self.add_reaction(reaction)
-
-    def add_reaction(self, reaction):
-        for reactant in reaction.reactants:
-            if reactant is not None:
-                self.graph.setdefault(reactant, set()).add(reaction)
-            else:
-                self.graph.setdefault('', set()).add(reaction)
-
-    def remove_reaction(self, reaction):
-        for reactant in reaction.affected_species:
-            if reactant in self.graph:
-                del self.graph[reactant]
-
-
-class QueueWrapper:
-    def __init__(self):
-
-        self.queue = pqdict()
-        self.max_mul = dict()
-
-    def initialise_transitions(self, time, state, rng):
-        for transition_item in self.queue.items():
-            self.queue.updateitem(transition_item[0], (transition_item[0])[0].next_occurrence(time, state, rng))
-
-    def add_transition(self, transition, time, state):
-        if self.queue.get((transition, 0)) is None:
-            self.queue.additem((transition, 0), transition.next_occurrence(time, state))
-            self.max_mul[transition] = 0
-        else:
-            self.queue.additem((transition, (self.max_multiplicity(transition) + 1)),
-                               transition.next_occurrence(time, state))
-            self.max_mul[transition] += 1
-
-    def remove_transition(self, transition, multiplicity):
-        if self.max_multiplicity(transition) == multiplicity:
-            del self.queue[(transition, multiplicity)]
-            if multiplicity == 0:
-                del self.max_mul[transition]
-            else:
-                self.max_mul[transition] -= 1
-        else:
-            del self.queue[(transition, self.max_multiplicity(transition))]
-            self.max_mul[transition] -= 1
-            max_multiplicity = multiplicity
-            for index, v in enumerate(range(max_multiplicity - multiplicity)):
-                self.queue[(transition, index + multiplicity)] = self.queue[(transition, index + multiplicity + 1)]
-
-    def update_transitions(self, trans, mult, time, state, dependency_graph, rng):
-        transition_update_set = set()
-        for reactant in trans.affected_species:
-            if reactant not in dependency_graph.graph:
-                continue
-            for transition in dependency_graph.graph[reactant]:
-                for n in range(self.max_multiplicity(transition) + 1):
-                    transition_update_set.add((transition, n))
-        for transition in transition_update_set:
-            self.queue[transition] = transition[0].next_occurrence(time, state, rng)
-        self.queue[trans, mult] = trans.next_occurrence(time, state, rng)
-
-    def update_state_transitions(self, dct, time, state, dependency_graph, rng):
-        for reactant in dct.keys():
-            try:
-                for transition in dependency_graph.graph[reactant]:
-                    for n in range(self.max_multiplicity(transition) + 1):
-                        self.queue.updateitem((transition, n), (transition.next_occurrence(time, state, rng)))
-            except KeyError:
-                pass
-
-    # def max_multiplicity(self, transition): # Data struct rather than count every time?
-    #     counter = 0
-    #     while True:
-    #         if self.queue.get(transition, counter + 1) is not None:
-    #             counter += 1
-    #         else:
-    #             break
-    #     return counter
-
-    def max_multiplicity(self, transition):
-        return self.max_mul[transition]
-
-
-

@@ -26,10 +26,108 @@ interface by subclassing this abstract base class.
 """
 
 import abc
+from pqdict import pqdict
 
 from ._utils import with_metaclass
-from .structures import multiset, DependencyGraph, QueueWrapper
+from .structures import multiset
 from .transitions import Event, Reaction
+
+
+class DependencyGraph(dict):
+    """Species-transition dependency graph
+
+    A mapping from species to transitions that are affected by a
+    change in the respecive species' count. A transition counts as
+    affected if it appeats among the reactants of the transition.
+    """
+    def add_reaction(self, reaction):
+        """Add reaction to dependencies"""
+        for reactant in reaction.reactants:
+            self.setdefault(reactant, set()).add(reaction)
+
+    def remove_reaction(self, reaction):
+        """Remove reaction from dependencies"""
+        for reactant in reaction.affected_species:
+            if reactant in self:
+                self[reactant].discard(reaction)
+                if not self[reactant]:
+                    del self[reactant]
+
+    def affected_transitions(self, species):
+        """Get all transitions affected by a change in any of the given species
+
+        Species is an iterable and the method returns a set.
+        """
+        return set(
+            trans for reactant in species
+            for trans in self.get(reactant, [])
+        )
+
+
+class PriorityQueue(object):
+    """Indexed priority queue
+
+    Data structure used for Gibson-and-Bruck-like a transition selection.
+    See the documentation of pqdict for the general properties of the
+    data structure. Unlike the standard indexed priority queue, this
+    implementation allows keys (transitions) to have multiple associated
+    values. Currently this is done by adding a unique index to each
+    stored transition occurrence.
+    """
+    # XXX reconsider treatment of multiplicities
+    def __init__(self):
+        self.queue = pqdict()
+        self.multiplicity = dict()
+
+    def __bool__(self):
+        return bool(self.queue)
+
+    __nonzero__ = __bool__
+
+    def items(self):
+        """Use of this method is discouraged. It will be removed."""
+        return self.queue.items()
+
+    def next_item(self):
+        """Retrieve next occurring transition, time, and occurrence index"""
+        trans, time = self.queue.topitem()
+        return time, trans[0], trans[1:]
+
+    def add_transition(self, transition, time, state, rng):
+        """Add transition to priority queue and generate its next firing time"""
+        if self.queue.get((transition, 0)) is None:
+            self.queue.additem((transition, 0), transition.next_occurrence(time, state, rng))
+            self.multiplicity[transition] = 0
+        else:
+            self.queue.additem((transition, (self.multiplicity[transition] + 1)),
+                               transition.next_occurrence(time, state, rng))
+            self.multiplicity[transition] += 1
+
+    def remove_transition(self, transition, index=0):
+        """Remove one occurrence of the given transition"""
+        mult = self.multiplicity[transition]
+        if index == mult == 0:
+            del self.queue[transition, index]
+            del self.multiplicity[transition]
+        else:
+            if index != mult:
+                self.queue[transition, index] = self.queue[transition, mult]
+            del self.queue[transition, mult]
+            self.multiplicity[transition] -= 1
+
+    def update_one_transition(self, transition, idx, time, state, rng):
+        """Recalculate next firing time for one transition instance
+        
+        idx is the multiplicity index of the particular occurrence to
+        be updated.
+        """
+        self.queue[transition, idx] = transition.next_occurrence(time, state, rng)
+
+    def update_transitions(self, transitions, time, state, rng):
+        """Recalculate next firing times for all given transitions"""
+        for trans in transitions:
+            for idx in range(self.multiplicity[trans] + 1):
+                self.queue[trans, idx] = trans.next_occurrence(time, state, rng)
 
 
 class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
@@ -76,14 +174,11 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         self.tmax = tmax
         self.rng = Random(seed)
 
-        self.transitions = []
         self.state = multiset()
         self.update_state(state)
 
         for transition in self.process.transitions:
             self.add_transition(transition)
-
-        self.update_state(state)
 
     def update_state(self, dct):
         """Modify sampler state.
@@ -314,6 +409,58 @@ class FirstReactionMethod(TrajectorySampler):
         transition.last_occurrence = time
 
 
+class NextReactionMethod(FirstReactionMethod):
+    """Implementation of Gibson & Bruck's next reaction method.
+
+    A stochastic simulation algorithm, published in
+    M. A. Gibson & J. Bruck, J. Phys. Chem. A 2000, 104, 1876-1889 (1999).
+
+    NextReactionMethod works with processes that feature deterministic
+    transitions, i.e. Event's. It is an optimized version of Gillespie's
+    FirstReactionMethod whose runtime scales logarithmically with the
+    number of reactions.
+
+    See help(TrajectorySampler) for usage information.
+    """
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        self.dependency_graph = DependencyGraph()
+        self.firings = PriorityQueue()
+        super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
+
+    def add_transition(self, transition):
+        self.dependency_graph.add_reaction(transition)
+        self.firings.add_transition(transition, self.time, self.state, self.rng)
+
+    def update_state(self, dct):
+        super(NextReactionMethod, self).update_state(dct)
+        affected = self.dependency_graph.affected_transitions(dct)
+        self.firings.update_transitions(affected, self.time, self.state, self.rng)
+
+    def prune_transitions(self):
+        # XXX this should not go linearly through the whole queue!
+        for trans, time in self.firings.items():
+            if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
+                self.dependency_graph.remove_reaction(trans[0])
+                self.firings.remove_transition(*trans)
+
+    def propose_potential_transition(self):
+        if self.firings:
+            return self.firings.next_item()
+        else:
+            return float('inf'), None, (0,)
+
+    def perform_transition(self, time, transition, mult=0):
+        super(NextReactionMethod, self).perform_transition(time, transition)
+        self.firings.update_one_transition(transition, mult, time, self.state, self.rng)
+        affected = self.dependency_graph.affected_transitions(transition.affected_species)
+        self.firings.update_transitions(affected, time, self.state, self.rng)
+
+    def reject_transition(self, time, transition, mult):
+        self.time = time
+        transition.last_occurrence = time
+        self.firings.update_one_transition(transition, mult, time, self.state, self.rng)
+
+
 class AndersonNRM(FirstReactionMethod):
     """Next reaction method modified for time-dependent processes
 
@@ -380,56 +527,3 @@ class AndersonNRM(FirstReactionMethod):
                   zip(self.T, self.transitions)]
         self.P[mu] -= log(self.rng.random())
         super(AndersonNRM, self).perform_transition(time, transition)
-
-
-class NextReactionMethod(TrajectorySampler):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        self.dependency_graph = DependencyGraph(process.transitions)
-        self.queue_wrapper = QueueWrapper()
-        super(NextReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
-        self.queue_wrapper.initialise_transitions(self.time, self.state, self.rng)
-
-    def propose_potential_transition(self):
-        if self.queue_wrapper.queue:
-            trans, time = self.queue_wrapper.queue.topitem()
-            return time, trans[0], trans[1:]
-        else:
-            return float('inf'), None, tuple()
-
-    def is_applicable(self, time, transition, *args):
-        if isinstance(transition, Event):
-            return transition.reactants <= self.state
-        else :
-            return super(NextReactionMethod, self).is_applicable(time, transition, *args)
-
-    def perform_transition(self, time, transition, mult=0):
-        super(NextReactionMethod, self).perform_transition(time, transition)
-        self.queue_wrapper.update_transitions(transition, mult, time, self.state, self.dependency_graph, self.rng)
-
-    def reject_transition(self, time, transition, mult):
-        self.time = time
-        transition.last_occurrence = time
-        self.queue_wrapper.update_transitions(transition, mult, time, self.state, self.dependency_graph, self.rng)
-
-    def add_transition(self, transition):
-        self.transitions.append(transition)
-        self.dependency_graph.add_reaction(transition)
-        self.queue_wrapper.add_transition(transition, self.time, self.state)
-
-    def remove_transition(self, transition, multiplicity):
-        self.transitions.remove(transition)
-        self.dependency_graph.remove_reaction(transition)
-        self.queue_wrapper.remove_transition(transition, multiplicity)
-
-    def update_state(self, dct):
-        for rule in self.process.rules:
-            for trans in rule.infer_transitions(dct, self.state):
-                trans.rule = rule
-                self.add_transition(trans)
-        self.state.update(dct)
-        self.queue_wrapper.update_state_transitions(dct, self.time, self.state, self.dependency_graph, self.rng)
-
-    def prune_transitions(self):
-        for trans, time in self.queue_wrapper.queue.items():
-            if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
-                self.remove_transition(*trans)

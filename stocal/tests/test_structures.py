@@ -1,9 +1,6 @@
 """Tests for the stocal.structures"""
 import unittest
-
-from stocal.structures import multiset, DependencyGraph
-
-from stocal.transitions import MassAction
+from stocal.structures import multiset
 
 
 class TestMultiset(unittest.TestCase):
@@ -272,18 +269,6 @@ class TestMultiset(unittest.TestCase):
         mset_c = mset_a
         self.assertEqual(mset_a//3, mset_b)
         self.assertIs(mset_a, mset_c)
-
-
-class TestDependencyGraph(unittest.TestCase):
-
-    def test_correct(self):
-        test_graph = DependencyGraph([
-            MassAction({"x": 1}, {"y": 1}, 1.),
-            MassAction({"x": 1}, {"z": 1}, 1.),
-            MassAction({"z": 1}, {"x": 1}, 1.),
-        ])
-
-        self.assertEqual(len(test_graph.graph.keys()), 2)
 
 
 if __name__ == '__main__':

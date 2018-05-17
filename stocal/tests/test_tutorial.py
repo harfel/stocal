@@ -114,7 +114,7 @@ class TestTutorial(unittest.TestCase):
                                          Rna('mRNA_a'):10,
                                          Rna('mRNA_b'):10},
                                         steps=100)
-        self.assertEqual(len(trajectory.transitions), 2)
+        self.assertEqual(len(trajectory.transitions), 2) # XXX implementation detail!
         for _ in trajectory:
             pass
 
