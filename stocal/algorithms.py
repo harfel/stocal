@@ -81,9 +81,8 @@ class PriorityQueue(object):
 
     __nonzero__ = __bool__
 
-    def items(self):
-        """Use of this method is discouraged. It will be removed."""
-        return self.queue.items()
+    def __getitem__(self, key):
+        return self.queue[key]
 
     def next_item(self):
         """Retrieve next occurring transition, time, and occurrence index"""
@@ -100,9 +99,11 @@ class PriorityQueue(object):
 
     def remove_transition(self, transition):
         """Remove one occurrence of the given transition"""
-        del self.queue[transition][-1]
-        if not self.queue[transition]:
-            del self.queue.transition
+        times = [t for t in self.queue[transition] if t != float('inf')]
+        if times:
+            self.queue[transition] = times
+        else:
+            del self.queue[transition]
 
     def update_one_transition(self, transition, time, state, rng):
         """Recalculate next firing time for one transition instance"""
@@ -242,7 +243,6 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
                 trans.rule = rule
                 self.add_transition(trans)
         self.state += transition.true_products
-        self.prune_transitions()
 
     def reject_transition(self, time, transition, *args):
         """Do not execute the given transition.
@@ -280,6 +280,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
                 self.reject_transition(time, transition, *args)
             else:
                 self.perform_transition(time, transition, *args)
+                self.prune_transitions()
                 yield transition
 
         if self.step != self.steps and self.tmax < float('inf'):
@@ -416,6 +417,7 @@ class NextReactionMethod(FirstReactionMethod):
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self.dependency_graph = DependencyGraph()
         self.firings = PriorityQueue()
+        self.depleted = []
         super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
@@ -428,12 +430,10 @@ class NextReactionMethod(FirstReactionMethod):
         self.firings.update_transitions(affected, self.time, self.state, self.rng)
 
     def prune_transitions(self):
-        # XXX this should not go linearly through the whole queue!
-        #for trans, time in self.firings.items():
-        #    if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
-        #        self.dependency_graph.remove_reaction(trans[0])
-        #        self.firings.remove_transition(*trans)
-        pass
+        for trans in self.depleted:
+            self.dependency_graph.remove_reaction(trans)
+            self.firings.remove_transition(trans)
+        self.depleted = []
 
     def propose_potential_transition(self):
         if self.firings:
@@ -444,9 +444,14 @@ class NextReactionMethod(FirstReactionMethod):
 
     def perform_transition(self, time, transition):
         super(NextReactionMethod, self).perform_transition(time, transition)
-        self.firings.update_one_transition(transition, time, self.state, self.rng)
+        # update affected firing times
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
+        self.firings.update_one_transition(transition, time, self.state, self.rng)
         self.firings.update_transitions(affected, time, self.state, self.rng)
+        # mark depleted reactions
+        for trans in affected:
+            if float('inf') in self.firings[trans] and (trans.rule or isinstance(trans, Event)):
+                self.depleted.append(trans)
 
     def reject_transition(self, time, transition):
         self.time = time
