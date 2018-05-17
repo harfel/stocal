@@ -71,13 +71,10 @@ class PriorityQueue(object):
     See the documentation of pqdict for the general properties of the
     data structure. Unlike the standard indexed priority queue, this
     implementation allows keys (transitions) to have multiple associated
-    values. Currently this is done by adding a unique index to each
-    stored transition occurrence.
+    values.
     """
-    # XXX reconsider treatment of multiplicities
     def __init__(self):
         self.queue = pqdict()
-        self.multiplicity = dict()
 
     def __bool__(self):
         return bool(self.queue)
@@ -90,44 +87,38 @@ class PriorityQueue(object):
 
     def next_item(self):
         """Retrieve next occurring transition, time, and occurrence index"""
-        trans, time = self.queue.topitem()
-        return time, trans[0], trans[1:]
+        trans, times = self.queue.topitem()
+        return times[0], trans
 
     def add_transition(self, transition, time, state, rng):
         """Add transition to priority queue and generate its next firing time"""
-        if self.queue.get((transition, 0)) is None:
-            self.queue.additem((transition, 0), transition.next_occurrence(time, state, rng))
-            self.multiplicity[transition] = 0
-        else:
-            self.queue.additem((transition, (self.multiplicity[transition] + 1)),
-                               transition.next_occurrence(time, state, rng))
-            self.multiplicity[transition] += 1
+        if transition not in self.queue:
+            self.queue[transition] = []
+        self.queue[transition].append(transition.next_occurrence(time, state, rng))
+        self.queue[transition].sort()
+        self.queue.heapify()
 
-    def remove_transition(self, transition, index=0):
+    def remove_transition(self, transition):
         """Remove one occurrence of the given transition"""
-        mult = self.multiplicity[transition]
-        if index == mult == 0:
-            del self.queue[transition, index]
-            del self.multiplicity[transition]
-        else:
-            if index != mult:
-                self.queue[transition, index] = self.queue[transition, mult]
-            del self.queue[transition, mult]
-            self.multiplicity[transition] -= 1
+        del self.queue[transition][-1]
+        if not self.queue[transition]:
+            del self.queue.transition
 
-    def update_one_transition(self, transition, idx, time, state, rng):
-        """Recalculate next firing time for one transition instance
-        
-        idx is the multiplicity index of the particular occurrence to
-        be updated.
-        """
-        self.queue[transition, idx] = transition.next_occurrence(time, state, rng)
+    def update_one_transition(self, transition, time, state, rng):
+        """Recalculate next firing time for one transition instance"""
+        times = self.queue[transition]
+        times[0] = transition.next_occurrence(time, state, rng)
+        times.sort()
+        self.queue.heapify()
 
     def update_transitions(self, transitions, time, state, rng):
         """Recalculate next firing times for all given transitions"""
         for trans in transitions:
-            for idx in range(self.multiplicity[trans] + 1):
-                self.queue[trans, idx] = trans.next_occurrence(time, state, rng)
+            times = sorted(
+                trans.next_occurrence(time, state, rng)
+                for _ in self.queue[trans]
+            )
+            self.queue[trans] = times
 
 
 class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
@@ -438,27 +429,29 @@ class NextReactionMethod(FirstReactionMethod):
 
     def prune_transitions(self):
         # XXX this should not go linearly through the whole queue!
-        for trans, time in self.firings.items():
-            if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
-                self.dependency_graph.remove_reaction(trans[0])
-                self.firings.remove_transition(*trans)
+        #for trans, time in self.firings.items():
+        #    if time == float('inf') and (trans[0].rule or isinstance(trans[0], Event)):
+        #        self.dependency_graph.remove_reaction(trans[0])
+        #        self.firings.remove_transition(*trans)
+        pass
 
     def propose_potential_transition(self):
         if self.firings:
-            return self.firings.next_item()
+            time, trans = self.firings.next_item()
+            return time, trans, ()
         else:
-            return float('inf'), None, (0,)
+            return float('inf'), None, ()
 
-    def perform_transition(self, time, transition, mult=0):
+    def perform_transition(self, time, transition):
         super(NextReactionMethod, self).perform_transition(time, transition)
-        self.firings.update_one_transition(transition, mult, time, self.state, self.rng)
+        self.firings.update_one_transition(transition, time, self.state, self.rng)
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.firings.update_transitions(affected, time, self.state, self.rng)
 
-    def reject_transition(self, time, transition, mult):
+    def reject_transition(self, time, transition):
         self.time = time
         transition.last_occurrence = time
-        self.firings.update_one_transition(transition, mult, time, self.state, self.rng)
+        self.firings.update_one_transition(transition, time, self.state, self.rng)
 
 
 class AndersonNRM(FirstReactionMethod):
