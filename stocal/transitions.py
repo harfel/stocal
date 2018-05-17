@@ -576,7 +576,7 @@ class Process(object):
         self.transitions = transitions or []
         self.rules = rules or []
 
-    def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None):
+    def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Create trajectory sampler for given state
 
         The method automatically chooses a suitable sampler for the
@@ -594,15 +594,12 @@ class Process(object):
             for rule in self.rules:
                 yield rule.Transition
 
-        # DirectMethod for process with normal reactions
-        if all(issubclass(r, Reaction) and r.is_autonomous
-               for r in transition_types()):
-            from .algorithms import DirectMethod as Sampler
-        # FirstReactionMethod if all reactions are autonomous
-        elif all(r.is_autonomous for r in transition_types()):
-            from .algorithms import NextReactionMethod as Sampler
-        # AndersonNRM if reactions are non-autonomous
-        else:
+        # select suitable simulation algorithm
+        if any(not r.is_autonomous for r in transition_types()):
+            # AndersonNRM for processes with non-autonomous reactions
             from .algorithms import AndersonNRM as Sampler
+        else:
+            # NextReactionMethod for anything else
+            from .algorithms import NextReactionMethod as Sampler
 
-        return Sampler(self, state, tstart, tmax, steps)
+        return Sampler(self, state, tstart, tmax, steps, seed=seed)

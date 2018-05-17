@@ -107,6 +107,7 @@ class TestTutorial(unittest.TestCase):
         for _ in trajectory:
             pass
 
+    @unittest.skip("Tests an implementation detail.")
     def test_types(self):
         """Specifying types via ReactionRule.signature"""
         process = Process(rules=[Association()])
@@ -114,7 +115,7 @@ class TestTutorial(unittest.TestCase):
                                          Rna('mRNA_a'):10,
                                          Rna('mRNA_b'):10},
                                         steps=100)
-        self.assertEqual(len(trajectory.transitions), 2) # XXX implementation detail!
+        self.assertEqual(len(trajectory.transitions), 2)
         for _ in trajectory:
             pass
 

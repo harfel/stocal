@@ -1,5 +1,6 @@
 - reuse dependency graph in DirectMethod and AndersonNRM
 - reuse binary tree in AndersonNRM
+? how to access TrajectorySampler.transitions?
 = feature/nrm
 * stocal/examples/typed_rules.py does not do what it claims to do
 * specify and test whether events at tmax are included in the trajectory or not
