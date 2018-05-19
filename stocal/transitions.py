@@ -602,4 +602,4 @@ class Process(object):
             # NextReactionMethod for anything else
             from .algorithms import NextReactionMethod as Sampler
 
-        return Sampler(self, state, tstart, tmax, steps, seed=seed)
+        return Sampler(self, state, tstart, tmax, steps)

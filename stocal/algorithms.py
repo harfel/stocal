@@ -38,7 +38,7 @@ class DependencyGraph(dict):
 
     A mapping from species to transitions that are affected by a
     change in the respecive species' count. A transition counts as
-    affected if it appeats among the reactants of the transition.
+    affected if it appears among the reactants of the transition.
     """
     def add_reaction(self, reaction):
         """Add reaction to dependencies"""
@@ -64,62 +64,97 @@ class DependencyGraph(dict):
         )
 
 
+class MultiDict(object):
+    """Dictionary with multiplicity count"""
+    def __init__(self):
+        self._dict = dict()
+        self.depleted = []
+
+    def __contains__(self, item):
+        return item not in self._dict
+
+    def add_item(self, key, value_callback):
+        if key not in self._dict:
+            # insert transition with propensity and multiplicity 1
+            self._dict[key] = [value_callback(key), 1]
+        else:
+            # increase multiplicity count
+            self._dict[key][1] += 1
+
+    def __delitem__(self, key):
+        del self._dict[key]
+
+    def items(self):
+        for key, value in self._dict.items():
+            p, n = value
+            yield key, n*p
+
+    def update_item(self, key, value, allow_delete=False):
+        self._dict[key][0] = value
+        if value == 0 and allow_delete:
+            # mark depleted reactions
+            self.depleted.append(key)
+
+    def total_value(self):
+        return sum(n*p for p, n in self._dict.values())
+
+
 class PriorityQueue(object):
     """Indexed priority queue
 
-    Data structure used for Gibson-and-Bruck-like a transition selection.
+    Data structure used for Gibson-and-Bruck-like transition selection.
     See the documentation of pqdict for the general properties of the
     data structure. Unlike the standard indexed priority queue, this
     implementation allows keys (transitions) to have multiple associated
     values.
     """
     def __init__(self):
-        self.queue = pqdict()
+        self._queue = pqdict()
 
     def __bool__(self):
-        return bool(self.queue)
+        return bool(self._queue)
 
     __nonzero__ = __bool__
 
     def __getitem__(self, key):
-        return self.queue[key]
+        return self._queue[key]
 
-    def next_item(self):
+    def topitem(self):
         """Retrieve next occurring transition, time, and occurrence index"""
-        trans, times = self.queue.topitem()
+        trans, times = self._queue.topitem()
         return times[0], trans
 
     def add_transition(self, transition, time, state, rng):
-        """Add transition to priority queue and generate its next firing time"""
-        if transition not in self.queue:
-            self.queue[transition] = []
-        self.queue[transition].append(transition.next_occurrence(time, state, rng))
-        self.queue[transition].sort()
-        self.queue.heapify()
+        """Add transition to priority _queue and generate its next firing time"""
+        if transition not in self._queue:
+            self._queue[transition] = []
+        self._queue[transition].append(transition.next_occurrence(time, state, rng))
+        self._queue[transition].sort()
+        self._queue.heapify()
 
     def remove_transition(self, transition):
         """Remove one occurrence of the given transition"""
-        times = [t for t in self.queue[transition] if t != float('inf')]
+        times = [t for t in self._queue[transition] if t != float('inf')]
         if times:
-            self.queue[transition] = times
+            self._queue[transition] = times
         else:
-            del self.queue[transition]
+            del self._queue[transition]
 
     def update_one_transition(self, transition, time, state, rng):
         """Recalculate next firing time for one transition instance"""
-        times = self.queue[transition]
+        times = self._queue[transition]
         times[0] = transition.next_occurrence(time, state, rng)
         times.sort()
-        self.queue.heapify()
+        self._queue.heapify()
 
     def update_transitions(self, transitions, time, state, rng):
         """Recalculate next firing times for all given transitions"""
         for trans in transitions:
             times = sorted(
                 trans.next_occurrence(time, state, rng)
-                for _ in self.queue[trans]
+                for _ in self._queue[trans]
             )
-            self.queue[trans] = times
+            self._queue[trans] = times
 
 
 class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
@@ -309,27 +344,28 @@ class DirectMethod(TrajectorySampler):
             raise ValueError("DirectMethod only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
             raise ValueError("DirectMethod only works with Reactions.")
-        self.transitions = []
-        self.propensities = []
+        self.dependency_graph = DependencyGraph()
+        self.propensities = MultiDict()
         super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
-        self.transitions.append(transition)
+        self.dependency_graph.add_reaction(transition)
+        self.propensities.add_item(transition, self.calculate_propensity)
+
+    def update_state(self, dct):
+        super(DirectMethod, self).update_state(dct)
+        affected_transitions = self.dependency_graph.affected_transitions(dct)
+        self.update_propensities(affected_transitions)
 
     def prune_transitions(self):
-        depleted = [
-            i for i, (p, t) in enumerate(zip(self.propensities, self.transitions))
-            if p == 0. and t.rule
-        ]
-        for i in reversed(depleted):
-            del self.transitions[i]
-            del self.propensities[i]
+        for trans in self.propensities.depleted:
+            self.dependency_graph.remove_reaction(trans)
+            del self.propensities[trans]
 
     def propose_potential_transition(self):
         from math import log
 
-        self.propensities = [r.propensity(self.state) for r in self.transitions]
-        total_propensity = sum(self.propensities)
+        total_propensity = self.propensities.total_value()
         if not total_propensity:
             return float('inf'), None, tuple()
 
@@ -337,12 +373,26 @@ class DirectMethod(TrajectorySampler):
 
         transition = None
         pick = self.rng.random()*total_propensity
-        for propensity, transition in zip(self.propensities, self.transitions):
+        for transition, propensity in self.propensities.items():
             pick -= propensity
             if pick < 0.:
                 break
 
         return self.time + delta_t, transition, tuple()
+
+    def perform_transition(self, time, transition):
+        super(DirectMethod, self).perform_transition(time, transition)
+        affected = self.dependency_graph.affected_transitions(transition.affected_species)
+        self.update_propensities(affected)
+
+    def update_propensities(self, affected_transitions):
+        for trans in affected_transitions:
+            p = trans.propensity(self.state)
+            delete = trans.rule or isinstance(trans, Event)
+            self.propensities.update_item(trans, p, delete)
+
+    def calculate_propensity(self, transition):
+        return transition.propensity(self.state)
 
 
 class FirstReactionMethod(TrajectorySampler):
@@ -437,17 +487,20 @@ class NextReactionMethod(FirstReactionMethod):
 
     def propose_potential_transition(self):
         if self.firings:
-            time, trans = self.firings.next_item()
+            time, trans = self.firings.topitem()
             return time, trans, ()
         else:
             return float('inf'), None, ()
 
     def perform_transition(self, time, transition):
         super(NextReactionMethod, self).perform_transition(time, transition)
+        self.update_firing_times(transition)
+
+    def update_firing_times(self, transition):
         # update affected firing times
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
-        self.firings.update_one_transition(transition, time, self.state, self.rng)
-        self.firings.update_transitions(affected, time, self.state, self.rng)
+        self.firings.update_one_transition(transition, self.time, self.state, self.rng)
+        self.firings.update_transitions(affected, self.time, self.state, self.rng)
         # mark depleted reactions
         for trans in affected:
             if float('inf') in self.firings[trans] and (trans.rule or isinstance(trans, Event)):
