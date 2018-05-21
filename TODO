@@ -1,4 +1,4 @@
-- adapt AndersonNRM
+- document and clean code
 ? how to access TrajectorySampler.transitions?
 = feature/nrm
 * stocal/examples/typed_rules.py does not do what it claims to do

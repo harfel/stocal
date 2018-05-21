@@ -107,9 +107,28 @@ class PriorityQueue(object):
     data structure. Unlike the standard indexed priority queue, this
     implementation allows keys (transitions) to have multiple associated
     values.
+
+    XXX document data
     """
-    def __init__(self):
+    class Item(object):
+        "XXX comment"
+        def __init__(self, **params):
+            for key, value in params.items():
+                setattr(self, key, value)
+
+        def __repr__(self):
+            return '<Data %s>' % ', '.join('%s=%r' % (k, v) for k, v in self.__dict__.items())
+
+        def __eq__(self, other):
+            return self.__dict__ == other.__dict__
+
+        def __lt__(self, other):
+            return False
+
+
+    def __init__(self, occurrence_callback):
         self._queue = pqdict()
+        self.occurrence_callback = occurrence_callback
 
     def __bool__(self):
         return bool(self._queue)
@@ -121,14 +140,19 @@ class PriorityQueue(object):
 
     def topitem(self):
         """Retrieve next occurring transition, time, and occurrence index"""
-        trans, times = self._queue.topitem()
-        return times[0], trans
+        trans, occurrences = self._queue.topitem()
+        time, data = occurrences[0]
+        return time, trans, (data,)
 
-    def add_transition(self, transition, time, state, rng):
+
+    def add_transition(self, transition, **params):
         """Add transition to priority _queue and generate its next firing time"""
         if transition not in self._queue:
             self._queue[transition] = []
-        self._queue[transition].append(transition.next_occurrence(time, state, rng))
+
+        data = self.Item(**params)
+        time = self.occurrence_callback(transition, data)
+        self._queue[transition].append((time, data))
         self._queue[transition].sort()
         self._queue.heapify()
 
@@ -140,19 +164,20 @@ class PriorityQueue(object):
         else:
             del self._queue[transition]
 
-    def update_one_transition(self, transition, time, state, rng):
+    def update_one_transition(self, transition):
         """Recalculate next firing time for one transition instance"""
-        times = self._queue[transition]
-        times[0] = transition.next_occurrence(time, state, rng)
-        times.sort()
+        occurrences = self._queue[transition]
+        time, data = occurrences[0]
+        occurrences[0] = self.occurrence_callback(transition, data), data
+        occurrences.sort()
         self._queue.heapify()
 
-    def update_transitions(self, transitions, time, state, rng):
+    def update_transitions(self, transitions):
         """Recalculate next firing times for all given transitions"""
         for trans in transitions:
             times = sorted(
-                trans.next_occurrence(time, state, rng)
-                for _ in self._queue[trans]
+                (self.occurrence_callback(trans, data), data)
+                for time, data in self._queue[trans]
             )
             self._queue[trans] = times
 
@@ -258,7 +283,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         """
         return True
 
-    def perform_transition(self, time, transition):
+    def perform_transition(self, time, transition, *args):
         """Perform the given transition.
 
         Sets sampler.time to time, increases the number of steps,
@@ -466,18 +491,18 @@ class NextReactionMethod(FirstReactionMethod):
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self.dependency_graph = DependencyGraph()
-        self.firings = PriorityQueue()
+        self.firings = PriorityQueue(self.calculate_next_occurrence)
         self.depleted = []
         super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
-    def add_transition(self, transition):
+    def add_transition(self, transition, **params):
         self.dependency_graph.add_reaction(transition)
-        self.firings.add_transition(transition, self.time, self.state, self.rng)
+        self.firings.add_transition(transition, **params)
 
     def update_state(self, dct):
         super(NextReactionMethod, self).update_state(dct)
         affected = self.dependency_graph.affected_transitions(dct)
-        self.firings.update_transitions(affected, self.time, self.state, self.rng)
+        self.firings.update_transitions(affected)
 
     def prune_transitions(self):
         for trans in self.depleted:
@@ -487,32 +512,34 @@ class NextReactionMethod(FirstReactionMethod):
 
     def propose_potential_transition(self):
         if self.firings:
-            time, trans = self.firings.topitem()
-            return time, trans, ()
+            return self.firings.topitem()
         else:
             return float('inf'), None, ()
 
-    def perform_transition(self, time, transition):
-        super(NextReactionMethod, self).perform_transition(time, transition)
-        self.update_firing_times(transition)
+    def perform_transition(self, time, transition, *args):
+        super(NextReactionMethod, self).perform_transition(time, transition, *args)
+        self.update_firing_times(time, transition, *args)
 
-    def update_firing_times(self, transition):
+    def update_firing_times(self, time, transition, *args):
         # update affected firing times
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
-        self.firings.update_one_transition(transition, self.time, self.state, self.rng)
-        self.firings.update_transitions(affected, self.time, self.state, self.rng)
+        self.firings.update_one_transition(transition)
+        self.firings.update_transitions(affected)
         # mark depleted reactions
         for trans in affected:
-            if float('inf') in self.firings[trans] and (trans.rule or isinstance(trans, Event)):
+            if any(occurrence[0] == float('inf') for occurrence in self.firings[trans]) and (trans.rule or isinstance(trans, Event)):
                 self.depleted.append(trans)
 
-    def reject_transition(self, time, transition):
+    def reject_transition(self, time, transition, *args):
         self.time = time
         transition.last_occurrence = time
-        self.firings.update_one_transition(transition, time, self.state, self.rng)
+        self.firings.update_one_transition(transition)
+
+    def calculate_next_occurrence(self, transition, data):
+        return transition.next_occurrence(self.time, self.state, self.rng)
 
 
-class AndersonNRM(FirstReactionMethod):
+class AndersonNRM(NextReactionMethod):
     """Next reaction method modified for time-dependent processes
 
     A stochastic simulation algorithm, published in
@@ -524,47 +551,24 @@ class AndersonNRM(FirstReactionMethod):
 
     See help(TrajectorySampler) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        self.T = []
-        self.P = []
-        super(AndersonNRM, self).__init__(process, state, t, tmax, steps, seed)
-
     def add_transition(self, transition):
+        """Add transition with own internal clock (T, P)"""
         from math import log
+        super(AndersonNRM, self).add_transition(
+            transition,
+            T=0, P=-log(self.rng.random())
+        )
 
-        super(AndersonNRM, self).add_transition(transition)
-        self.T.append(0)
-        self.P.append(-log(self.rng.random()))
-
-    def prune_transitions(self):
-        depleted = [
-            k[0] for t, r, k in self.firings
-            if t == float('inf') and (r.rule or isinstance(r, Event))
-        ]
-        for k in reversed(depleted):
-            del self.transitions[k]
-            del self.T[k]
-            del self.P[k]
-
-    def propose_potential_transition(self):
-        def eq_13(trans, target):
-            """Determine timestep for a transition in global time scale"""
-            if isinstance(trans, Event):
-                return trans.next_occurrence(self.time)
-            else:
-                return trans.propensity_meets_target(self.state, self.time, target) +  self.time
-
-        self.firings = [
-            (eq_13(trans, Pk-Tk), trans, (k,))
-            for k, (trans, Pk, Tk)
-            in enumerate(zip(self.transitions, self.P, self.T))
-        ]
-        if self.firings:
-            return min(self.firings, key=lambda item: item[0])
+    def calculate_next_occurrence(self, transition, data):
+        """Determine next firing time of a transition in global time scale"""
+        target = data.P-data.T
+        if isinstance(transition, Event):
+            return transition.next_occurrence(self.time)
         else:
-            return float('inf'), None, tuple()
+            return self.time + transition.propensity_meets_target(
+                self.state, self.time, target)
 
-    def perform_transition(self, time, transition, mu):
+    def perform_transition(self, time, transition, data):
         from math import log
 
         def int_a_dt(trans, delta_t):
@@ -574,7 +578,12 @@ class AndersonNRM(FirstReactionMethod):
             else:
                 return trans.propensity_integral(self.state, self.time, delta_t)
 
-        self.T = [Tk+int_a_dt(trans, time-self.time) for Tk, trans in
-                  zip(self.T, self.transitions)]
-        self.P[mu] -= log(self.rng.random())
+        data.P -= log(self.rng.random())
+        affected = self.dependency_graph.affected_transitions(
+            transition.affected_species
+        )
+        for trans in affected:
+            for time, data in self.firings[trans]:
+                data.T += int_a_dt(trans, time-self.time)
+
         super(AndersonNRM, self).perform_transition(time, transition)
