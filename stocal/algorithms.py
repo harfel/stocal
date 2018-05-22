@@ -23,6 +23,17 @@
 This module provides implementations of different stochastic simulation
 algorithms. All implementations have to implement the TrajectorySampler
 interface by subclassing this abstract base class.
+
+The module also provides several helper classes for general stochastic
+simulation algorithms. DependencyGraph is a generic species-dependency
+graph that gives quick access to the set of affected transitions from
+a set of affected species. MultiDict and PriorityQueue are data
+structures that can be used for managing transitions. MultiDict is
+a mapping from transitions to propensities used in DirectMethod and
+related algorithms. Priority Queue is an indexed priority queue as it
+appears in Gibson-Bruck like NextReactionMethod's. Both data structures
+allow for transitions to be added multiple times, and keep track of
+their multiplicity.
 """
 
 import abc
@@ -56,7 +67,7 @@ class DependencyGraph(dict):
     def affected_transitions(self, species):
         """Get all transitions affected by a change in any of the given species
 
-        Species is an iterable and the method returns a set.
+        Species is an iterable and the method returns a set of Transition's.
         """
         return set(
             trans for reactant in species
@@ -65,59 +76,87 @@ class DependencyGraph(dict):
 
 
 class MultiDict(object):
-    """Dictionary with multiplicity count"""
+    """Dictionary with multiplicity count
+
+    MultiDict supports DirectMethod like samplers with a dictionary
+    that maps transitions to propensities. Unlike normal dictionaries
+    MultiDict keep count of the number of times a key is added, i.e.
+    its multipliciry. Therefore, the signature of MultiDict is
+
+        transition -> (propensity, multiplicity)
+
+    This class and its interface are not module level implementation
+    details and are not specified through tests. They might change in
+    future versions of stocal.
+    """
     def __init__(self):
         self._dict = dict()
-        self.depleted = []
 
     def __contains__(self, item):
         return item not in self._dict
 
-    def add_item(self, key, value_callback):
+    def add_item(self, key, value):
+        """Add item with associated value.
+
+        If the key has been inserted ealrier, its multiplicity is
+        increased by one. Otherwise, it is stored with multiplicity
+        one."""
         if key not in self._dict:
             # insert transition with propensity and multiplicity 1
-            self._dict[key] = [value_callback(key), 1]
+            self._dict[key] = [value, 1]
         else:
             # increase multiplicity count
             self._dict[key][1] += 1
 
     def __delitem__(self, key):
+        """Delete all instances of the given key."""
         del self._dict[key]
 
     def items(self):
-        for key, value in self._dict.items():
-            p, n = value
-            yield key, n*p
+        """Iterate over key, value, multiplicity triples."""
+        for key, item in self._dict.items():
+            value, multiplicity = item
+            yield key, value, multiplicity
 
-    def update_item(self, key, value, allow_delete=False):
+    def update_item(self, key, value):
+        """Change value associated with key"""
         self._dict[key][0] = value
-        if value == 0 and allow_delete:
-            # mark depleted reactions
-            self.depleted.append(key)
-
-    def total_value(self):
-        return sum(n*p for p, n in self._dict.values())
 
 
 class PriorityQueue(object):
     """Indexed priority queue
 
-    Data structure used for Gibson-and-Bruck-like transition selection.
+    Data structure used for Gibson-Bruck-like transition selection.
     See the documentation of pqdict for the general properties of the
     data structure. Unlike the standard indexed priority queue, this
     implementation allows keys (transitions) to have multiple associated
-    values.
+    values. In addition, each instance of a key can have optional
+    associated data. The exact mapping is therefore
 
-    XXX document data
+        key -> [(value_1, data_1), (value_2, data_2), ...]
+
+
+    Instead of assigning values directly, The PriorityQueue constructor
+    takes a function to calculate values for a key. Its signature is
+
+        value_callback(key, data) -> float.
+
+    Custom data is passed as keyword arguments to the add_item method.
+    add_item creates a mutable instance of type PriorityQueue.Item for
+    each transition and binds keyword arguments to it. This data object
+    is retrieved by queue access methods and is also passed to the
+    value_callback.
     """
     class Item(object):
-        "XXX comment"
+        """Namespace to hold custom associated data"""
         def __init__(self, **params):
             for key, value in params.items():
                 setattr(self, key, value)
 
         def __repr__(self):
-            return '<Data %s>' % ', '.join('%s=%r' % (k, v) for k, v in self.__dict__.items())
+            return '<Data %s>' % ', '.join('%s=%r' % (k, v)
+                                           for k, v
+                                           in self.__dict__.items())
 
         def __eq__(self, other):
             return self.__dict__ == other.__dict__
@@ -126,9 +165,9 @@ class PriorityQueue(object):
             return False
 
 
-    def __init__(self, occurrence_callback):
+    def __init__(self, value_callback):
         self._queue = pqdict()
-        self.occurrence_callback = occurrence_callback
+        self.value_callback = value_callback
 
     def __bool__(self):
         return bool(self._queue)
@@ -139,47 +178,53 @@ class PriorityQueue(object):
         return self._queue[key]
 
     def topitem(self):
-        """Retrieve next occurring transition, time, and occurrence index"""
-        trans, occurrences = self._queue.topitem()
-        time, data = occurrences[0]
-        return time, trans, (data,)
+        """Yield (value, key, (data,)) triple with lowest value."""
+        key, instances = self._queue.topitem()
+        value, data = instances[0]
+        return value, key, (data,)
 
+    def add_item(self, key, **params):
+        """Add instance of key to the queue.
 
-    def add_transition(self, transition, **params):
-        """Add transition to priority _queue and generate its next firing time"""
-        if transition not in self._queue:
-            self._queue[transition] = []
+        Any additional keyword arguments are used to populate a
+        PriorityQueue.Item object that is subsequently passed to
+        the queue's value_callback and stored together with the value
+        of the instance.
+        """
+        if key not in self._queue:
+            self._queue[key] = []
 
         data = self.Item(**params)
-        time = self.occurrence_callback(transition, data)
-        self._queue[transition].append((time, data))
-        self._queue[transition].sort()
+        value = self.value_callback(key, data)
+        self._queue[key].append((value, data))
+        self._queue[key].sort()
         self._queue.heapify()
 
-    def remove_transition(self, transition):
-        """Remove one occurrence of the given transition"""
-        times = [t for t in self._queue[transition] if t != float('inf')]
-        if times:
-            self._queue[transition] = times
+    def remove_item(self, key):
+        """Remove all instances of key with a value of float('inf')"""
+        # XXX the value corresponding to depletion could be more generic
+        remaining = [t for t in self._queue[key] if t != float('inf')]
+        if remaining:
+            self._queue[key] = remaining
         else:
-            del self._queue[transition]
+            del self._queue[key]
 
-    def update_one_transition(self, transition):
-        """Recalculate next firing time for one transition instance"""
-        occurrences = self._queue[transition]
-        time, data = occurrences[0]
-        occurrences[0] = self.occurrence_callback(transition, data), data
-        occurrences.sort()
+    def update_one_instance(self, key):
+        """Recalculates the value for the 'first' instance of key."""
+        instances = self._queue[key]
+        _, data = instances[0]
+        instances[0] = self.value_callback(key, data), data
+        instances.sort()
         self._queue.heapify()
 
-    def update_transitions(self, transitions):
-        """Recalculate next firing times for all given transitions"""
-        for trans in transitions:
-            times = sorted(
-                (self.occurrence_callback(trans, data), data)
-                for time, data in self._queue[trans]
+    def update_items(self, keys):
+        """Recalculate values for all provided keys."""
+        for key in keys:
+            instances = sorted(
+                (self.value_callback(key, data), data)
+                for value, data in self._queue[key]
             )
-            self._queue[trans] = times
+            self._queue[key] = instances
 
 
 class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
@@ -275,7 +320,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
 
     def is_applicable(self, time, transition, *args):
         """True if the transition is applicable
-        
+
         The standard implementation always returns True, i.e. it assumes
         that any transition returned by propose_potential_transition is
         applicable. Overwrite this method if you want to implement
@@ -306,7 +351,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
 
     def reject_transition(self, time, transition, *args):
         """Do not execute the given transition.
-        
+
         The default implementation does nothing. Overwrite this method
         if you, for example, want to prevent the same transition from
         being proposed again.
@@ -371,11 +416,13 @@ class DirectMethod(TrajectorySampler):
             raise ValueError("DirectMethod only works with Reactions.")
         self.dependency_graph = DependencyGraph()
         self.propensities = MultiDict()
+        self.depleted = []
         super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition):
         self.dependency_graph.add_reaction(transition)
-        self.propensities.add_item(transition, self.calculate_propensity)
+        propensity = self.calculate_propensity(transition)
+        self.propensities.add_item(transition, propensity)
 
     def update_state(self, dct):
         super(DirectMethod, self).update_state(dct)
@@ -383,14 +430,17 @@ class DirectMethod(TrajectorySampler):
         self.update_propensities(affected_transitions)
 
     def prune_transitions(self):
-        for trans in self.propensities.depleted:
+        for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
             del self.propensities[trans]
+        self.depleted = []
 
     def propose_potential_transition(self):
         from math import log
 
-        total_propensity = self.propensities.total_value()
+        total_propensity = sum(mult*prop
+                               for transition, prop, mult
+                               in self.propensities.items())
         if not total_propensity:
             return float('inf'), None, tuple()
 
@@ -398,8 +448,8 @@ class DirectMethod(TrajectorySampler):
 
         transition = None
         pick = self.rng.random()*total_propensity
-        for transition, propensity in self.propensities.items():
-            pick -= propensity
+        for transition, prop, mult in self.propensities.items():
+            pick -= mult*prop
             if pick < 0.:
                 break
 
@@ -411,12 +461,19 @@ class DirectMethod(TrajectorySampler):
         self.update_propensities(affected)
 
     def update_propensities(self, affected_transitions):
+        """Update propensities of all given transitions.
+
+        If the new propensity of a transition is 0 and the transition
+        has been derived by a rule or is an Event, the transition gets
+        added to self.depleted for later pruning."""
         for trans in affected_transitions:
-            p = trans.propensity(self.state)
-            delete = trans.rule or isinstance(trans, Event)
-            self.propensities.update_item(trans, p, delete)
+            propensity = trans.propensity(self.state)
+            if propensity == 0 and (trans.rule or isinstance(trans, Event)):
+                self.depleted.append(trans)
+            self.propensities.update_item(trans, propensity)
 
     def calculate_propensity(self, transition):
+        """Return propensity of the given transition for current state."""
         return transition.propensity(self.state)
 
 
@@ -463,12 +520,12 @@ class FirstReactionMethod(TrajectorySampler):
         """Returns False for Event's that lack their reactants."""
         if isinstance(transition, Event):
             return transition.reactants <= self.state
-        else :
+        else:
             return super(FirstReactionMethod, self).is_applicable(time, transition, *args)
 
     def reject_transition(self, time, transition, *args):
         """Reject inapplicable Event
-        
+
         Advance system time to transition time and pretend transition
         had happened there, but do not change the state.
         """
@@ -497,17 +554,17 @@ class NextReactionMethod(FirstReactionMethod):
 
     def add_transition(self, transition, **params):
         self.dependency_graph.add_reaction(transition)
-        self.firings.add_transition(transition, **params)
+        self.firings.add_item(transition, **params)
 
     def update_state(self, dct):
         super(NextReactionMethod, self).update_state(dct)
         affected = self.dependency_graph.affected_transitions(dct)
-        self.firings.update_transitions(affected)
+        self.firings.update_items(affected)
 
     def prune_transitions(self):
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
-            self.firings.remove_transition(trans)
+            self.firings.remove_item(trans)
         self.depleted = []
 
     def propose_potential_transition(self):
@@ -521,21 +578,25 @@ class NextReactionMethod(FirstReactionMethod):
         self.update_firing_times(time, transition, *args)
 
     def update_firing_times(self, time, transition, *args):
+        """Update next occurrences of firing and all affected transitions"""
         # update affected firing times
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
-        self.firings.update_one_transition(transition)
-        self.firings.update_transitions(affected)
+        self.firings.update_one_instance(transition)
+        self.firings.update_items(affected)
         # mark depleted reactions
         for trans in affected:
-            if any(occurrence[0] == float('inf') for occurrence in self.firings[trans]) and (trans.rule or isinstance(trans, Event)):
+            if (any(occurrence[0] == float('inf')
+                    for occurrence in self.firings[trans])
+                    and (trans.rule or isinstance(trans, Event))):
                 self.depleted.append(trans)
 
     def reject_transition(self, time, transition, *args):
         self.time = time
         transition.last_occurrence = time
-        self.firings.update_one_transition(transition)
+        self.firings.update_one_instance(transition)
 
     def calculate_next_occurrence(self, transition, data):
+        """Calculate next occurrence of given reaction."""
         return transition.next_occurrence(self.time, self.state, self.rng)
 
 
