@@ -37,6 +37,7 @@ their multiplicity.
 """
 
 import abc
+import warnings
 from pqdict import pqdict
 
 from ._utils import with_metaclass
@@ -102,7 +103,7 @@ class MultiDict(object):
         increased by one. Otherwise, it is stored with multiplicity
         one."""
         if key not in self._dict:
-            # insert transition with propensity and multiplicity 1
+            # insert transition with propensity and multiplicity one
             self._dict[key] = [value, 1]
         else:
             # increase multiplicity count
@@ -111,6 +112,14 @@ class MultiDict(object):
     def __delitem__(self, key):
         """Delete all instances of the given key."""
         del self._dict[key]
+
+    def keys(self):
+        """Return a list of all present transition instances."""
+        warnings.warn("Method will return an iterator in future versions.", DeprecationWarning)
+        return [
+            key for key, (prop, mult) in self._dict.items()
+            for i in range(mult)
+        ]
 
     def items(self):
         """Iterate over key, value, multiplicity triples."""
@@ -168,6 +177,7 @@ class PriorityQueue(object):
     def __init__(self, value_callback):
         self._queue = pqdict()
         self.value_callback = value_callback
+        self.depletion_value = float('inf')
 
     def __bool__(self):
         return bool(self._queue)
@@ -176,6 +186,14 @@ class PriorityQueue(object):
 
     def __getitem__(self, key):
         return self._queue[key]
+
+    def keys(self):
+        """Return a list of all present transition instances."""
+        warnings.warn("Method will return an iterator in future versions.", DeprecationWarning)
+        return [
+            key for key, instances in self._queue.items()
+            for i in instances
+        ]
 
     def topitem(self):
         """Yield (value, key, (data,)) triple with lowest value."""
@@ -202,8 +220,8 @@ class PriorityQueue(object):
 
     def remove_item(self, key):
         """Remove all instances of key with a value of float('inf')"""
-        # XXX the value corresponding to depletion could be more generic
-        remaining = [t for t in self._queue[key] if t != float('inf')]
+        remaining = [t for t in self._queue[key]
+                     if t != self.depletion_value]
         if remaining:
             self._queue[key] = remaining
         else:
@@ -317,6 +335,16 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         probability distributions.
         """
         return float('inf'), None, tuple()
+
+    @abc.abstractproperty
+    def transitions(self):
+        """Return list of all transitions
+
+        Implementations need to return every instance of an added
+        transition, i.e. two copies of a transition that has
+        multiplicity two.
+        """
+        return []
 
     def is_applicable(self, time, transition, *args):
         """True if the transition is applicable
@@ -434,6 +462,10 @@ class DirectMethod(TrajectorySampler):
             self.dependency_graph.remove_reaction(trans)
             del self.propensities[trans]
         self.depleted = []
+
+    @property
+    def transitions(self):
+        return self.propensities.keys()
 
     def propose_potential_transition(self):
         from math import log
@@ -566,6 +598,10 @@ class NextReactionMethod(FirstReactionMethod):
             self.dependency_graph.remove_reaction(trans)
             self.firings.remove_item(trans)
         self.depleted = []
+
+    @property
+    def transitions(self):
+        return self.firings.keys()
 
     def propose_potential_transition(self):
         if self.firings:

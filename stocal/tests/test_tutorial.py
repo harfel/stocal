@@ -107,7 +107,6 @@ class TestTutorial(unittest.TestCase):
         for _ in trajectory:
             pass
 
-    @unittest.skip("Tests an implementation detail.")
     def test_types(self):
         """Specifying types via ReactionRule.signature"""
         process = Process(rules=[Association()])

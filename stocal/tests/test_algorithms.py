@@ -172,6 +172,14 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         self.assertEqual(sampler.step, 0)
         self.assertEqual(sampler.time, 0.)
 
+    def test_transitions_counts_mutliplicities(self):
+        """Sampler.transitions should give access to all transitions."""
+        proc = stocal.Process()
+        sampler = self.Sampler(proc, {})
+        sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
+        sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
+        sampler.add_transition(stocal.MassAction({}, {'b':1}, 1.))
+        self.assertEqual(len(sampler.transitions), 3)
 
 
 class TestDirectMethod(TestTrajectorySampler):
