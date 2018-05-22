@@ -12,7 +12,7 @@
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
-- Improved performance of DirectMethod
+- Improved performance of DirectMethod and AndersonNRM
 
 
 ## [1.1.1] - 2018-03-21
