@@ -44,7 +44,7 @@ process = stocal.Process([
     Dissociation(['x2'], ['x', 'x'], k_forward),
 ])
 
-state = {'x2': x_tot/3, 'x': x_tot-2*x_tot/3}
+state = {'x2': x_tot//3, 'x': x_tot-2*x_tot//3}
 
 if __name__ == '__main__':
     traj = process.trajectory(state, tmax=125.)

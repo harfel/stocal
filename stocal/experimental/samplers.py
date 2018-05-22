@@ -136,28 +136,10 @@ class Process(stocal.transitions.Process):
         In conjunction with steps, the sampler will yield results after
         a given number of steps.
         """
-        from stocal.transitions import Reaction
-        
-        def transition_types():
-            for trans in self.transitions:
-                yield trans
-            for rule in self.rules:
-                yield rule.Transition
-
-        # select suitable simulation algorithm
-        if all(issubclass(r, Reaction) and r.is_autonomous
-               for r in transition_types()):
-            # DirectMethod for process with normal reactions
-            from stocal.algorithms import DirectMethod as Algorithm
-        elif all(r.is_autonomous for r in transition_types()):
-            # FirstReactionMethod if all reactions are autonomous
-            from stocal.algorithms import FirstReactionMethod as Algorithm
-        else:
-            # AndersonNRM if reactions are non-autonomous
-            from stocal.algorithms import AndersonNRM as Algorithm
+        algorithm = super(Process, self).trajectory(state, tstart=tstart, seed=seed)
+        sampler = _Wrapper(algorithm)
 
         # instantiate requested sampling method
-        sampler = _Wrapper(Algorithm(self, state, t=tstart, seed=seed))
         if every is not None:
             if tmax != float('inf') and steps is not None:
                 raise ValueError("every can only be provided when either steps or tmax is given, not both.")

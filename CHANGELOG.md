@@ -6,11 +6,13 @@
 - Fixed issue #4 in FirstReactionMethod
 
 ### Added
-- Modular trajectory sampling interface stocal.experimental.samplers
+- Added modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
+- Added Gibson & Bruck's NextReactionMethod
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
+- Improved performance of DirectMethod and AndersonNRM
 
 
 ## [1.1.1] - 2018-03-21
