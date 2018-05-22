@@ -521,12 +521,16 @@ class FirstReactionMethod(TrajectorySampler):
     See help(TrajectorySampler) for usage information.
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        self.transitions = []
+        self._transitions = []
         self.firings = []
         super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
+    @property
+    def transitions(self):
+        return self._transitions
+
     def add_transition(self, transition):
-        self.transitions.append(transition)
+        self._transitions.append(transition)
 
     def prune_transitions(self):
         depleted = [
@@ -534,13 +538,13 @@ class FirstReactionMethod(TrajectorySampler):
             if t == float('inf') and (r.rule or isinstance(r, Event))
         ]
         for i in reversed(depleted):
-            del self.transitions[i]
+            del self._transitions[i]
             del self.firings[i]
 
     def propose_potential_transition(self):
         self.firings = [
             (trans.next_occurrence(self.time, self.state, self.rng), trans, tuple())
-            for trans in self.transitions
+            for trans in self._transitions
         ]
 
         if self.firings:
