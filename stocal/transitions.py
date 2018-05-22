@@ -110,8 +110,8 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
 
     def __repr__(self):
         try:
-            return '%s(%s, %s)' % (
-                type(self).__name__, self.reactants, self.products
+            return '<%s "%s">' % (
+                type(self).__name__, self
             )
         except AttributeError:
             return super(Transition, self).__repr__()
@@ -280,8 +280,8 @@ class MassAction(Reaction):
 
     def __repr__(self):
         try:
-            return '%s(%s, %s, %g)' % (
-                type(self).__name__, self.reactants, self.products, self.constant
+            return '<%s "%s", %g>' % (
+                type(self).__name__, self, self.constant
             )
         except AttributeError:
             return super(MassAction, self).__repr__()
