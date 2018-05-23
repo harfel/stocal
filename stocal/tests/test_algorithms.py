@@ -199,8 +199,7 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         sampler = self.Sampler(proc, {}, tmax=10)
         for _ in sampler:
             pass
-        self.assertEqual(sampler.state, {'a':10})
-        self.assertEqual(sampler.step, 10)
+        self.assertEqual(sampler.step, 11)
         self.assertAlmostEqual(sampler.time, 10)
 
     def test_fire_inferred_event(self):

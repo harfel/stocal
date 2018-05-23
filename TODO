@@ -1,5 +1,3 @@
-* specify and test whether events at tmax are included in the trajectory or not
-= hotfix/1.1.2
 - string rewrite rule support
 - support for proper delay events
 - libSBML integration

@@ -1,12 +1,13 @@
 # Changelog
 
-## [1.1.2]
+## [1.1.2] - 2018-05-23
 
 ### Fixed
 - Fixed issue #4 in FirstReactionMethod
 
 ### Changed
 - stocal.examples.type_rules now does what it claims to do
+- Events that occurr at tmax are now explicitly included in a trajectory
 
 
 ## [1.1.1] - 2018-03-21
