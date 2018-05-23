@@ -2,9 +2,6 @@
 
 ## [1.2]
 
-### Fixed
-- Fixed issue #4 in FirstReactionMethod
-
 ### Added
 - Added modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
@@ -13,6 +10,16 @@
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
 - Improved performance of DirectMethod and AndersonNRM
+
+
+## [1.1.2] - 2018-05-23
+
+### Fixed
+- Fixed issue #4 in FirstReactionMethod
+
+### Changed
+- stocal.examples.type_rules now does what it claims to do
+- Events that occurr at tmax are now explicitly included in a trajectory
 
 
 ## [1.1.1] - 2018-03-21

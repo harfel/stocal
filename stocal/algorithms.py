@@ -407,7 +407,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         while not self.has_reached_end():
             time, transition, args = self.propose_potential_transition()
 
-            if time >= self.tmax:
+            if time > self.tmax or time == float('inf'):
                 break
             elif not self.is_applicable(time, transition, *args):
                 self.reject_transition(time, transition, *args)
