@@ -688,3 +688,52 @@ class AndersonNRM(NextReactionMethod):
                 data.T += int_a_dt(trans, time-self.time)
 
         super(AndersonNRM, self).perform_transition(time, transition)
+
+class CompositionRejection(TrajectorySampler):
+    """Implementation of Gillespie's direct method."""
+
+    def propose_potential_transition(self):  # relates loop = pseudocode
+        from math import log
+
+        self.propensities = [r.propensity(self.state) for r in self.transitions]  # relate to step 5
+        total_propensity = sum(self.propensities)  # relates to step 6
+        if not total_propensity:
+            return float('inf'), None, tuple()
+
+        delta_t = -log(self.rng.random()) / total_propensity  # step 2 of the linear time algorithm. In addition, self.rng.random() is a random number, denoted by r1.
+
+        transition = None # this block of code relates to step 3a. """Group(G) is selected via binary search of the G values."""
+        pmin = min(self.propensities)
+        pmax = max(self.propensities)
+        x = pmin
+        count = 0
+        boundaries = []
+        while x < pmax:
+            x = x * 2
+            boundaries.append(x)
+            count = count + 1
+        Group = [] # Is the list for the group of propensities of reactions chosen by binary search
+        r2ps = self.rng.random() * total_propensity
+        for propensity, transition in zip(self.propensities, self.transitions):
+            for i in boundaries:
+                if i/2 < r2ps < i:
+                    for f in propensity:
+                        if i/2 < f < i:
+                            Group.append(f)
+
+        r3 = self.rng.random() # this block of code relates to step 3b
+        r4 = self.rng.random()
+        a = len(self.propensities)
+        m = max(self.propensities)
+        b = 0:m
+        if r3 in a:
+             i = r3
+        if r4 in b:
+                r = r4
+        for propensity, transition in Group: # searches in group selected by the composition approach of the prior block
+            if propensity < r:
+                 pass
+            else: # if propensity is more or equal to r
+                break # terminates the current loop and resumes execution at the next statement.
+
+        return self.time + delta_t, transition, tuple()
