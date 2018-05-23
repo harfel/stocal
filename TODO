@@ -1,4 +1,3 @@
-* stocal/examples/typed_rules.py does not do what it claims to do
 * specify and test whether events at tmax are included in the trajectory or not
 = hotfix/1.1.2
 - string rewrite rule support
