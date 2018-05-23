@@ -123,17 +123,18 @@ class TestPre2017AutoCatalysis(TestMassAction):
 
 
 class TestTypedRules(TestReactionRule):
-    from stocal.examples.typed_rules import Polymerization as Rule
-    from stocal.examples.typed_rules import ABlock, BBlock
+    from stocal.examples.typed_rules import AA_BB as Rule
 
     def test_infer_transitions_signature(self):
+        from stocal.examples.typed_rules import AA, BB
+        
         rule = self.Rule()
-        transitions = list(rule.infer_transitions({self.ABlock('a'): 2},
-                                                  {self.BBlock('z'): 1}))
+        transitions = list(rule.infer_transitions({AA('a'): 2},
+                                                  {BB('z'): 1}))
         self.assertEqual(len(transitions), 2)
 
-        transitions = list(rule.infer_transitions({self.ABlock('a'): 1},
-                                                  {self.ABlock('a'): 1, self.BBlock('z'): 1}))
+        transitions = list(rule.infer_transitions({AA('a'): 1},
+                                                  {AA('a'): 1, BB('z'): 1}))
         self.assertEqual(len(transitions), 0)
 
 

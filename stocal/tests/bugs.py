@@ -68,5 +68,21 @@ class Issue3(unittest.TestCase):
         self.assertEqual(traj.state, {})
 
 
+class Issue4(unittest.TestCase):
+    """Issue 4 [CLOSED]: https://github.com/harfel/stocal/issues/4
+
+    Opened 12-04-2018
+    Closed 19-04-2018
+    """
+    def setUp(self):
+        self.process = stocal.Process([stocal.Event(['a'], ['b'], 1)])
+
+    def test_events_with_reactants(self):
+        traj = self.process.trajectory({})
+        for _ in traj:
+            pass
+        self.assertEqual(traj.state, stocal.structures.multiset({}))
+
+
 if __name__ == '__main__':
     unittest.main()

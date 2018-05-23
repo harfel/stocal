@@ -40,13 +40,6 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         with self.assertRaises(ValueError):
             self.Sampler(proc, {'a':-1})
 
-    def test_add_transition_enables_transition(self):
-        """transitions added with add_transition must be executable"""
-        sampler = self.Sampler(stocal.Process([]), {'a':1})
-        transition = stocal.MassAction({'a':1}, {}, 1.)
-        sampler.add_transition(transition)
-        self.assertIs(next(iter(sampler)), transition)
-
     def test_update_state_enables_static(self):
         """update_state can enable static transitions"""
         transition = stocal.MassAction({'a':1}, {}, 1.)
@@ -88,6 +81,49 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         sampler.update_state({'a':0})
         with self.assertRaises(StopIteration):
             next(iter(sampler))
+
+    def test_add_transition_enables_transition(self):
+        """transitions added with add_transition must be executable"""
+        sampler = self.Sampler(stocal.Process([]), {'a':1})
+        transition = stocal.MassAction({'a':1}, {}, 1.)
+        sampler.add_transition(transition)
+        self.assertIs(next(iter(sampler)), transition)
+
+    def test_propose_potential_transition_empty(self):
+        """Proposed (time,transition) for empty process is (inf,None)"""
+        sampler = self.Sampler(stocal.Process([]), {'a':100}, tmax=100.)
+        time, transition, args = sampler.propose_potential_transition()
+        self.assertEqual(time, float('inf'))
+        self.assertEqual(transition, None)
+
+    def test_propose_potential_transition_in_finite_time(self):
+        """Proposed (time,transition) for empty process is (inf,None)"""
+        process = stocal.Process([stocal.MassAction([], ['a'], 1.)])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        time, transition, args = sampler.propose_potential_transition()
+        self.assertTrue(time < float('inf'))
+        self.assertNotEqual(transition, None)
+
+    def test_perform_transition_advances_steps(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition)
+        self.assertEqual(sampler.step, 1)
+
+    def test_perform_transition_advances_time(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition)
+        self.assertEqual(sampler.time, 1.)
+
+    def test_perform_transition_changes_state(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition)
+        self.assertEqual(sampler.state, {'a':1})
 
     def test_iter_empty(self):
         """The empty process stops iteration immediately"""
@@ -163,11 +199,11 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         sampler = self.Sampler(proc, {}, tmax=10)
         for _ in sampler:
             pass
-        self.assertEqual(sampler.state, {'a':10})
-        self.assertEqual(sampler.step, 10)
+        self.assertEqual(sampler.step, 11)
         self.assertAlmostEqual(sampler.time, 10)
 
     def test_fire_inferred_event(self):
+        """sampler fires inferred events"""
         class Rule(stocal.ReactionRule):
             Transition = stocal.Event
     
@@ -182,23 +218,52 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         it = iter(traj)
 
         try:
-            trans = it.next()
+            trans = next(it)
         except StopIteration:
             self.fail("Static event not fired.")
         self.assertEqual(traj.time, 1)
         self.assertEqual(traj.state, {'a': 1})
 
         try:
-            trans = it.next()
+            trans = next(it)
         except StopIteration:
             self.fail("Infered event not fired.")
         self.assertEqual(traj.time, 10)
         self.assertEqual(traj.state, {})
 
+    def test_do_not_apply_inapplicable_events(self):
+        """assert that Event does not fire if reactants are missing"""
+        process = stocal.Process([stocal.Event(['a'], ['b'], 1)])
+        traj = self.Sampler(process, {})
+        for _ in traj:
+            pass
+        self.assertEqual(traj.state, stocal.structures.multiset({}))
+
 
 class TestAndersonNRM(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
     Sampler = stocal.algorithms.AndersonNRM
+
+    def test_perform_transition_advances_steps(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition, 0)
+        self.assertEqual(sampler.step, 1)
+
+    def test_perform_transition_advances_time(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition, 0)
+        self.assertEqual(sampler.time, 1.)
+
+    def test_perform_transition_changes_state(self):
+        transition = stocal.MassAction([], ['a'], 1.)
+        process = stocal.Process([transition])
+        sampler = self.Sampler(process, {}, tmax=100.)
+        sampler.perform_transition(1., transition, 0)
+        self.assertEqual(sampler.state, {'a':1})
 
 
 if __name__ == '__main__':
