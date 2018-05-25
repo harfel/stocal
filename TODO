@@ -1,4 +1,7 @@
-- deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
+* TrajectorySampler.__iter__ seems to stop at tmax even if more events would occur then
+* stocal.algorithms.AndersonNRM might be invalid/broken
+* error in stocal.experimental.samplers: Samplers do not chain properly where invoking self.propose_potential_transition, etc.
+* Event.__repr__ does not show full init signature- deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - support for proper delay events
 - tau leaping
 - statistical verification tests

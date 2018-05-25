@@ -119,7 +119,14 @@ import stocal.transitions
 from stocal._utils import with_metaclass
 from stocal.structures import multiset
 
-class Process(stocal.transitions.Process):
+StandardProcess = stocal.transitions.Process
+
+class Process(StandardProcess):
+    """Process class that supports the new sampler protocol
+    
+    Importing the module performs a monkey patch that replaces
+    stocal.transitions.Process with the samplers.Process class.
+    """
     def sample(self, state, tstart=0., tmax=float('inf'), steps=None, every=None, seed=None):
         """Create trajectory sampler for given state
         
@@ -160,6 +167,11 @@ class Process(stocal.transitions.Process):
                 return sampler.until(steps=steps)
             else:
                 return sampler
+
+
+# monkey patch stocal.Process
+stocal.Process = Process
+stocal.transitions.Process = Process
 
 
 class Sampler(with_metaclass(abc.ABCMeta, object)):
@@ -254,7 +266,7 @@ class UntilTimeSampler(Sampler):
 
     def __iter__(self):
         while True:
-            time, transition, args = self.propose_potential_transition()
+            time, transition, args = self.propose_potential_transition() # XXX needs to iterate over self.sampler!
 
             if time > self.tmax:
                 break
@@ -295,7 +307,7 @@ class EveryTimeSampler(Sampler):
         time = self.sampler.time
         transitions = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_potential_transition()
+            ptime, trans, args = algorithm.propose_potential_transition() # XXX needs to iterate over self.sampler!
             if ptime > time+self.dt:
                 time += self.dt
                 yield time, self.state, transitions
@@ -343,7 +355,7 @@ class AverageTimeSampler(EveryTimeSampler):
         transitions = multiset()
         averages = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_potential_transition()
+            ptime, trans, args = algorithm.propose_potential_transition() # XXX needs to iterate over self.sampler!
 
             if ptime > time+self.dt:
                 time += self.dt
