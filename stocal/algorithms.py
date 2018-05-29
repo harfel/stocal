@@ -447,17 +447,17 @@ class DirectMethod(TrajectorySampler):
         self.depleted = []
         super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
 
-    def add_transition(self, transition):
-        self.dependency_graph.add_reaction(transition)
-        propensity = self.calculate_propensity(transition)
-        self.propensities.add_item(transition, propensity)
+    def add_transition(self, transition): # not loop related
+        self.dependency_graph.add_reaction(transition) # calls method(in this case the method/function is "dependency_graph.add_reaction()")  of inherited class(superclass) for any given object of this class(represented as self)
+        propensity = self.calculate_propensity(transition) # calls method(in this case the method/function is "calculate_propensity()")  of inherited class(superclass) for any given object of this class(represented as self)
+        self.propensities.add_item(transition, propensity) # calls method(in this case the method/function is "propensities.add_item()")  of inherited class(superclass) for any given object of this class(represented as self)
 
-    def update_state(self, dct):
+    def update_state(self, dct): # Deals with concentrations of chemical species in system.
         super(DirectMethod, self).update_state(dct)
         affected_transitions = self.dependency_graph.affected_transitions(dct)
         self.update_propensities(affected_transitions)
 
-    def prune_transitions(self):
+    def prune_transitions(self): # Deals with concentrations of chemical species in system. Takes away reaction with propensities = 0
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
             del self.propensities[trans]
@@ -467,32 +467,32 @@ class DirectMethod(TrajectorySampler):
     def transitions(self):
         return self.propensities.keys()
 
-    def propose_potential_transition(self):
+    def propose_potential_transition(self): # relates loop = pseudocode
         from math import log
 
         total_propensity = sum(mult*prop
                                for transition, prop, mult
-                               in self.propensities.items())
+                               in self.propensities.items()) # relates to step 6
         if not total_propensity:
             return float('inf'), None, tuple()
 
-        delta_t = -log(self.rng.random())/total_propensity
+        delta_t = -log(self.rng.random())/total_propensity # step 2 of the linear time algorithm
 
         transition = None
         pick = self.rng.random()*total_propensity
         for transition, prop, mult in self.propensities.items():
-            pick -= mult*prop
+            pick -= mult*prop # pick = pick - mult*prop
             if pick < 0.:
                 break
 
         return self.time + delta_t, transition, tuple()
 
-    def perform_transition(self, time, transition):
+    def perform_transition(self, time, transition): # relates to step 4.
         super(DirectMethod, self).perform_transition(time, transition)
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.update_propensities(affected)
 
-    def update_propensities(self, affected_transitions):
+    def update_propensities(self, affected_transitions): # relates to step 4 part 1.
         """Update propensities of all given transitions.
 
         If the new propensity of a transition is 0 and the transition
@@ -692,6 +692,55 @@ class AndersonNRM(NextReactionMethod):
 class CompositionRejection(TrajectorySampler):
     """Implementation of Gillespie's direct method."""
 
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        if any(not isinstance(r, Reaction) for r in process.transitions):
+            raise ValueError("DirectMethod only works with Reactions.")
+        if any(not issubclass(r.Transition, Reaction) for r in process.rules):
+            raise ValueError("DirectMethod only works with Reactions.")
+        self.dependency_graph = DependencyGraph()
+        self.propensities = MultiDict()
+        self.depleted = []
+        super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
+
+    def add_transition(self, transition): # not loop related
+        self.dependency_graph.add_reaction(transition) # calls method(in this case the method/function is "dependency_graph.add_reaction()")  of inherited class(superclass) for any given object of this class(represented as self)
+        propensity = self.calculate_propensity(transition) # calls method(in this case the method/function is "calculate_propensity()")  of inherited class(superclass) for any given object of this class(represented as self)
+        self.propensities.add_item(transition, propensity) # calls method(in this case the method/function is "propensities.add_item()")  of inherited class(superclass) for any given object of this class(represented as self)
+
+    def update_state(self, dct): # Deals with concentrations of chemical species in system.
+        super(DirectMethod, self).update_state(dct)
+        affected_transitions = self.dependency_graph.affected_transitions(dct)
+        self.update_propensities(affected_transitions)
+
+    def prune_transitions(self): # Deals with concentrations of chemical species in system. Takes away reaction with propensities = 0
+        for trans in self.depleted:
+            self.dependency_graph.remove_reaction(trans)
+            del self.propensities[trans]
+        self.depleted = []
+
+    @property
+    def transitions(self):
+        return self.propensities.keys()
+
+    def grouping_reactions(self):
+        pmin = min(self.propensities)
+        pmax = max(self.propensities)
+        x = pmin
+        count = 0
+        boundaries = []
+        while x < pmax:
+            x = x * 2
+            boundaries.append(x)
+            count += 1  # count = count + 1
+        for i in boundaries: # creates empty lists(groups) with the boundaries as the name and maximum propensity of the group
+            i = [] # creates empty lists equivalent to the number of groups of reactions in the system
+        for propensity, transition in zip(self.propensities, self.transitions):
+            for i in boundaries:
+                if propensity < boundaries: # looks for reactions within the particular boundaries
+                    i.append(propensity) # adds the reaction to it's group
+                else:
+                    pass
+
     def propose_potential_transition(self):  # relates loop = pseudocode
         from math import log
 
@@ -703,23 +752,12 @@ class CompositionRejection(TrajectorySampler):
         delta_t = -log(self.rng.random()) / total_propensity  # step 2 of the linear time algorithm. In addition, self.rng.random() is a random number, denoted by r1.
 
         transition = None # this block of code relates to step 3a. """Group(G) is selected via binary search of the G values."""
-        pmin = min(self.propensities)
-        pmax = max(self.propensities)
-        x = pmin
-        count = 0
-        boundaries = []
-        while x < pmax:
-            x = x * 2
-            boundaries.append(x)
-            count = count + 1
-        Group = [] # Is the list for the group of propensities of reactions chosen by binary search
         r2ps = self.rng.random() * total_propensity
         for propensity, transition in zip(self.propensities, self.transitions):
             for i in boundaries:
                 if i/2 < r2ps < i:
-                    for f in propensity:
-                        if i/2 < f < i:
-                            Group.append(f)
+                    Group = i # Whichever group(list) is selected with a name relating to a item in i(boundaries) variable is also called Group(a new list).
+
 
         r3 = self.rng.random() # this block of code relates to step 3b
         r4 = self.rng.random()
@@ -737,3 +775,25 @@ class CompositionRejection(TrajectorySampler):
                 break # terminates the current loop and resumes execution at the next statement.
 
         return self.time + delta_t, transition, tuple()
+
+
+    def perform_transition(self, time, transition): # relates to step 4.
+        super(DirectMethod, self).perform_transition(time, transition)
+        affected = self.dependency_graph.affected_transitions(transition.affected_species)
+        self.update_propensities(affected)
+
+    def update_propensities(self, affected_transitions): # relates to step 4 part 1.
+        """Update propensities of all given transitions.
+
+        If the new propensity of a transition is 0 and the transition
+        has been derived by a rule or is an Event, the transition gets
+        added to self.depleted for later pruning."""
+        for trans in affected_transitions:
+            propensity = trans.propensity(self.state)
+            if propensity == 0 and (trans.rule or isinstance(trans, Event)):
+                self.depleted.append(trans)
+            self.propensities.update_item(trans, propensity)
+
+    def calculate_propensity(self, transition):
+        """Return propensity of the given transition for current state."""
+        return transition.propensity(self.state)
