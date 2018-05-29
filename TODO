@@ -1,5 +1,5 @@
-- save and aggregate results
-- validation report
+- compare results to DSMTS result
+- show convergence of estimators
 - tests from DSMTS
 =
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
