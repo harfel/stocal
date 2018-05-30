@@ -694,13 +694,13 @@ class CompositionRejection(TrajectorySampler):
 
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         if any(not isinstance(r, Reaction) for r in process.transitions):
-            raise ValueError("DirectMethod only works with Reactions.")
+            raise ValueError("CompositionRejection only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
-            raise ValueError("DirectMethod only works with Reactions.")
+            raise ValueError("CompositionRejection only works with Reactions.")
         self.dependency_graph = DependencyGraph()
         self.propensities = MultiDict()
         self.depleted = []
-        super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
+        super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
 
     def add_transition(self, transition): # not loop related
         self.dependency_graph.add_reaction(transition) # calls method(in this case the method/function is "dependency_graph.add_reaction()")  of inherited class(superclass) for any given object of this class(represented as self)
@@ -708,7 +708,7 @@ class CompositionRejection(TrajectorySampler):
         self.propensities.add_item(transition, propensity) # calls method(in this case the method/function is "propensities.add_item()")  of inherited class(superclass) for any given object of this class(represented as self)
 
     def update_state(self, dct): # Deals with concentrations of chemical species in system.
-        super(DirectMethod, self).update_state(dct)
+        super(CompositionRejection, self).update_state(dct)
         affected_transitions = self.dependency_graph.affected_transitions(dct)
         self.update_propensities(affected_transitions)
 
@@ -722,24 +722,37 @@ class CompositionRejection(TrajectorySampler):
     def transitions(self):
         return self.propensities.keys()
 
-    def grouping_reactions(self):
+    def grouping_reactions(self): # this function of code relates to step 3a. """Group(G) is selected via binary search of the G values."""
         pmin = min(self.propensities)
         pmax = max(self.propensities)
-        x = pmin
+        x = int(pmin)
         count = 0
-        boundaries = []
+        boundaries_int = []
+        boundaries_str = []
         while x < pmax:
             x = x * 2
-            boundaries.append(x)
+            boundaries_int.append(x)
+            a = str(x)
+            boundaries_str.append(a)
             count += 1  # count = count + 1
-        for i in boundaries: # creates empty lists(groups) with the boundaries as the name and maximum propensity of the group
+
+        for i in boundaries_str: # creates empty lists(groups) with the boundaries as the name and maximum propensity of the group
             i = [] # creates empty lists equivalent to the number of groups of reactions in the system
         for propensity, transition in zip(self.propensities, self.transitions):
-            for i in boundaries:
-                if propensity < boundaries: # looks for reactions within the particular boundaries
-                    i.append(propensity) # adds the reaction to it's group
+            for i, f in zip(boundaries_int, boundaries_str):
+                if propensity < i: # looks for reactions within the particular boundaries
+                    f.append(propensity) # adds the reaction to it's group
                 else:
                     pass
+
+
+        self.propensities = [r.propensity(self.state) for r in self.transitions]  # relate to step 5
+        total_propensity = sum(self.propensities) # relates to step 6
+
+        r2ps = self.rng.random() * total_propensity  # selecting the group based on r2(composition aspect)
+        for i, f in zip(boundaries_int, boundaries_str):
+            if i / 2 < r2ps < i:
+                return (i) # saves all the reactions of the group in this function. Calls the desired list of reactions.
 
     def propose_potential_transition(self):  # relates loop = pseudocode
         from math import log
@@ -751,14 +764,8 @@ class CompositionRejection(TrajectorySampler):
 
         delta_t = -log(self.rng.random()) / total_propensity  # step 2 of the linear time algorithm. In addition, self.rng.random() is a random number, denoted by r1.
 
-        transition = None # this block of code relates to step 3a. """Group(G) is selected via binary search of the G values."""
-        r2ps = self.rng.random() * total_propensity
-        for propensity, transition in zip(self.propensities, self.transitions):
-            for i in boundaries:
-                if i/2 < r2ps < i:
-                    Group = i # Whichever group(list) is selected with a name relating to a item in i(boundaries) variable is also called Group(a new list).
-
-
+        transition = None
+        Group = grouping_reactions(self)
         r3 = self.rng.random() # this block of code relates to step 3b
         r4 = self.rng.random()
         a = len(self.propensities)
@@ -778,7 +785,7 @@ class CompositionRejection(TrajectorySampler):
 
 
     def perform_transition(self, time, transition): # relates to step 4.
-        super(DirectMethod, self).perform_transition(time, transition)
+        super(CompositionRejection, self).perform_transition(time, transition)
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.update_propensities(affected)
 
