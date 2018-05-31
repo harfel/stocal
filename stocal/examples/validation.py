@@ -12,13 +12,12 @@ import os
 import warnings
 import logging
 
-try:
-    from matplotlib import pyplot
-except ImportError:
-    logging.error("Example validation.py requires matplotlib.")
+from math import sqrt
 
 
 class DataStore(object):
+    checkpoints = [int(sqrt(10)**n) for n in range(100)][1:]
+
     def __init__(self, path):
         import subprocess
         import errno
@@ -41,9 +40,12 @@ class DataStore(object):
         # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
 
         import pickle
+        from shutil import copyfile
+        from math import log, floor
+
         fname = self.get_path_for_config(config)
         if os.path.exists(fname):
-            N, times, mean, M2 = pickle.load(open(fname))
+            N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
             assert result[0] == times
             N += 1
             # delta = result - mean
@@ -66,6 +68,7 @@ class DataStore(object):
                 s: [m2 + d1*d2 for m2, d1, d2 in zip(values, delta[s], delta2[s])]
                 for s, values in M2.items()
             }
+            copyfile(fname, fname+'~')
 
         else:
             N = 1
@@ -75,21 +78,31 @@ class DataStore(object):
                 for s, values in result[1].items()
             }
             M2 = {s: [0. for _ in mean[s]] for s in mean}
+            conv_mean = {}
+            conv_stdev = {}
+
+        if N in self.checkpoints:
+            for s, means in mean.items():
+                for t, mu, m2 in zip(times, means, M2[s]):
+                    if (s, t) not in conv_mean:
+                        conv_mean[s, t] = []
+                        conv_stdev[s, t] = []
+                    conv_mean[s, t].append(mu)
+                    conv_stdev[s, t].append(sqrt(m2/(N-1)))
 
         with open(fname, 'w') as outfile:
-            outfile.write(pickle.dumps((N, times, mean, M2))) # XXX backup copy
+            outfile.write(pickle.dumps((N, times, mean, M2, conv_mean, conv_stdev)))
 
     def get_stats(self, config):
         import pickle
-        from math import sqrt
         model, algo = config
         fname = self.get_path_for_config(config)
-        N, times, mean, M2 = pickle.load(open(fname))
+        N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
         stdev = {
             s: [sqrt(m2/(N-1)) for m2 in values]
             for s, values in M2.items()
         }
-        return N, times, mean, stdev
+        return N, times, mean, stdev, conv_mean, conv_stdev
 
 
 def run_simulation(model, algorithm):
@@ -153,32 +166,80 @@ def report_validation(args):
             config = model, algo
             data = args.store.get_stats(config)
             fname = args.store.get_path_for_config(config)[:-len('.dat')] + '.png' # or '.pdf'
-            try:
-                generate_figure(data, config, fname)
-            except ValueError:
-                logging.error("Could not generate report for %s" % str(config))
+            generate_figure(data, config, fname)
 
 
 def generate_figure(data, config, fname):
-    from math import sqrt
+    try:
+        from matplotlib import pyplot as plt
+    except ImportError:
+        logging.error("Example validation.py requires matplotlib.")
+
+    cm = plt.cm.winter
 
     model, algo = config
-    N, times, avgs, var = data
+    N, times, mean, stdev, conv_mean, conv_stdev = data
 
-    fig = pyplot.figure()
-    ax = fig.add_subplot(111)
+    rep_times, rep_means = model.reported_means()
+    rep_times, rep_stdevs = model.reported_stdevs()
 
-    for species, avg in avgs.items():
-        low = [y-sqrt(s) for y,s in zip(avg, var[species])]
-        high = [y+sqrt(s) for y,s in zip(avg, var[species])]
-        title = '%s %s (%d samples)' % (model.__name__, algo.__name__, N)
+    Ns = DataStore.checkpoints[:len(conv_mean.values()[0])]
 
-        ax.fill_between(times, low, high, alpha=0.3)
-        ax.plot(times, avgs[species], label=species)
-        pyplot.xlabel('time')
-        pyplot.ylabel('# molecules')
-        pyplot.title(title)
-        pyplot.legend()
+    fig = plt.figure(figsize=plt.figaspect(.3))
+    title = '%s %s (%d samples)' % (model.__name__, algo.__name__, N)
+    fig.suptitle(title)
+
+    ax = fig.add_subplot(131)
+    plt.title("simulation results")
+    for species, mu in mean.items():
+        low = [y-sqrt(s) for y,s in zip(mu, stdev[species])]
+        high = [y+sqrt(s) for y,s in zip(mu, stdev[species])]
+
+        rep_low = [m-y for m,y in zip(rep_means[species], rep_stdevs[species])]
+        rep_high = [m+y for m,y in zip(rep_means[species], rep_stdevs[species])]
+
+        ax.fill_between(times, rep_low, rep_high, facecolor=cm(0), alpha=0.3)
+        ax.fill_between(times, low, high, facecolor=cm(0.99), alpha=0.3)
+        ax.plot(rep_times, rep_means[species], color=cm(0), label='$\mathregular{%s_{exp}}$' % species)
+        ax.plot(times, mu, color=cm(0.99), label='$\mathregular{%s_{sim}}$' % species, alpha=.67)
+    plt.xlabel('time')
+    plt.ylabel('# molecules')
+    plt.legend()
+
+    ax = fig.add_subplot(132)
+    plt.title("convergence toward mean")
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_prop_cycle(plt.cycler('color', (cm(x/times[-1]) for x in times)))
+    for s in mean:
+        for t in times:
+            exp = rep_means[s][int(t)]
+            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for N, sim in zip(Ns, conv_mean[s, t])]
+            if not all(ys): continue
+            ax.plot(Ns, ys, alpha=0.67)
+    ymin, ymax = plt.gca().get_ylim()
+    ax.plot(Ns, [3/sqrt(n) for n in Ns], color='r')
+    plt.xlabel('samples N')
+    plt.ylabel('normalized error')
+    plt.legend()
+
+    ax = fig.add_subplot(133)
+    plt.title("convergence toward std. dev.")
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_prop_cycle(plt.cycler('color', (cm(x/times[-1]) for x in times)))
+    for s in mean:
+        for t in times:
+            exp = rep_stdevs[s][int(t)]
+            ys = [abs(sim/exp**2-1) if exp else 0 for N, sim in zip(Ns, conv_stdev[s, t])]
+            if not all(ys): continue
+            ax.plot(Ns, ys, alpha=0.67)
+    ymin, ymax = plt.gca().get_ylim()
+    ax.plot(Ns, [5/sqrt(n/2.) for n in Ns], color='r')
+    plt.xlabel('samples N')
+    plt.ylabel('normalized error')
+    plt.legend()
+
     fig.savefig(fname)
 
 
@@ -250,7 +311,7 @@ if __name__ == '__main__':
 
     # collect models for validation
     if not args.models:
-        from stocal.examples import dsmts
+        from stocal.examples.dsmts import models as dsmts
         args.models = get_implementations(dsmts, dsmts.DSMTS_Test)
 
 

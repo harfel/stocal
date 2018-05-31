@@ -1,5 +1,4 @@
-- compare results to DSMTS result
-- show convergence of estimators
+- better CLI
 - tests from DSMTS
 =
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)

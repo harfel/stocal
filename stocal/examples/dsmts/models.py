@@ -2,14 +2,10 @@
 """Perform statistical validation tests of the stocal library
 """
 import abc
-import logging
-import os
 import stocal
 
 from stocal._utils import with_metaclass
 
-
-logging.basicConfig(level=logging.INFO)
 
 class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
     def __call__(self, Algorithm):
@@ -32,6 +28,40 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
     @abc.abstractproperty
     def species(self): pass
 
+    @classmethod
+    def reported_means(cls):
+        import os
+        from csv import DictReader
+        dirname = os.path.dirname(__file__)
+        fname = cls.__name__ + '-mean.csv'
+        path = os.path.join(dirname, fname)
+        reader = DictReader(open(path))
+        species = reader.fieldnames[1:]
+        times = []
+        mean = {s: [] for s in species}
+        for record in reader:
+            times.append(record['time'])
+            for s in species:
+                mean[s].append(float(record[s]))
+        return times, mean
+
+    @classmethod
+    def reported_stdevs(cls):
+        import os
+        from csv import DictReader
+        dirname = os.path.dirname(__file__)
+        fname = cls.__name__ + '-sd.csv'
+        path = os.path.join(dirname, fname)
+        reader = DictReader(open(path))
+        species = reader.fieldnames[1:]
+        times = []
+        mean = {s: [] for s in species}
+        for record in reader:
+            times.append(record['time'])
+            for s in species:
+                mean[s].append(float(record[s])**.5)
+        return times, mean
+
 
 class DSMTS_001_01(DSMTS_Test):
     species = ['X']
@@ -41,16 +71,12 @@ class DSMTS_001_01(DSMTS_Test):
     initial_state = {'X': 100}
 
 
-def accumulate(sample, mean=[[0.] for i in range(50)], runs=[0]):
-    # XXX do this in stocal.examples.validation
-    for i,data in enumerate(mean):
-        for j,species in enumerate(sample[i]):
-            mean[i][j]=(runs[0]*data[j]+species)/(runs[0]+1)
-    runs[0] += 1
-    return mean
-
-
 def main():
+    import logging
+    import os
+
+    logging.basicConfig(level=logging.INFO)
+
     # XXX do this in stocal.examples.validation (if at all)
     def download_dsmts(url='https://github.com/darrenjw/dsmts/archive/master.zip'):
         from urllib.request import urlopen
@@ -77,6 +103,6 @@ def main():
     if dsmts_downloaded:
         pass # delete dsmts-master directory
 
-
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__' :
+    m = DSMTS_001_01()
+    print m.reported_means()
