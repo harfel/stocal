@@ -689,25 +689,51 @@ class AndersonNRM(NextReactionMethod):
 
         super(AndersonNRM, self).perform_transition(time, transition)
 
+class Group(object):
+
+    def __init__(self, gmin, gmax):
+        self.gmin = gmin # 1st attributes/properties of the objects of this class
+        self.gmax = gmax # 2nd attributes/properties of the objects of this class
+        self.num_transition = 0 # 3rd attributes/properties of the objects of this class, which has value 0 for all objects
+        self.transitions = MultiDict() # 4th attributes/properties of the objects of this class, which has a value of the MultiDict() variable for all objects
+
 class CompositionRejection(TrajectorySampler):
     """Implementation of Gillespie's direct method."""
+    PMIN = 1
+    PMAX = 1024
 
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         if any(not isinstance(r, Reaction) for r in process.transitions):
             raise ValueError("CompositionRejection only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
             raise ValueError("CompositionRejection only works with Reactions.")
-        self.dependency_graph = DependencyGraph()
-        self.propensities = MultiDict()
-        self.depleted = []
+        self.dependency_graph = DependencyGraph() # 1st attributes/properties of the objects of this class
+        self.propensities = MultiDict() # 2nd attributes/properties of the objects of this class
+        self.depleted = [] # 3rd attributes/properties of the objects of this class
+        self.groups = [] # 4th attributes/properties of the objects of this class
+        gmin = self.PMIN # gmin equals PMIN
+        gmax = 2*self.PMIN # gmax is always double the value of PMIN
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
 
-    def add_transition(self, transition): # not loop related
-        self.dependency_graph.add_reaction(transition) # calls method(in this case the method/function is "dependency_graph.add_reaction()")  of inherited class(superclass) for any given object of this class(represented as self)
-        propensity = self.calculate_propensity(transition) # calls method(in this case the method/function is "calculate_propensity()")  of inherited class(superclass) for any given object of this class(represented as self)
-        self.propensities.add_item(transition, propensity) # calls method(in this case the method/function is "propensities.add_item()")  of inherited class(superclass) for any given object of this class(represented as self)
+        while gmax <= self.PMAX: # this loop groups the reactions into groups
+            new_group = Group(gmin, gmax) # a object of the class Group is created and called "new_group"
+            self.groups.append(new_group) # self.groups is a list, which has object called "new_group" added as it's item
+            gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles
+            gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
 
-    def update_state(self, dct): # Deals with concentrations of chemical species in system.
+    def add_transition(self, transition): # not loop related
+       prop  = transition.propensity(self.state) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
+
+        assert self.PMIN <= prop <= self.PMAX # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
+
+        for g in self.groups: # for every item in the list called self.groups.
+            if g.gmax > prop: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
+                break # terminates the current loop and resumes execution at the next statement.
+
+            g.transitions.add_item(transition, prop) # calls method(in this case the method/function is "add_item()")  of inherited class(superclass) for any given object of the "group class"
+            g.num_transitions += 1 # group.num_transitions = group.num_transitions + 1. group.num_transitions holds total number of transitions
+
+def update_state(self, dct): # Deals with concentrations of chemical species in system.
         super(CompositionRejection, self).update_state(dct)
         affected_transitions = self.dependency_graph.affected_transitions(dct)
         self.update_propensities(affected_transitions)
@@ -725,53 +751,36 @@ class CompositionRejection(TrajectorySampler):
     def propose_potential_transition(self):  # relates loop = pseudocode
         from math import log
 
-        pmin = min(self.propensities) # this function of code relates to step 3a. """Group(G) is selected via binary search of the G values."""
-        pmax = max(self.propensities)
-        x = int(pmin)
-        count = 0
-        boundaries_int = []
-        boundaries_str = []
-        while x < pmax:
-            x = x * 2
-            boundaries_int.append(x)
-            a = str(x)
-            boundaries_str.append(a)
-            count += 1  # count = count + 1
-
-        for i in boundaries_str:  # creates empty lists(groups) with the boundaries as the name and maximum propensity of the group
-            i = []  # creates empty lists equivalent to the number of groups of reactions in the system
-        for propensity, transition in zip(self.propensities, self.transitions):
-            for i, f in zip(boundaries_int, boundaries_str):
-                if propensity < i:  # looks for reactions within the particular boundaries
-                    f.append(propensity)  # adds the reaction to it's group
-                else:
-                    pass
-
-        r2ps = self.rng.random() * total_propensity  # selecting the group based on r2(composition aspect)
-        for i, f in zip(boundaries_int, boundaries_str):
-            if i / 2 < r2ps < i:
-                return (i)  # saves all the reactions of the group in this function. Calls the desired list of reactions.
-
-        self.propensities = [r.propensity(self.state) for r in self.transitions]  # relate to step 5
-        total_propensity = sum(self.propensities)  # relates to step 6
+        total_propensity = sum(mult * prop
+                               for transition, prop, mult
+                               in self.propensities.items())  # relates to step 6
         if not total_propensity:
             return float('inf'), None, tuple()
 
         delta_t = -log(self.rng.random()) / total_propensity  # step 2 of the linear time algorithm. In addition, self.rng.random() is a random number, denoted by r1.
 
+        pick = self.rng.random(1, 10) # each reaction has an equal chance(likelihood) of occurring
+        for group in self.groups():
+            pick -= group.num_transition  # pick = pick - group.num_transition
+            if pick < 0:
+                group_selected = group # the chosen group
+                break
+
         transition = None
-        Group = str(grouping_reactions(self))
         r3 = self.rng.random() # this block of code relates to step 3b
         r4 = self.rng.random()
-        a = len(self.propensities)
-        m = max(self.propensities)
-        b = 0:m
-        if r3 in a:
-             i = r3
-        if r4 in b:
-                r = r4
-        for propensity, transition in Group: # searches in group selected by the composition approach of the prior block
-            if propensity < r:
+        a = group_selected.num_transition # number of items
+        m = group_selected.gmax # the item with largest value
+        if r3 in range(1, a+1):
+            i = r3
+        if 0 <= r4 <= m:
+            r = r4
+        for transition in group_selected: # searches in group selected by the composition approach of the prior block
+            if transition.propensity(self.state) < r and transition == i:
+                 pass
+            elif transition.propensity(self.state) < r and transition != i:
+                 pass
+            elif transition.propensity(self.state) > r and transition != i:
                  pass
             else: # if propensity is more or equal to r
                 break # terminates the current loop and resumes execution at the next statement.
