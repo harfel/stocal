@@ -8,11 +8,18 @@ see python stocal/examples/validation.py -h
 
 for more information.
 """
+import sys
 import os
 import warnings
 import logging
 
 from math import sqrt
+
+try:
+    import numpy as np
+except ImportError:
+        logging.error("Example validation.py requires numpy.")
+        sys.exit(1)
 
 
 class DataStore(object):
@@ -46,38 +53,30 @@ class DataStore(object):
         fname = self.get_path_for_config(config)
         if os.path.exists(fname):
             N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
-            assert result[0] == times
+            #assert result[0] == times
             N += 1
-            # delta = result - mean
             delta = {
-                s: [v-x for v, x in zip(values, mean[s])]
+                s: values - mean[s]
                 for s, values in result[1].items()
             }
-            # mean += delta / N
             mean = {
-                s: [m+d/N for m, d in zip(mean[s], delta[s])]
+                s: values + delta[s]/float(N)
                 for s, values in mean.items()
             }
-            # delta2 = result  - mean
             delta2 = {
-                s: [x-m for x, m in zip(values, mean[s])]
+                s: values - mean[s]
                 for s, values in result[1].items()
             }
-            # M2 += delta * delta2
             M2 = {
-                s: [m2 + d1*d2 for m2, d1, d2 in zip(values, delta[s], delta2[s])]
+                s: values + delta[s]*delta2[s]
                 for s, values in M2.items()
             }
             copyfile(fname, fname+'~')
 
         else:
             N = 1
-            times = result[0]
-            mean = {
-                s: [float(x) for x in values]
-                for s, values in result[1].items()
-            }
-            M2 = {s: [0. for _ in mean[s]] for s in mean}
+            times, mean = result
+            M2 = {s: np.array([0. for _ in mean[s]]) for s in mean}
             conv_mean = {}
             conv_stdev = {}
 
@@ -85,10 +84,10 @@ class DataStore(object):
             for s, means in mean.items():
                 for t, mu, m2 in zip(times, means, M2[s]):
                     if (s, t) not in conv_mean:
-                        conv_mean[s, t] = []
-                        conv_stdev[s, t] = []
-                    conv_mean[s, t].append(mu)
-                    conv_stdev[s, t].append(sqrt(m2/(N-1)))
+                        conv_mean[s, t] = np.array([])
+                        conv_stdev[s, t] = np.array([])
+                    conv_mean[s, t] = np.append(conv_mean[s, t], [mu])
+                    conv_stdev[s, t] = np.append(conv_stdev[s, t], [sqrt(m2/(N-1))])
 
         with open(fname, 'w') as outfile:
             outfile.write(pickle.dumps((N, times, mean, M2, conv_mean, conv_stdev)))
@@ -99,7 +98,7 @@ class DataStore(object):
         fname = self.get_path_for_config(config)
         N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
         stdev = {
-            s: [sqrt(m2/(N-1)) for m2 in values]
+            s: (values/(N-1))**.5
             for s, values in M2.items()
         }
         return N, times, mean, stdev, conv_mean, conv_stdev
@@ -134,13 +133,13 @@ def run_simulation(model, algorithm):
                 yield transitions
 
         times = [trajectory.time]
-        numbers = {s:[trajectory.state[s]] for s in species}
+        numbers = {s: np.array([trajectory.state[s]]) for s in species}
         it = every(trajectory, dt) if dt else iter(trajectory)
         for _ in it:
             times.append(trajectory.time)
             for s in species:
-                numbers[s].append(trajectory.state[s])
-        return times, numbers
+                numbers[s] = np.append(numbers[s], [trajectory.state[s]])
+        return np.array(times), numbers
 
     trajectory = algorithm(model.process, model.initial_state, tmax=50)
     return sample(trajectory, model.species, dt=1)
@@ -174,6 +173,7 @@ def generate_figure(data, config, fname):
         from matplotlib import pyplot as plt
     except ImportError:
         logging.error("Example validation.py requires matplotlib.")
+        sys.exit(1)
 
     cm = plt.cm.winter
 
@@ -192,11 +192,11 @@ def generate_figure(data, config, fname):
     ax = fig.add_subplot(131)
     plt.title("simulation results")
     for species, mu in mean.items():
-        low = [y-sqrt(s) for y,s in zip(mu, stdev[species])]
-        high = [y+sqrt(s) for y,s in zip(mu, stdev[species])]
+        low = mu - stdev[species]**.5
+        high = mu + stdev[species]**.5
 
-        rep_low = [m-y for m,y in zip(rep_means[species], rep_stdevs[species])]
-        rep_high = [m+y for m,y in zip(rep_means[species], rep_stdevs[species])]
+        rep_low = rep_means[species] - rep_stdevs[species]
+        rep_high = rep_means[species] + rep_stdevs[species]
 
         ax.fill_between(times, rep_low, rep_high, facecolor=cm(0), alpha=0.3)
         ax.fill_between(times, low, high, facecolor=cm(0.99), alpha=0.3)
@@ -214,7 +214,7 @@ def generate_figure(data, config, fname):
     for s in mean:
         for t in times:
             exp = rep_means[s][int(t)]
-            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for N, sim in zip(Ns, conv_mean[s, t])]
+            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in conv_mean[s, t]]
             if not all(ys): continue
             ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()
@@ -231,7 +231,7 @@ def generate_figure(data, config, fname):
     for s in mean:
         for t in times:
             exp = rep_stdevs[s][int(t)]
-            ys = [abs(sim/exp**2-1) if exp else 0 for N, sim in zip(Ns, conv_stdev[s, t])]
+            ys = [abs(sim/exp**2-1) if exp else 0 for sim in conv_stdev[s, t]]
             if not all(ys): continue
             ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()

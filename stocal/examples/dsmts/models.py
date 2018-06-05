@@ -32,6 +32,12 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
     def reported_means(cls):
         import os
         from csv import DictReader
+        try:
+            import numpy as np
+        except ImportError:
+                logging.error("DSMTS_Test.reported_means requires numpy.")
+                sys.exit(1)
+    
         dirname = os.path.dirname(__file__)
         fname = cls.__name__ + '-mean.csv'
         path = os.path.join(dirname, fname)
@@ -42,13 +48,19 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
         for record in reader:
             times.append(record['time'])
             for s in species:
-                mean[s].append(float(record[s]))
-        return times, mean
+                mean[s] = np.append(mean[s], [float(record[s])])
+        return np.array(times), mean
 
     @classmethod
     def reported_stdevs(cls):
         import os
         from csv import DictReader
+        try:
+            import numpy as np
+        except ImportError:
+                logging.error("DSMTS_Test.reported_stdevs requires numpy.")
+                sys.exit(1)
+
         dirname = os.path.dirname(__file__)
         fname = cls.__name__ + '-sd.csv'
         path = os.path.join(dirname, fname)
@@ -59,8 +71,8 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
         for record in reader:
             times.append(record['time'])
             for s in species:
-                mean[s].append(float(record[s])**.5)
-        return times, mean
+                mean[s] = np.append(mean[s], [float(record[s])**.5])
+        return np.array(times), mean
 
 
 class DSMTS_001_01(DSMTS_Test):
@@ -69,40 +81,3 @@ class DSMTS_001_01(DSMTS_Test):
         stocal.MassAction(['X'], ['X', 'X'], 0.1),
         stocal.MassAction(['X'], [], 0.11)])
     initial_state = {'X': 100}
-
-
-def main():
-    import logging
-    import os
-
-    logging.basicConfig(level=logging.INFO)
-
-    # XXX do this in stocal.examples.validation (if at all)
-    def download_dsmts(url='https://github.com/darrenjw/dsmts/archive/master.zip'):
-        from urllib.request import urlopen
-        from zipfile import ZipFile
-        from io import BytesIO
-        logging.info("Downloading dsmts")
-        ZipFile(BytesIO(urlopen(url).read())).extractall()
-
-    dsmts_downloaded = False
-
-    if not os.path.exists('dsmts-master'):
-        download_dsmts()
-        dsmts_downloaded = True
-
-    # collect data for each algorithm and model
-    for n in range(10):
-        sample = DSMTS_001_01()(stocal.algorithms.DirectMethod)
-        mean = accumulate(sample)
-        print('\n'.join(('%d '%t) + ' '.join(str(s) for s in row) for t, row in enumerate(mean, 1)))
-        print()
-    # perform statistical tests
-    # generate report
-
-    if dsmts_downloaded:
-        pass # delete dsmts-master directory
-
-if __name__ == '__main__' :
-    m = DSMTS_001_01()
-    print m.reported_means()
