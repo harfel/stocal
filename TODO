@@ -1,5 +1,7 @@
-- better CLI
 - tests from DSMTS
+- perform validation in parallel
+- document code
+- update CHANGELOG
 =
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - support for proper delay events

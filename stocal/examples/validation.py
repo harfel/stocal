@@ -13,6 +13,7 @@ import os
 import warnings
 import logging
 
+from collections import namedtuple
 from math import sqrt
 
 try:
@@ -22,25 +23,43 @@ except ImportError:
         sys.exit(1)
 
 
+class Stats(namedtuple(
+    '_Stats',
+    ('runs', 'times', 'mean', 'M2', 'conv_mean', 'conv_stdev', 'config'))):
+
+    @property
+    def stdev(self):
+        return {
+            s: (values/(self.runs-1))**.5
+            for s, values in self.M2.items()
+        }
+
+
 class DataStore(object):
     checkpoints = [int(sqrt(10)**n) for n in range(100)][1:]
 
     def __init__(self, path):
-        import subprocess
         import errno
-        git_label = subprocess.check_output(["git", "describe"]).strip()
-        self.dir = os.path.join(path, git_label)
-
+        self.path = path
         try:
-            os.makedirs(self.dir)
+            os.makedirs(self.path)
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise
 
+    def __iter__(self):
+        import pickle
+        for dirpath, _, filenames in os.walk(self.path):
+            for name in filenames:
+                fname = os.path.join(dirpath, name)
+                if fname.endswith('.dat'):
+                    config = pickle.load(open(fname)).config
+                    yield fname, self.get_stats(config)
+
     def get_path_for_config(self, config):
         model, algo = config
         prefix = '-'.join((model.__name__, algo.__name__))
-        return os.path.join(self.dir, prefix+'.dat')
+        return os.path.join(self.path, prefix+'.dat')
 
     def feed_result(self, result, config):
         # online aggregation adapted from
@@ -52,16 +71,16 @@ class DataStore(object):
 
         fname = self.get_path_for_config(config)
         if os.path.exists(fname):
-            N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
-            #assert result[0] == times
-            N += 1
+            stats = pickle.load(open(fname))
+            N = stats.runs + 1
+            times = stats.times
             delta = {
-                s: values - mean[s]
+                s: values - stats.mean[s]
                 for s, values in result[1].items()
             }
             mean = {
                 s: values + delta[s]/float(N)
-                for s, values in mean.items()
+                for s, values in stats.mean.items()
             }
             delta2 = {
                 s: values - mean[s]
@@ -69,8 +88,10 @@ class DataStore(object):
             }
             M2 = {
                 s: values + delta[s]*delta2[s]
-                for s, values in M2.items()
+                for s, values in stats.M2.items()
             }
+            conv_mean = stats.conv_mean
+            conv_stdev = stats.conv_stdev
             copyfile(fname, fname+'~')
 
         else:
@@ -90,18 +111,17 @@ class DataStore(object):
                     conv_stdev[s, t] = np.append(conv_stdev[s, t], [sqrt(m2/(N-1))])
 
         with open(fname, 'w') as outfile:
-            outfile.write(pickle.dumps((N, times, mean, M2, conv_mean, conv_stdev)))
+            stats = Stats(N, times, mean, M2, conv_mean, conv_stdev, config)
+            outfile.write(pickle.dumps(stats))
+
+        if os.path.exists(fname+'~'):
+            os.remove(fname+'~')
 
     def get_stats(self, config):
         import pickle
         model, algo = config
         fname = self.get_path_for_config(config)
-        N, times, mean, M2, conv_mean, conv_stdev = pickle.load(open(fname))
-        stdev = {
-            s: (values/(N-1))**.5
-            for s, values in M2.items()
-        }
-        return N, times, mean, stdev, conv_mean, conv_stdev
+        return pickle.load(open(fname))
 
 
 def run_simulation(model, algorithm):
@@ -146,62 +166,77 @@ def run_simulation(model, algorithm):
 
 
 def run_validation(args):
-    # generate N run configurations
-    # from all cartesian crossings of args.models with args.algo
-    from itertools import product, cycle, islice
-    configurations = islice(cycle(product(args.models, args.algo)), args.N)
+    def get_implementations(module, cls):
+        return [
+            member for member in module.__dict__.values()
+            if isclass(member)
+            and issubclass(member, cls)
+            and not isabstract(member)
+        ]
 
+    # collect algorithms to validate
+    if not args.algo:
+        from stocal import algorithms
+        args.algo = get_implementations(algorithms, algorithms.TrajectorySampler)
+
+    # collect models for validation
+    if not args.models:
+        from stocal.examples.dsmts import models as dsmts
+        args.models = get_implementations(dsmts, dsmts.DSMTS_Test)
+
+    # generate required simulation configurations
+    def required_runs(config, N):
+        try:
+            return max(0, args.store.get_stats(config).runs-N)
+        except IOError:
+            return N
+    from itertools import product, repeat, chain
+    configurations = chain(*(
+        repeat(config, required_runs(config, args.N))
+        for config in product(args.models, args.algo)
+    ))
 
     # simulate in worker pool
     for model, algo in configurations:
-        # XXX progress logging
         result = run_simulation(model, algo)
         args.store.feed_result(result, (model, algo))
 
 
 def report_validation(args):
-    for algo in args.algo:
-        for model in args.models:
-            config = model, algo
-            data = args.store.get_stats(config)
-            fname = args.store.get_path_for_config(config)[:-len('.dat')] + '.png' # or '.pdf'
-            generate_figure(data, config, fname)
+    for fname, stats in args.store:
+        generate_figure(stats, fname[:-len('.dat')]+'.'+args.frmt)
 
 
-def generate_figure(data, config, fname):
+def generate_figure(stats, fname):
     try:
         from matplotlib import pyplot as plt
     except ImportError:
         logging.error("Example validation.py requires matplotlib.")
         sys.exit(1)
 
-    cm = plt.cm.winter
-
-    model, algo = config
-    N, times, mean, stdev, conv_mean, conv_stdev = data
-
+    model, algo = stats.config
     rep_times, rep_means = model.reported_means()
     rep_times, rep_stdevs = model.reported_stdevs()
-
-    Ns = DataStore.checkpoints[:len(conv_mean.values()[0])]
+    Ns = DataStore.checkpoints[:len(stats.conv_mean.values()[0])]
 
     fig = plt.figure(figsize=plt.figaspect(.3))
-    title = '%s %s (%d samples)' % (model.__name__, algo.__name__, N)
+    title = '%s %s (%d samples)' % (model.__name__, algo.__name__, stats.runs)
     fig.suptitle(title)
+    cm = plt.cm.winter
 
     ax = fig.add_subplot(131)
     plt.title("simulation results")
-    for species, mu in mean.items():
-        low = mu - stdev[species]**.5
-        high = mu + stdev[species]**.5
+    for species, mu in stats.mean.items():
+        low = mu - stats.stdev[species]**.5
+        high = mu + stats.stdev[species]**.5
 
         rep_low = rep_means[species] - rep_stdevs[species]
         rep_high = rep_means[species] + rep_stdevs[species]
 
-        ax.fill_between(times, rep_low, rep_high, facecolor=cm(0), alpha=0.3)
-        ax.fill_between(times, low, high, facecolor=cm(0.99), alpha=0.3)
+        ax.fill_between(stats.times, rep_low, rep_high, facecolor=cm(0), alpha=0.3)
+        ax.fill_between(stats.times, low, high, facecolor=cm(0.99), alpha=0.3)
         ax.plot(rep_times, rep_means[species], color=cm(0), label='$\mathregular{%s_{exp}}$' % species)
-        ax.plot(times, mu, color=cm(0.99), label='$\mathregular{%s_{sim}}$' % species, alpha=.67)
+        ax.plot(stats.times, mu, color=cm(0.99), label='$\mathregular{%s_{sim}}$' % species, alpha=.67)
     plt.xlabel('time')
     plt.ylabel('# molecules')
     plt.legend()
@@ -210,11 +245,11 @@ def generate_figure(data, config, fname):
     plt.title("convergence toward mean")
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_prop_cycle(plt.cycler('color', (cm(x/times[-1]) for x in times)))
-    for s in mean:
-        for t in times:
+    ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
+    for s in stats.mean:
+        for t in stats.times:
             exp = rep_means[s][int(t)]
-            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in conv_mean[s, t]]
+            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in stats.conv_mean[s, t]]
             if not all(ys): continue
             ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()
@@ -227,11 +262,11 @@ def generate_figure(data, config, fname):
     plt.title("convergence toward std. dev.")
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_prop_cycle(plt.cycler('color', (cm(x/times[-1]) for x in times)))
-    for s in mean:
-        for t in times:
+    ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
+    for s in stats.mean:
+        for t in stats.times:
             exp = rep_stdevs[s][int(t)]
-            ys = [abs(sim/exp**2-1) if exp else 0 for sim in conv_stdev[s, t]]
+            ys = [abs(sim/exp**2-1) if exp else 0 for sim in stats.conv_stdev[s, t]]
             if not all(ys): continue
             ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()
@@ -246,8 +281,8 @@ def generate_figure(data, config, fname):
 if __name__ == '__main__':
     import sys
     import argparse
+    import subprocess
     from inspect import isclass, isabstract
-
 
     def import_by_name(name):
         """import and return a module member given by name
@@ -255,39 +290,25 @@ if __name__ == '__main__':
         e.g. 'stocal.algorithms.DirectMethod' will return the class
         <class 'stocal.algorithms.DirectMethod'>
         """
-        components = name.split('.')
-        mod = __import__(components[0])
-        for comp in components[1:]:
-            mod = getattr(mod, comp)
-        return mod
-    
-    def get_implementations(module, cls):
-        return [
-            member for member in module.__dict__.values()
-            if isclass(member)
-            and issubclass(member, cls)
-            and not isabstract(member)
-        ]
+        from importlib import import_module
+        module, member = name.rsplit('.', 1)
+        mod = import_module(module)
+        return getattr(mod, member)
 
+    git_label = subprocess.check_output(["git", "describe"]).strip()
+    default_store = os.path.join('validation', git_label)
 
     parser = argparse.ArgumentParser(prog=sys.argv[0])
     # global options
     parser.add_argument('--dir', dest='store',
                         type=DataStore,
-                        default=DataStore('validation'),
+                        default=DataStore(default_store),
                         help='directory for/with simulation results')
-    parser.add_argument('--algo',
-                        type=import_by_name,
-                        action='append',
-                        help='specify algorithm to be validated')
-    parser.add_argument('--model',
-                        action='append',
-                        dest='models',
-                        help='specify model to be validated')
-    parser.add_argument('--cpu', metavar='N',
-                        type=int,
-                        default=1,
-                        help='number of parallel processes')
+    #parser.add_argument('--cpu', metavar='N',
+    #                    type=int,
+    #                    default=1,
+    #                    help='number of parallel processes')
+    
     subparsers = parser.add_subparsers(help='validation sub-command')
 
     # parser for the "run" command
@@ -295,24 +316,26 @@ if __name__ == '__main__':
     parser_run.add_argument('N',
                             type=int,
                             help='number of simulations to be performed in total')
+    parser_run.add_argument('--algo',
+                            type=import_by_name,
+                            action='append',
+                            help='specify algorithm to be validated')
+    parser_run.add_argument('--model',
+                            type=import_by_name,
+                            action='append',
+                            dest='models',
+                            help='specify model to be validated')
     parser_run.set_defaults(func=run_validation)
 
     # parser for the "report" command
-    parser_report = subparsers.add_parser('report', help='assemble report from generated data')
+    parser_report = subparsers.add_parser('report', help='generate figures from generated data')
+    parser_report.add_argument('--format',
+                               action='store',
+                               dest='frmt',
+                               default='png',
+                               help='file format of generated figures')
     parser_report.set_defaults(func=report_validation)
 
     # parse and act
     args = parser.parse_args()
-
-    # collect algorithms to validate
-    if not args.algo:
-        from stocal import algorithms
-        args.algo = get_implementations(algorithms, algorithms.TrajectorySampler)
-
-    # collect models for validation
-    if not args.models:
-        from stocal.examples.dsmts import models as dsmts
-        args.models = get_implementations(dsmts, dsmts.DSMTS_Test)
-
-
-    args.func(args) # XXX run in worker pool
+    args.func(args)
