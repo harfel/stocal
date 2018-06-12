@@ -53,12 +53,17 @@ class DataStore(object):
             for name in filenames:
                 fname = os.path.join(dirpath, name)
                 if fname.endswith('.dat'):
-                    config = pickle.load(open(fname)).config
-                    yield fname, self.get_stats(config)
+                    try:
+                        config = pickle.load(open(fname)).config
+                        yield fname, self.get_stats(config)
+                    except Exception as exc:
+                        logging.warn("Could not access data in %s" % fname)
+                        logging.info(exc, exc_info=True)
+                        yield fname, None
 
     def get_path_for_config(self, config):
         model, algo = config
-        prefix = '-'.join((model.__name__, algo.__name__))
+        prefix = '-'.join((algo.__name__, model.__name__))
         return os.path.join(self.path, prefix+'.dat')
 
     def feed_result(self, result, config):
@@ -124,48 +129,24 @@ class DataStore(object):
         return pickle.load(open(fname))
 
 
-def run_simulation(model, algorithm):
-    """Simulate model.process with algorithm
-
-    The model.process is sampled every time unit for 50 time units.
-    
-    """
-    def sample(trajectory, species, dt=0):
-        """Sample species along trajectory every dt time units
-
-        species is a list of species labels that should be sampled.
-
-        Returns a tuple of two elements, the first is a list of all firing
-        times, the second a dictionary that holds for each species the
-        list of copy numbers at each corresponding time point. If dt is
-        given, it specifies the interval at which the trajectory is sampled.
-        """
-        def every(trajectory, dt):
-            tmax = trajectory.tmax
-            trajectory.tmax = trajectory.time
-            while trajectory.time < tmax:
-                transitions = {}
-                if trajectory.steps and trajectory.step >= trajectory.steps:
-                    break
-                trajectory.tmax += dt
-                for trans in trajectory:
-                    transitions[trans] = transitions.get(trans, 0) + 1
-                yield transitions
-
-        times = [trajectory.time]
-        numbers = {s: np.array([trajectory.state[s]]) for s in species}
-        it = every(trajectory, dt) if dt else iter(trajectory)
-        for _ in it:
-            times.append(trajectory.time)
-            for s in species:
-                numbers[s] = np.append(numbers[s], [trajectory.state[s]])
-        return np.array(times), numbers
-
-    trajectory = algorithm(model.process, model.initial_state, tmax=50)
-    return sample(trajectory, model.species, dt=1)
+def run_simulation(queue, locks, store):
+    while True :
+        config = queue.get()
+        if not config: break
+        model, algo = config
+        logging.debug("Start simulation of %s with %s." % (model.__name__, algo.__name__))
+        result = model()(algo)
+        logging.debug("Simulation of %s with %s finished." % (model.__name__, algo.__name__))
+        with locks[config]:
+            store.feed_result(result, config)
+        logging.debug("Stored results for %s with %s." % (model.__name__, algo.__name__))
+    logging.debug("Worker finished")
 
 
 def run_validation(args):
+    from multiprocessing import Process, Queue, Lock
+    from itertools import product
+
     def get_implementations(module, cls):
         return [
             member for member in module.__dict__.values()
@@ -185,26 +166,52 @@ def run_validation(args):
         args.models = get_implementations(dsmts, dsmts.DSMTS_Test)
 
     # generate required simulation configurations
-    def required_runs(config, N):
-        try:
-            return max(0, args.store.get_stats(config).runs-N)
-        except IOError:
-            return N
-    from itertools import product, repeat, chain
-    configurations = chain(*(
-        repeat(config, required_runs(config, args.N))
-        for config in product(args.models, args.algo)
-    ))
+    def configurations(N):
+        import random
+        required = {
+            config: (max(0, N-args.store.get_stats(config).runs)
+                    if os.path.exists(args.store.get_path_for_config(config))
+                    else N)
+            for config in product(args.models, args.algo)
+        }
+        while required:
+            config = random.choice(required.keys())
+            required[config] -= 1
+            if not required[config]:
+                del required[config]
+            yield config
 
-    # simulate in worker pool
-    for model, algo in configurations:
-        result = run_simulation(model, algo)
-        args.store.feed_result(result, (model, algo))
+    queue = Queue(maxsize=args.cpu)
+    locks = {
+        config: Lock()
+        for config in product(args.models, args.algo)
+    }
+    processes = [Process(target=run_simulation,
+                         args=(queue, locks, args.store))
+                 for _ in range(args.cpu) ]
+    for proc in processes:
+        proc.start()
+    logging.debug("%d processes started." % args.cpu)
+    for config in configurations(args.N):
+        queue.put(config)
+    logging.debug("All jobs requested.")
+    for _ in processes:
+        queue.put(None)
+        logging.debug("Shutdown signal sent.")
+    queue.close()
+    for proc in processes:
+        proc.join()
+    logging.debug("Done.")
 
 
 def report_validation(args):
     for fname, stats in args.store:
-        generate_figure(stats, fname[:-len('.dat')]+'.'+args.frmt)
+        if stats:
+            figname = fname[:-len('.dat')]+'.'+args.frmt
+            if not os.path.exists(figname) or os.path.getmtime(fname)>os.path.getmtime(figname):
+                # only if .dat newer than 
+                logging.info("Generate figure for %s" % fname)
+                generate_figure(stats, figname)
 
 
 def generate_figure(stats, fname):
@@ -222,7 +229,7 @@ def generate_figure(stats, fname):
     fig = plt.figure(figsize=plt.figaspect(.3))
     title = '%s %s (%d samples)' % (model.__name__, algo.__name__, stats.runs)
     fig.suptitle(title)
-    cm = plt.cm.winter
+    cm = plt.cm.winter # XXX seperate colormaps for different species
 
     ax = fig.add_subplot(131)
     plt.title("simulation results")
@@ -239,41 +246,47 @@ def generate_figure(stats, fname):
         ax.plot(stats.times, mu, color=cm(0.99), label='$\mathregular{%s_{sim}}$' % species, alpha=.67)
     plt.xlabel('time')
     plt.ylabel('# molecules')
-    plt.legend()
+    plt.legend(loc=0)
 
     ax = fig.add_subplot(132)
     plt.title("convergence toward mean")
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
-    for s in stats.mean:
+    for ind, s in enumerate(stats.mean):
         for t in stats.times:
             exp = rep_means[s][int(t)]
             ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in stats.conv_mean[s, t]]
             if not all(ys): continue
-            ax.plot(Ns, ys, alpha=0.67)
+            if not ind and (t in stats.times[:2] or t == max(stats.times)):
+                ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
+            else:
+                ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()
-    ax.plot(Ns, [3/sqrt(n) for n in Ns], color='r')
+    ax.plot(Ns, [3/sqrt(n) for n in Ns], color='r', label="bound")
     plt.xlabel('samples N')
     plt.ylabel('normalized error')
-    plt.legend()
+    plt.legend(loc=3)
 
     ax = fig.add_subplot(133)
     plt.title("convergence toward std. dev.")
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
-    for s in stats.mean:
+    for ind, s in enumerate(stats.mean):
         for t in stats.times:
             exp = rep_stdevs[s][int(t)]
             ys = [abs(sim/exp**2-1) if exp else 0 for sim in stats.conv_stdev[s, t]]
             if not all(ys): continue
-            ax.plot(Ns, ys, alpha=0.67)
+            if not ind and (t in stats.times[:2] or t == max(stats.times)):
+                ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
+            else:
+                ax.plot(Ns, ys, alpha=0.67)
     ymin, ymax = plt.gca().get_ylim()
-    ax.plot(Ns, [5/sqrt(n/2.) for n in Ns], color='r')
+    ax.plot(Ns, [5/sqrt(n/2.) for n in Ns], color='r', label="bound")
     plt.xlabel('samples N')
     plt.ylabel('normalized error')
-    plt.legend()
+    plt.legend(loc=3)
 
     fig.savefig(fname)
 
@@ -296,7 +309,7 @@ if __name__ == '__main__':
         return getattr(mod, member)
 
     git_label = subprocess.check_output(["git", "describe"]).strip()
-    default_store = os.path.join('validation', git_label)
+    default_store = os.path.join('validation_data', git_label)
 
     parser = argparse.ArgumentParser(prog=sys.argv[0])
     # global options
@@ -304,10 +317,10 @@ if __name__ == '__main__':
                         type=DataStore,
                         default=DataStore(default_store),
                         help='directory for/with simulation results')
-    #parser.add_argument('--cpu', metavar='N',
-    #                    type=int,
-    #                    default=1,
-    #                    help='number of parallel processes')
+    parser.add_argument('--cpu', metavar='N',
+                        type=int,
+                        default=1,
+                        help='number of parallel processes')
     
     subparsers = parser.add_subparsers(help='validation sub-command')
 
@@ -337,5 +350,6 @@ if __name__ == '__main__':
     parser_report.set_defaults(func=report_validation)
 
     # parse and act
+    logging.basicConfig(level=logging.DEBUG)
     args = parser.parse_args()
     args.func(args)

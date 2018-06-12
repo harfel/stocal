@@ -1,5 +1,5 @@
 *.pyc
 build/
 dist/
-validation/
+validation_data/
 stocal.egg-info/
