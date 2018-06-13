@@ -1,0 +1,110 @@
+\documentclass[notitlepage]{revtex4-1}
+\usepackage{graphicx}
+\graphicspath{{validation_data/1.1.2-59-g86b7800/}}
+
+\begin{document}
+\title{DSMTS Validation results for \textit{stocal} samplers}
+\author{version 1.1.2-58-g19f4c8d}
+\maketitle{}
+
+For each algorithm and model, figures show:
+\begin{itemize}
+\item on the left averaged trajectories of all system species over time
+obtained by simulation (green) versus reported values from the DSMTS
+repository (blue);
+
+\item in the center the absolute standard error of sample averages
+($\bar X_{t}$) from the reported mean ($\mu_{t}$) as a function of
+sample size $N$:
+\[
+	\left|\frac{\bar X_{t}-\mu_{t}}{\sigma_{t}^{2}}\right| \sim \mathcal{N}\left(0, \frac{1}{\sqrt{N}}\right),
+\]
+where $\sigma_{t}$ is the reported standard deviation.
+The red line ($3/\sqrt{N}$) is an upper bound for the error scaling
+at three times the reported standard deviation and should be only
+occasionally exceeded;
+
+\item on the right the relative standard error between sampled
+($\bar S_{t}^{2}$) and reported standard deviation ($\sigma_{t}^{2}$)
+as a function of sample size:
+\[
+	\left|\frac{\bar S_{t}^{2}}{\sigma_{t}^{2}} - 1\right| \sim \mathcal{N}\left(0, \frac{2}{N}\right) .
+\]
+The red line ($5/\sqrt{N/2}$) is an upper bound for the error scaling
+at five times the reported standard deviation and should be only
+occasionally exceeded.
+\end{itemize}
+
+\section{Direct Method}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_001_01}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_001_03}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_001_04}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_001_05}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_001_07}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_01}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_02}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_03}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_04}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_06}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_002_09}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_003_01}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_003_02}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_004_01}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_004_02}
+\includegraphics[width=\textwidth]{DirectMethod-DSMTS_004_03}
+
+\section{First Reaction Method}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_001_01}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_001_03}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_001_04}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_001_05}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_001_07}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_01}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_02}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_03}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_04}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_06}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_002_09}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_003_01}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_003_02}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_004_01}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_004_02}
+\includegraphics[width=\textwidth]{FirstReactionMethod-DSMTS_004_03}
+
+\section{Next Reaction Method}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_001_01}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_001_03}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_001_04}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_001_05}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_001_07}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_01}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_02}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_03}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_04}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_06}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_002_09}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_003_01}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_003_02}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_004_01}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_004_02}
+\includegraphics[width=\textwidth]{NextReactionMethod-DSMTS_004_03}
+
+\section{Anderson Method}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_001_01}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_001_03}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_001_04}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_001_05}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_001_07}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_01}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_02}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_03}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_04}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_06}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_002_09}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_003_01}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_003_02}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_004_01}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_004_02}
+\includegraphics[width=\textwidth]{AndersonNRM-DSMTS_004_03}
+
+\end{document}
