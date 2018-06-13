@@ -229,11 +229,11 @@ def generate_figure(stats, fname):
     fig = plt.figure(figsize=plt.figaspect(.3))
     title = '%s %s (%d samples)' % (model.__name__, algo.__name__, stats.runs)
     fig.suptitle(title)
-    cm = plt.cm.winter # XXX seperate colormaps for different species
+    colormaps = [plt.cm.winter, plt.cm.copper]
 
     ax = fig.add_subplot(131)
     plt.title("simulation results")
-    for species, mu in stats.mean.items():
+    for (species, mu), cm in zip(stats.mean.items(), colormaps):
         low = mu - stats.stdev[species]**.5
         high = mu + stats.stdev[species]**.5
 
@@ -252,13 +252,13 @@ def generate_figure(stats, fname):
     plt.title("convergence toward mean")
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
-    for ind, s in enumerate(stats.mean):
+    for s, cm in zip(stats.mean, colormaps):
+        ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
         for t in stats.times:
             exp = rep_means[s][int(t)]
             ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in stats.conv_mean[s, t]]
             if not all(ys): continue
-            if not ind and (t in stats.times[:2] or t == max(stats.times)):
+            if t in stats.times[:2] or t == max(stats.times):
                 ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
             else:
                 ax.plot(Ns, ys, alpha=0.67)
@@ -272,13 +272,13 @@ def generate_figure(stats, fname):
     plt.title("convergence toward std. dev.")
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
-    for ind, s in enumerate(stats.mean):
+    for s, cm in zip(stats.mean, colormaps):
+        ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
         for t in stats.times:
             exp = rep_stdevs[s][int(t)]
             ys = [abs(sim/exp**2-1) if exp else 0 for sim in stats.conv_stdev[s, t]]
             if not all(ys): continue
-            if not ind and (t in stats.times[:2] or t == max(stats.times)):
+            if t in stats.times[:2] or t == max(stats.times):
                 ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
             else:
                 ax.plot(Ns, ys, alpha=0.67)
