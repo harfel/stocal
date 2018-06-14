@@ -229,10 +229,10 @@ class DSMTS_004_01(DSMTS_Test):
 class DSMTS_004_02(DSMTS_004_01):
     process = stocal.Process([
         stocal.MassAction([], {'X': 10}, 1.),
-        stocal.MassAction(['X'], [], 0.2)])
+        stocal.MassAction(['X'], [], 0.4)])
 
 
 class DSMTS_004_03(DSMTS_004_01):
     process = stocal.Process([
         stocal.MassAction([], {'X': 100}, 1.),
-        stocal.MassAction(['X'], [], 0.2)])
+        stocal.MassAction(['X'], [], 4.)])
