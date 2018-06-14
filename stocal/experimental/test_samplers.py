@@ -200,6 +200,14 @@ class TestEveryTimeSampler(TestSampler):
             total += sum(trans.values())
         self.assertEqual(total, N)
 
+    def test_iter_works_when_chained(self):
+        """test that every and until can be chained"""
+        process = Process([stocal.MassAction(['a'], [], .1)])
+        sampler = self.Sampler(process.sample({'a': 20}))
+        sampler = sampler.until(time=5)
+        time, trans, state = next(iter(sampler))
+        self.assertEqual(time, 1.)
+
 
 class TestEveryStepSampler(TestSampler):
     class Sampler(stocal.experimental.samplers.EveryStepSampler):

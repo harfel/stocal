@@ -272,7 +272,7 @@ class UntilTimeSampler(Sampler):
                 break
             else:
                 self.perform_transition(time, transition, *args)
-                yield transition
+                yield time, self.state, transition
         self.algorithm.time = self.tmax
 
 

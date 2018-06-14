@@ -295,6 +295,16 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         for transition in self.process.transitions:
             self.add_transition(transition)
 
+    @abc.abstractproperty
+    def transitions(self):
+        """Return list of all transitions
+
+        Implementations need to return every instance of an added
+        transition, i.e. two copies of a transition that has
+        multiplicity two.
+        """
+        return []
+
     def update_state(self, dct):
         """Modify sampler state.
 
@@ -335,16 +345,6 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         probability distributions.
         """
         return float('inf'), None, tuple()
-
-    @abc.abstractproperty
-    def transitions(self):
-        """Return list of all transitions
-
-        Implementations need to return every instance of an added
-        transition, i.e. two copies of a transition that has
-        multiplicity two.
-        """
-        return []
 
     def is_applicable(self, time, transition, *args):
         """True if the transition is applicable
@@ -447,25 +447,25 @@ class DirectMethod(TrajectorySampler):
         self.depleted = []
         super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
 
-    def add_transition(self, transition):
-        self.dependency_graph.add_reaction(transition)
-        propensity = self.calculate_propensity(transition)
-        self.propensities.add_item(transition, propensity)
+    @property
+    def transitions(self):
+        return self.propensities.keys()
 
     def update_state(self, dct):
         super(DirectMethod, self).update_state(dct)
         affected_transitions = self.dependency_graph.affected_transitions(dct)
         self.update_propensities(affected_transitions)
 
+    def add_transition(self, transition):
+        self.dependency_graph.add_reaction(transition)
+        propensity = transition.propensity(self.state)
+        self.propensities.add_item(transition, propensity)
+
     def prune_transitions(self):
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
             del self.propensities[trans]
         self.depleted = []
-
-    @property
-    def transitions(self):
-        return self.propensities.keys()
 
     def propose_potential_transition(self):
         from math import log
@@ -503,10 +503,6 @@ class DirectMethod(TrajectorySampler):
             if propensity == 0 and (trans.rule or isinstance(trans, Event)):
                 self.depleted.append(trans)
             self.propensities.update_item(trans, propensity)
-
-    def calculate_propensity(self, transition):
-        """Return propensity of the given transition for current state."""
-        return transition.propensity(self.state)
 
 
 class FirstReactionMethod(TrajectorySampler):
@@ -588,24 +584,24 @@ class NextReactionMethod(FirstReactionMethod):
         self.depleted = []
         super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
 
-    def add_transition(self, transition, **params):
-        self.dependency_graph.add_reaction(transition)
-        self.firings.add_item(transition, **params)
+    @property
+    def transitions(self):
+        return self.firings.keys()
 
     def update_state(self, dct):
         super(NextReactionMethod, self).update_state(dct)
         affected = self.dependency_graph.affected_transitions(dct)
         self.firings.update_items(affected)
 
+    def add_transition(self, transition, **params):
+        self.dependency_graph.add_reaction(transition)
+        self.firings.add_item(transition, **params)
+
     def prune_transitions(self):
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
             self.firings.remove_item(trans)
         self.depleted = []
-
-    @property
-    def transitions(self):
-        return self.firings.keys()
 
     def propose_potential_transition(self):
         if self.firings:
@@ -616,6 +612,11 @@ class NextReactionMethod(FirstReactionMethod):
     def perform_transition(self, time, transition, *args):
         super(NextReactionMethod, self).perform_transition(time, transition, *args)
         self.update_firing_times(time, transition, *args)
+
+    def reject_transition(self, time, transition, *args):
+        self.time = time
+        transition.last_occurrence = time
+        self.firings.update_one_instance(transition)
 
     def update_firing_times(self, time, transition, *args):
         """Update next occurrences of firing and all affected transitions"""
@@ -629,11 +630,6 @@ class NextReactionMethod(FirstReactionMethod):
                     for occurrence in self.firings[trans])
                     and (trans.rule or isinstance(trans, Event))):
                 self.depleted.append(trans)
-
-    def reject_transition(self, time, transition, *args):
-        self.time = time
-        transition.last_occurrence = time
-        self.firings.update_one_instance(transition)
 
     def calculate_next_occurrence(self, transition, data):
         """Calculate next occurrence of given reaction."""
@@ -660,15 +656,6 @@ class AndersonNRM(NextReactionMethod):
             T=0, P=-log(self.rng.random())
         )
 
-    def calculate_next_occurrence(self, transition, data):
-        """Determine next firing time of a transition in global time scale"""
-        target = data.P-data.T
-        if isinstance(transition, Event):
-            return transition.next_occurrence(self.time)
-        else:
-            return self.time + transition.propensity_meets_target(
-                self.state, self.time, target)
-
     def perform_transition(self, time, transition, data):
         from math import log
 
@@ -688,3 +675,12 @@ class AndersonNRM(NextReactionMethod):
                 data.T += int_a_dt(trans, time-self.time)
 
         super(AndersonNRM, self).perform_transition(time, transition)
+
+    def calculate_next_occurrence(self, transition, data):
+        """Determine next firing time of a transition in global time scale"""
+        target = data.P-data.T
+        if isinstance(transition, Event):
+            return transition.next_occurrence(self.time)
+        else:
+            return self.time + transition.propensity_meets_target(
+                self.state, self.time, target)
