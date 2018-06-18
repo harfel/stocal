@@ -129,17 +129,32 @@ class DataStore(object):
         return pickle.load(open(fname))
 
 
-def run_simulation(queue, locks, store):
+def run_simulation(config):
+    # setup model and algorithm
+    Model, Algorithm = config
+    model = Model()
+    trajectory = Algorithm(model.process, model.initial_state,
+                           tmax=model.tmax)
+
+    # perform simulation
+    logging.debug("Start simulation of %s with %s."
+                  % (Model.__name__, Algorithm.__name__))
+    result = model(trajectory)
+    logging.debug("Simulation of %s with %s finished."
+                  % (Model.__name__, Algorithm.__name__))
+    return result
+
+
+def run_in_process(queue, locks, store):
     while True :
         config = queue.get()
         if not config: break
-        model, algo = config
-        logging.debug("Start simulation of %s with %s." % (model.__name__, algo.__name__))
-        result = model()(algo)
-        logging.debug("Simulation of %s with %s finished." % (model.__name__, algo.__name__))
+
+        result = run_simulation(config)
+        
         with locks[config]:
             store.feed_result(result, config)
-        logging.debug("Stored results for %s with %s." % (model.__name__, algo.__name__))
+
     logging.debug("Worker finished")
 
 
@@ -181,26 +196,31 @@ def run_validation(args):
                 del required[config]
             yield config
 
-    queue = Queue(maxsize=args.cpu)
-    locks = {
-        config: Lock()
-        for config in product(args.models, args.algo)
-    }
-    processes = [Process(target=run_simulation,
-                         args=(queue, locks, args.store))
-                 for _ in range(args.cpu) ]
-    for proc in processes:
-        proc.start()
-    logging.debug("%d processes started." % args.cpu)
-    for config in configurations(args.N):
-        queue.put(config)
-    logging.debug("All jobs requested.")
-    for _ in processes:
-        queue.put(None)
-        logging.debug("Shutdown signal sent.")
-    queue.close()
-    for proc in processes:
-        proc.join()
+    if args.cpu > 1:
+        queue = Queue(maxsize=args.cpu)
+        locks = {
+            config: Lock()
+            for config in product(args.models, args.algo)
+        }
+        processes = [Process(target=run_in_process,
+                             args=(queue, locks, args.store))
+                     for _ in range(args.cpu) ]
+        for proc in processes:
+            proc.start()
+        logging.debug("%d processes started." % args.cpu)
+        for config in configurations(args.N): # XXX can raise EOFError
+            queue.put(config)
+        logging.debug("All jobs requested.")
+        for _ in processes:
+            queue.put(None)
+            logging.debug("Shutdown signal sent.")
+        queue.close()
+        for proc in processes:
+            proc.join()
+    else:
+        for config in configurations(args.N):
+            result = run_simulation(config)
+            args.store.feed_result(result, config)
     logging.debug("Done.")
 
 
