@@ -3,57 +3,52 @@
 """
 import abc
 import stocal
+try:
+    import numpy as np
+except ImportError:
+    logging.error("dsmts.models suite requires numpy.")
+    sys.exit(1)
+
 
 from stocal._utils import with_metaclass
 
 
 class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
-    def __call__(self, Algorithm):
-        import numpy as np # XXX
-        # XXX from validation.run_simulation
-        def sample(trajectory, species, dt=0):
-            """Sample species along trajectory every dt time units
-    
-            species is a list of species labels that should be sampled.
-    
-            Returns a tuple of two elements, the first is a list of all firing
-            times, the second a dictionary that holds for each species the
-            list of copy numbers at each corresponding time point. If dt is
-            given, it specifies the interval at which the trajectory is sampled.
-            """
-            def every(trajectory, dt):
-                tmax = trajectory.tmax
-                trajectory.tmax = trajectory.time
-                while trajectory.time < tmax:
-                    transitions = {}
-                    if trajectory.steps and trajectory.step >= trajectory.steps:
-                        break
-                    trajectory.tmax += dt
-                    for trans in trajectory:
-                        transitions[trans] = transitions.get(trans, 0) + 1
-                    yield transitions
-    
-            times = [trajectory.time]
-            numbers = {s: np.array([trajectory.state[s]]) for s in species}
-            it = every(trajectory, dt) if dt else iter(trajectory)
-            for _ in it:
-                times.append(trajectory.time)
-                for s in species:
-                    numbers[s] = np.append(numbers[s], [trajectory.state[s]])
-            return np.array(times), numbers
-    
-        trajectory = Algorithm(self.process, self.initial_state, tmax=50)
-        return sample(trajectory, self.species, dt=1)
+    tmax = 50.
+    dt = 1.
 
-        # XXX old __call__ method -- unused
-        sampler = Algorithm(self.process, self.initial_state, tmax=0)
+    def __call__(self, sampler, dt=0, tmax=None):
+        """Sample species along sampler every dt time units
 
-        data = []
-        while sampler.time < 50:
-            sampler.tmax += 1
-            for trans in sampler: pass
-            data.append([sampler.state[s] for s in self.species])
-        return data
+        species is a list of species labels that should be sampled.
+
+        Returns a tuple of two elements, the first is a list of all firing
+        times, the second a dictionary that holds for each species the
+        list of copy numbers at each corresponding time point. If dt is
+        given, it specifies the interval at which the sampler is sampled.
+        """
+        def every(sampler, dt, tmax):
+            sampler.tmax = sampler.time
+            while sampler.time < tmax:
+                transitions = {}
+                if sampler.steps and sampler.step >= sampler.steps:
+                    break
+                sampler.tmax += dt
+                for trans in sampler:
+                    transitions[trans] = transitions.get(trans, 0) + 1
+                yield transitions
+
+        dt = dt or self.dt
+        tmax = tmax if tmax is not None else self.tmax
+
+        times = [sampler.time]
+        counts = {s: np.array([sampler.state[s]]) for s in self.species}
+        it = every(sampler, dt, tmax) if dt else iter(sampler)
+        for _ in it:
+            times.append(sampler.time)
+            for s in self.species:
+                counts[s] = np.append(counts[s], [sampler.state[s]])
+        return np.array(times), counts
 
     @abc.abstractproperty
     def process(self): pass
@@ -68,11 +63,6 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
     def reported_means(cls):
         import os
         from csv import DictReader
-        try:
-            import numpy as np
-        except ImportError:
-                logging.error("DSMTS_Test.reported_means requires numpy.")
-                sys.exit(1)
     
         dirname = os.path.dirname(__file__)
         fname = cls.__name__ + '-mean.csv'
@@ -178,25 +168,69 @@ class DSMTS_002_06(DSMTS_002_01):
 
 
 class DSMTS_002_09(DSMTS_002_01):
-    # instead of using Event's this simply splits sampling into two
-    # stages, resetting species 'X' after the first stage.
-    def XXX___call__(self, Algorithm):
-        sampler = Algorithm(self.process, self.initial_state, tmax=0)
+    """DSMTS-002-09
 
-        data = []
-        while sampler.time < 25:
-            sampler.tmax += 1
-            for trans in sampler: pass
-            data.append([sampler.state[s] for s in self.species])
-        sampler.update_state(X=50)
-        while sampler.time < 50:
-            sampler.tmax += 1
-            for trans in sampler: pass
-            data.append([sampler.state[s] for s in self.species])
-        return data
+    stocal has no equivalent to SBML Events (stocal.transitions.Event
+    is something different). Instead, the model's run method samples
+    times in two blocks, resetting the 'X' between the two blocks.
+    """
+    def __call__(self, sampler, dt=0, tmax=None):
+        # sample until t=24.
+        times0, counts0 = super(DSMTS_002_09, self).__call__(sampler, tmax=24.)
+
+        # advance sampler to t=25.
+        sampler.tmax = 25.
+        for _ in sampler:
+            pass
+        
+        # update state
+        sampler.update_state({'X': 50})
+
+        # sample until t=26.
+        times1, counts1 = super(DSMTS_002_09, self).__call__(sampler, tmax=50.)
+
+        # merge state count dictionaries
+        counts = {
+            s: np.append(counts0[s], counts1[s])
+            for s in set(counts0).union(counts1)
+        }
+        return np.append(times0, times1), counts
 
 
-# XXX 002_10
+
+class DSMTS_002_10(DSMTS_002_01):
+    """DSMTS-002-10
+
+    stocal has no equivalent to SBML Events (stocal.transitions.Event
+    is something different). Instead, the model's run method samples
+    times in two blocks, resetting the 'X' between the two blocks.
+    """
+    def __call__(self, sampler, dt=0, tmax=None):
+        # sample until t=22.
+        times0, counts0 = super(DSMTS_002_10, self).__call__(sampler, tmax=22.)
+
+        # advance sampler to t=22.5
+        sampler.tmax = 22.5
+        for _ in sampler:
+            pass
+        
+        # update state
+        sampler.update_state({'X': 20})
+
+        # advance sampler to t=23.
+        sampler.tmax = 23.
+        for _ in sampler:
+            pass
+
+        # sample until t=26.
+        times1, counts1 = super(DSMTS_002_10, self).__call__(sampler, tmax=50.)
+
+        # merge state count dictionaries
+        counts = {
+            s: np.append(counts0[s], counts1[s])
+            for s in set(counts0).union(counts1)
+        }
+        return np.append(times0, times1), counts
 
 
 class DSMTS_003_01(DSMTS_Test):
@@ -212,10 +246,6 @@ class DSMTS_003_02(DSMTS_003_01):
         stocal.MassAction(['P', 'P'], ['P2'], 0.0002),
         stocal.MassAction(['P2'], ['P', 'P'], 0.004)])
     initial_state = {'P': 1000}
-
-# XXX 003_03
-# XXX 003_04
-# XXX 003_05 ?
 
 
 class DSMTS_004_01(DSMTS_Test):
