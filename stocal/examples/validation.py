@@ -93,7 +93,7 @@ class DataStore(object):
                 fname = os.path.join(dirpath, name)
                 if fname.endswith('.dat'):
                     try:
-                        config = pickle.load(open(fname)).config
+                        config = pickle.load(open(fname, 'rb')).config
                         yield fname, self.get_stats(config)
                     except Exception as exc:
                         logging.warn("Could not access data in %s", fname)
@@ -124,7 +124,7 @@ class DataStore(object):
 
         fname = self.get_path_for_config(config)
         if os.path.exists(fname):
-            stats = pickle.load(open(fname))
+            stats = pickle.load(open(fname, 'rb'))
             N = stats.runs + 1
             times = stats.times
             delta = {
@@ -163,7 +163,7 @@ class DataStore(object):
                     conv_mean[s, t] = np.append(conv_mean[s, t], [mu])
                     conv_stdev[s, t] = np.append(conv_stdev[s, t], [sqrt(m2/(N-1))])
 
-        with open(fname, 'w') as outfile:
+        with open(fname, 'wb') as outfile:
             stats = Stats(N, times, mean, M2, conv_mean, conv_stdev, config)
             outfile.write(pickle.dumps(stats))
 
@@ -174,7 +174,7 @@ class DataStore(object):
         """Read stats for a given configuration"""
         import pickle
         fname = self.get_path_for_config(config)
-        return pickle.load(open(fname))
+        return pickle.load(open(fname, 'rb'))
 
 
 def run_simulation(Model, Algorithm):
@@ -260,12 +260,13 @@ def run_validation(args):
                      else N)
             for config in product(args.models, args.algo)
         }
-        while required:
-            config = random.choice(required.keys())
-            required[config] -= 1
-            if not required[config]:
-                del required[config]
-            yield config
+        configs = list(required)
+        while configs:
+            next_config = random.choice(configs)
+            required[next_config] -= 1
+            if not required[next_config]:
+                configs.remove(next_config)
+            yield next_config
 
     if args.cpu > 1:
         queue = Queue(maxsize=args.cpu)
@@ -317,7 +318,7 @@ def generate_figure(stats, fname):
     model, algo = stats.config
     rep_times, rep_means = model.reported_means()
     rep_times, rep_stdevs = model.reported_stdevs()
-    Ns = DataStore.checkpoints[:len(stats.conv_mean.values()[0])]
+    Ns = DataStore.checkpoints[:len(list(stats.conv_mean.values())[0])]
 
     fig = plt.figure(figsize=plt.figaspect(.3))
     title = '%s %s (%d samples)' % (model.__name__, algo.__name__, stats.runs)
