@@ -6,6 +6,7 @@
 - Added modular trajectory sampling interface stocal.experimental.samplers
 - TrajectorySampler instances accept an optional random seed
 - Added Gibson & Bruck's NextReactionMethod
+- Statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.

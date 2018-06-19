@@ -1,6 +1,5 @@
 - better report generation
 - timeouts or max steps for sampling processes?
-- update CHANGELOG
 =
 * TrajectorySampler.__iter__ seems to stop at tmax even if more events would occur then
 * stocal.algorithms.AndersonNRM might be invalid/broken
