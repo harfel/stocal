@@ -1,7 +1,9 @@
 * TrajectorySampler.__iter__ seems to stop at tmax even if more events would occur then
 * stocal.algorithms.AndersonNRM might be invalid/broken
 * error in stocal.experimental.samplers: Samplers do not chain properly where invoking self.propose_potential_transition, etc.
-* Event.__repr__ does not show full init signature- deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
+* Event.__repr__ does not show full init signature
+* allow species equals 0 in initial state?
+- deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - support for proper delay events
 - tau leaping
 - statistical verification tests
@@ -13,6 +15,6 @@
 - curried reactions (determine products only upon application)
 - C/C++/D implementation
 = version 1.2+
-- deprecate dict support in MassAction.reactions and ReactionRule.infer_transitions
-- deprecate invalid-name arguments
+- remove dict support in MassAction.reactions and ReactionRule.infer_transitions
+- remove invalid-name arguments
 = version 2
