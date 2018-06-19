@@ -142,5 +142,40 @@ class TestTemperatureCycle(unittest.TestCase):
             pass
 
 
+class TestValidation(unittest.TestCase):
+    """Test validation example"""
+    from stocal.examples.validation import DataStore
+    
+    def setUp(self):
+        from tempfile import mkdtemp
+        self.tmpdir = mkdtemp(prefix='stocal-tmp')
+        self.store = self.DataStore(self.tmpdir)
+
+    def tearDown(self):
+        from shutil import rmtree
+        rmtree(self.tmpdir)
+
+    def test_run(self):
+        """Assert that validation run is executable"""
+        from argparse import Namespace
+        from stocal.algorithms import DirectMethod as TestMethod
+        from stocal.examples.dsmts.models import DSMTS_001_01 as TestModel
+        from stocal.examples.validation import run_validation
+
+        args = Namespace(models=[TestModel], algo=[TestMethod], N=3,
+                         cpu=1, store=self.store)
+        run_validation(args)
+
+    def test_report(self):
+        """Assert that validation report is executable"""
+        # populate the store first...
+        from argparse import Namespace
+        from stocal.examples.validation import report_validation
+
+        args = Namespace(frmt='png', cpu=1, store=self.store)
+        self.test_run()
+        report_validation(args)
+
+
 if __name__ == '__main__':
     unittest.main()
