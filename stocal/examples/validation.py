@@ -7,10 +7,22 @@ The module is meant to be run from command line as
 see python stocal/examples/validation.py -h
 
 for more information.
+
+The script can be used to run validation tests from the DSMTS suite
+(by default stocal.examples.dsmts.models) on stochastic simulation
+algorithm implementations (by default all algorithms in
+stocal.algorithms). Samples trajectories are fed into a DataStore
+that performs aggregation to estimate mean and standard deviations
+for all points along the trajectory. By default, the path of the
+data store is determined from the current git version (via git describe)
+but can be changed via command line option. Optional multiprocessing
+allows to perform simulations in parallel.
+
+Simulation results can be visualized (as png or pdf images) using the
+report command.
 """
 import sys
 import os
-import warnings
 import logging
 
 from collections import namedtuple
@@ -19,16 +31,31 @@ from math import sqrt
 try:
     import numpy as np
 except ImportError:
-        logging.error("Example validation.py requires numpy.")
-        sys.exit(1)
+    logging.error("Example validation.py requires numpy.")
+    sys.exit(1)
 
 
-class Stats(namedtuple(
-    '_Stats',
-    ('runs', 'times', 'mean', 'M2', 'conv_mean', 'conv_stdev', 'config'))):
+class Stats(namedtuple('_Stats',
+                       ('runs', 'times', 'mean', 'M2', 'conv_mean', 'conv_stdev', 'config'))):
+    """Simulation result statistics
 
+    Stats collects simulation statistics for use in the DataStore,
+    where each algorithm/model configuration has one associated
+    Stats instance.
+    
+    Stats groups the number of runs, a sequence of trajectory time
+    points, together with mean and M2 values for each species in the
+    model. (M2 is a temporary value used to keep track of standard
+    deviations. See DataStore docmentation for details) mean and M2 are
+    dictionaries that map each species identifier to a sequence of
+    floating point numbers.
+
+    Stats.stdev returns a dictionary of standard deviation sequences
+    for each species.
+    """
     @property
     def stdev(self):
+        """Dictionary of standard deviation sequences for each species"""
         return {
             s: (values/(self.runs-1))**.5
             for s, values in self.M2.items()
@@ -36,6 +63,17 @@ class Stats(namedtuple(
 
 
 class DataStore(object):
+    """Persistent store for aggregated data
+    
+    This class provides a data store that maintains statistics of
+    simulation results throughout multiple incarnations of the
+    validation script.
+
+    A DataStore accepts individual simulation results for given
+    configurations, and allows retrieval of the aggregated statistics
+    for a given configuration.
+    """
+    # times at which current aggregate data is memorized
     checkpoints = [int(sqrt(10)**n) for n in range(100)][1:]
 
     def __init__(self, path):
@@ -43,11 +81,12 @@ class DataStore(object):
         self.path = path
         try:
             os.makedirs(self.path)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
                 raise
 
     def __iter__(self):
+        """Access all data files and statistics in the data store"""
         import pickle
         for dirpath, _, filenames in os.walk(self.path):
             for name in filenames:
@@ -57,18 +96,27 @@ class DataStore(object):
                         config = pickle.load(open(fname)).config
                         yield fname, self.get_stats(config)
                     except Exception as exc:
-                        logging.warn("Could not access data in %s" % fname)
+                        logging.warn("Could not access data in %s", fname)
                         logging.info(exc, exc_info=True)
                         yield fname, None
 
     def get_path_for_config(self, config):
+        """Retrieve path of datafile for a given configuration"""
         model, algo = config
         prefix = '-'.join((algo.__name__, model.__name__))
         return os.path.join(self.path, prefix+'.dat')
 
     def feed_result(self, result, config):
-        # online aggregation adapted from
-        # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm
+        """Add a single simulation result for a given configuration
+
+        feed_result uses an online algorithm to update mean and
+        standard deviation with every new result fed into the store.
+        (The online aggregation is adapted from
+        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Online_algorithm)
+        
+        At times defined in self.checkpoints, a dump of the current
+        statistics is memorized in Stats.conv_mean and Stats.conv_stdev.
+        """
 
         import pickle
         from shutil import copyfile
@@ -123,35 +171,46 @@ class DataStore(object):
             os.remove(fname+'~')
 
     def get_stats(self, config):
+        """Read stats for a given configuration"""
         import pickle
-        model, algo = config
         fname = self.get_path_for_config(config)
         return pickle.load(open(fname))
 
 
-def run_simulation(config):
+def run_simulation(Model, Algorithm):
+    """Perform single simulation of Model using Algorithm.
+
+    Returns the result of a single simulation run.
+    """
     # setup model and algorithm
-    Model, Algorithm = config
     model = Model()
     trajectory = Algorithm(model.process, model.initial_state,
                            tmax=model.tmax)
 
     # perform simulation
-    logging.debug("Start simulation of %s with %s."
-                  % (Model.__name__, Algorithm.__name__))
+    logging.debug("Start simulation of %s with %s.",
+                  Model.__name__, Algorithm.__name__)
     result = model(trajectory)
-    logging.debug("Simulation of %s with %s finished."
-                  % (Model.__name__, Algorithm.__name__))
+    logging.debug("Simulation of %s with %s finished.",
+                  Model.__name__, Algorithm.__name__)
     return result
 
 
 def run_in_process(queue, locks, store):
-    while True :
+    """Worker process for parallel execution of simulations.
+    
+    The worker continuously fetches a simulation configuration from
+    the queue, runs the simulation and feeds the simulation result
+    into the data store. The worker stops if it fetches a single None
+    from the queue.
+    """
+    while True:
         config = queue.get()
-        if not config: break
+        if not config:
+            break
 
-        result = run_simulation(config)
-        
+        result = run_simulation(*config)
+
         with locks[config]:
             store.feed_result(result, config)
 
@@ -159,7 +218,19 @@ def run_in_process(queue, locks, store):
 
 
 def run_validation(args):
+    """Perform validation simulations.
+    
+    Run simulations required for the store to hold aggregregated
+    statistics from args.N samples for each given algorithm and model
+    combination. If args.model is not given, models classes are
+    loaded from stocal.examples.dsmts.models. If args.algo is not given,
+    algorithms are loaded from stocal.algorithms.
+
+    If args.cpu is given and greater than 1, simulations are performed
+    in parallel.
+    """
     from multiprocessing import Process, Queue, Lock
+    from inspect import isclass, isabstract
     from itertools import product
 
     def get_implementations(module, cls):
@@ -185,8 +256,8 @@ def run_validation(args):
         import random
         required = {
             config: (max(0, N-args.store.get_stats(config).runs)
-                    if os.path.exists(args.store.get_path_for_config(config))
-                    else N)
+                     if os.path.exists(args.store.get_path_for_config(config))
+                     else N)
             for config in product(args.models, args.algo)
         }
         while required:
@@ -204,11 +275,11 @@ def run_validation(args):
         }
         processes = [Process(target=run_in_process,
                              args=(queue, locks, args.store))
-                     for _ in range(args.cpu) ]
+                     for _ in range(args.cpu)]
         for proc in processes:
             proc.start()
         logging.debug("%d processes started." % args.cpu)
-        for config in configurations(args.N): # XXX can raise EOFError
+        for config in configurations(args.N):
             queue.put(config)
         logging.debug("All jobs requested.")
         for _ in processes:
@@ -219,22 +290,24 @@ def run_validation(args):
             proc.join()
     else:
         for config in configurations(args.N):
-            result = run_simulation(config)
+            result = run_simulation(*config)
             args.store.feed_result(result, config)
     logging.debug("Done.")
 
 
 def report_validation(args):
+    """Generate figures for all results in args.store"""
     for fname, stats in args.store:
         if stats:
             figname = fname[:-len('.dat')]+'.'+args.frmt
-            if not os.path.exists(figname) or os.path.getmtime(fname)>os.path.getmtime(figname):
-                # only if .dat newer than 
-                logging.info("Generate figure for %s" % fname)
+            if not os.path.exists(figname) or os.path.getmtime(fname) > os.path.getmtime(figname):
+                # only if .dat newer than
+                logging.info("Generate figure for %s", fname)
                 generate_figure(stats, figname)
 
 
 def generate_figure(stats, fname):
+    """Generate figure for given stats and save it to fname."""
     try:
         from matplotlib import pyplot as plt
     except ImportError:
@@ -262,8 +335,10 @@ def generate_figure(stats, fname):
 
         ax.fill_between(stats.times, rep_low, rep_high, facecolor=cm(0), alpha=0.3)
         ax.fill_between(stats.times, low, high, facecolor=cm(0.99), alpha=0.3)
-        ax.plot(rep_times, rep_means[species], color=cm(0), label='$\mathregular{%s_{exp}}$' % species)
-        ax.plot(stats.times, mu, color=cm(0.99), label='$\mathregular{%s_{sim}}$' % species, alpha=.67)
+        ax.plot(rep_times, rep_means[species],
+                color=cm(0), label=r'$\mathregular{%s_{exp}}$' % species)
+        ax.plot(stats.times, mu,
+                color=cm(0.99), label=r'$\mathregular{%s_{sim}}$' % species, alpha=.67)
     plt.xlabel('time')
     plt.ylabel('# molecules')
     plt.legend(loc=0)
@@ -273,11 +348,16 @@ def generate_figure(stats, fname):
     ax.set_xscale('log')
     ax.set_yscale('log')
     for s, cm in zip(stats.mean, colormaps):
-        ax.set_prop_cycle(plt.cycler('color', (cm(x/stats.times[-1]) for x in stats.times)))
+        ax.set_prop_cycle(plt.cycler('color',
+                                     (cm(x/stats.times[-1]) for x in stats.times)))
         for t in stats.times:
             exp = rep_means[s][int(t)]
-            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2) if rep_stdevs[s][int(t)] else 0 for sim in stats.conv_mean[s, t]]
-            if not all(ys): continue
+            ys = [abs((sim-exp)/rep_stdevs[s][int(t)]**2)
+                  if rep_stdevs[s][int(t)]
+                  else 0
+                  for sim in stats.conv_mean[s, t]]
+            if not all(ys):
+                continue
             if t in stats.times[:2] or t == max(stats.times):
                 ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
             else:
@@ -297,7 +377,8 @@ def generate_figure(stats, fname):
         for t in stats.times:
             exp = rep_stdevs[s][int(t)]
             ys = [abs(sim/exp**2-1) if exp else 0 for sim in stats.conv_stdev[s, t]]
-            if not all(ys): continue
+            if not all(ys):
+                continue
             if t in stats.times[:2] or t == max(stats.times):
                 ax.plot(Ns, ys, alpha=0.67, label="time = %.1f" % t)
             else:
@@ -312,14 +393,12 @@ def generate_figure(stats, fname):
 
 
 if __name__ == '__main__':
-    import sys
     import argparse
     import subprocess
-    from inspect import isclass, isabstract
 
     def import_by_name(name):
         """import and return a module member given by name
-        
+
         e.g. 'stocal.algorithms.DirectMethod' will return the class
         <class 'stocal.algorithms.DirectMethod'>
         """
@@ -341,7 +420,7 @@ if __name__ == '__main__':
                         type=int,
                         default=1,
                         help='number of parallel processes')
-    
+
     subparsers = parser.add_subparsers(help='validation sub-command')
 
     # parser for the "run" command

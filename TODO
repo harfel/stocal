@@ -1,5 +1,5 @@
-- clean & document code
 - describe validation in docs/developer.md
+- unittest for validation
 - better report generation
 - timeouts or max steps for sampling processes?
 - update CHANGELOG
