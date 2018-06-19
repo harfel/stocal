@@ -55,9 +55,9 @@ Stocal ships with a validation suite for stochastic simulation
 algorithms. The validation suite is based on the discrete stochastic
 simulation model test suite DSMTS. To run validations, call
 $ python stocal/examples/validation.py run N
-from the command line. To generate figures of the validation results,
-call
+from the command line. To generate a validation report, run
 $ python stocal/examples/validation.py report
+This generates a file validation.tex that can be compiled with pdflatex.
 See
 $ python stocal/examples/validation.py -h
 for more information. The DSMTS user guide recommends N=1,000 as an
@@ -65,6 +65,7 @@ absolute minimum to be run regularly in conjunction with unit test,
 and n=100,000 or n=1,000,000 for a thorough statistical analysis.
 A rudimentary LaTeX template that collates report results into a
 single document can be found in doc/validation.tex
+
 
 ## Releases
 

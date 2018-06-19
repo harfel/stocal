@@ -19,7 +19,8 @@ but can be changed via command line option. Optional multiprocessing
 allows to perform simulations in parallel.
 
 Simulation results can be visualized (as png or pdf images) using the
-report command.
+report command. The report command also generates a validation.tex file
+that can be compiled into a report.
 """
 import sys
 import os
@@ -30,8 +31,9 @@ from math import sqrt
 
 try:
     import numpy as np
+    import jinja2
 except ImportError:
-    logging.error("Example validation.py requires numpy.")
+    logging.error("Example validation.py requires numpy and jinja2.")
     sys.exit(1)
 
 
@@ -296,16 +298,44 @@ def run_validation(args):
     logging.debug("Done.")
 
 
-def report_validation(args):
+def report_validation(args, frmt='png', template='doc/validation.tex'):
     """Generate figures for all results in args.store"""
+    figures = {}
+
+    # generate figures for the entire data store
     for fname, stats in args.store:
         if stats:
-            figname = fname[:-len('.dat')]+'.'+args.frmt
+            figname = fname[:-len('.dat')]+'.'+ frmt
             if not os.path.exists(figname) or os.path.getmtime(fname) > os.path.getmtime(figname):
                 # only if .dat newer than
                 logging.info("Generate figure for %s", fname)
                 generate_figure(stats, figname)
+            
+            model, algo = stats.config
+            figures[algo.__name__] = figures.get(algo.__name__, [])+[figname]
 
+    # populate latex template
+    latex_jinja_env = jinja2.Environment(
+        block_start_string = '\BLOCK{',
+        block_end_string = '}',
+        variable_start_string = '\VAR{',
+        variable_end_string = '}',
+        comment_start_string = '\#{',
+        comment_end_string = '}',
+        line_statement_prefix = '%%',
+        line_comment_prefix = '%#',
+        trim_blocks = True,
+        autoescape = False,
+        loader = jinja2.FileSystemLoader(os.path.abspath('.'))
+    )
+    template = latex_jinja_env.get_template(template)
+    context = {
+        'version': os.path.basename(args.store.path).replace('_', '\_'),
+        'methods': figures,
+    }
+    reportfile = args.reportfile or 'validation-%s.tex' % context['version']
+    with open(reportfile, 'w') as report:
+        report.write(template.render(**context))
 
 def generate_figure(stats, fname):
     """Generate figure for given stats and save it to fname."""
@@ -446,11 +476,11 @@ if __name__ == '__main__':
 
     # parser for the "report" command
     parser_report = subparsers.add_parser('report', help='generate figures from generated data')
-    parser_report.add_argument('--format',
+    parser_report.add_argument('--file',
                                action='store',
-                               dest='frmt',
-                               default='png',
-                               help='file format of generated figures')
+                               dest='reportfile',
+                               default='',
+                               help='file name of generated report')
     parser_report.set_defaults(func=report_validation)
 
     # parse and act
