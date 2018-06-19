@@ -177,7 +177,7 @@ class DataStore(object):
         return pickle.load(open(fname, 'rb'))
 
 
-def run_simulation(Model, Algorithm):
+def run_simulation(Model, Algorithm, max_steps=100000):
     """Perform single simulation of Model using Algorithm.
 
     Returns the result of a single simulation run.
@@ -185,7 +185,7 @@ def run_simulation(Model, Algorithm):
     # setup model and algorithm
     model = Model()
     trajectory = Algorithm(model.process, model.initial_state,
-                           tmax=model.tmax)
+                           tmax=model.tmax, steps=max_steps)
 
     # perform simulation
     logging.debug("Start simulation of %s with %s.",
