@@ -411,16 +411,16 @@ if __name__ == '__main__':
     git_label = subprocess.check_output(["git", "describe"]).strip()
     default_store = os.path.join('validation_data', git_label)
 
-    parser = argparse.ArgumentParser(prog=sys.argv[0])
+    parser = argparse.ArgumentParser(
+        prog=sys.argv[0],
+        description="Perform statistical validation tests.",
+        epilog="""If --dir is provided, it specifies a directory used to
+               hold validation data.""")
     # global options
     parser.add_argument('--dir', dest='store',
                         type=DataStore,
                         default=DataStore(default_store),
                         help='directory for/with simulation results')
-    parser.add_argument('--cpu', metavar='N',
-                        type=int,
-                        default=1,
-                        help='number of parallel processes')
 
     subparsers = parser.add_subparsers(help='validation sub-command')
 
@@ -438,6 +438,10 @@ if __name__ == '__main__':
                             action='append',
                             dest='models',
                             help='specify model to be validated')
+    parser_run.add_argument('--cpu', metavar='N',
+                            type=int,
+                            default=1,
+                            help='number of parallel processes')
     parser_run.set_defaults(func=run_validation)
 
     # parser for the "report" command
