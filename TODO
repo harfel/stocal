@@ -5,8 +5,8 @@
 * allow species equals 0 in initial state?
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - support for proper delay events
+=
 - tau leaping
-- statistical verification tests
 - utilities to simplify scipy/matplotlib interaction
 - arithmetic operations for Process
 - string rewrite rule support
