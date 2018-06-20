@@ -211,10 +211,18 @@ def run_in_process(queue, locks, store):
         if not config:
             break
 
-        result = run_simulation(*config)
+        try:
+            result = run_simulation(*config)
+        except Exception as exc:
+            logging.warning("Could not run simulation for %s", str(config))
+            logging.info(exc, exc_info=True)
 
         with locks[config]:
-            store.feed_result(result, config)
+            try:
+                store.feed_result(result, config)
+            except Exception as exc:
+                logging.warning("Could not store result for %s", str(config))
+                logging.info(exc, exc_info=True)
 
     logging.debug("Worker finished")
 
@@ -300,6 +308,11 @@ def run_validation(args):
 
 def report_validation(args, frmt='png', template='doc/validation.tex'):
     """Generate figures for all results in args.store"""
+    def camel_case_split(identifier):
+        import re
+        matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
+        return ' '.join(m.group(0) for m in matches)
+
     figures = {}
 
     # generate figures for the entire data store
@@ -308,11 +321,16 @@ def report_validation(args, frmt='png', template='doc/validation.tex'):
             figname = fname[:-len('.dat')]+'.'+ frmt
             if not os.path.exists(figname) or os.path.getmtime(fname) > os.path.getmtime(figname):
                 # only if .dat newer than
-                logging.info("Generate figure for %s", fname)
-                generate_figure(stats, figname)
-            
+                logging.debug("Generate figure for %s", fname)
+                try:
+                    generate_figure(stats, figname)
+                except Exception as exc:
+                    logging.warning("Could not generate figure for %s", fname)
+                    logging.info(exc, exc_info=True)
+
             model, algo = stats.config
-            figures[algo.__name__] = figures.get(algo.__name__, [])+[figname]
+            algo_name = camel_case_split(algo.__name__).replace('_', ' ')
+            figures[algo_name] = sorted(figures.get(algo_name, [])+[figname])
 
     # populate latex template
     latex_jinja_env = jinja2.Environment(
@@ -421,6 +439,7 @@ def generate_figure(stats, fname):
     plt.legend(loc=3)
 
     fig.savefig(fname)
+    plt.close()
 
 
 if __name__ == '__main__':
@@ -484,6 +503,6 @@ if __name__ == '__main__':
     parser_report.set_defaults(func=report_validation)
 
     # parse and act
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     args = parser.parse_args()
     args.func(args)
