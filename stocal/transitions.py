@@ -504,6 +504,11 @@ class ReactionRule(Rule):
         """Standard inference algorithm for Reactions.
 
         see help(type(self)) for an explanation of the algorithm.
+
+        # XXX transition inference needs optimization:
+        # In recent profiling, this function cumulatively took 55%
+        # of the total time, with 23% of the total being spent in
+        # recursion through combinations.
         """
         if not isinstance(new_species, multiset):
             warnings.warn("last_products must be a multiset.", DeprecationWarning)

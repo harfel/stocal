@@ -107,6 +107,8 @@ and calculate averages of these states.
 
 See the Sampler documentation for a full explanation of Sampler factory
 methods.
+
+# XXX Chaining of Samplers as described in the doc is currently broken
 """
 import abc
 try:
@@ -266,7 +268,7 @@ class UntilTimeSampler(Sampler):
 
     def __iter__(self):
         while True:
-            time, transition, args = self.propose_potential_transition() # XXX needs to iterate over self.sampler!
+            time, transition, args = self.propose_potential_transition() # TODO: needs to iterate over self.sampler!
 
             if time > self.tmax:
                 break
@@ -307,7 +309,7 @@ class EveryTimeSampler(Sampler):
         time = self.sampler.time
         transitions = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_potential_transition() # XXX needs to iterate over self.sampler!
+            ptime, trans, args = algorithm.propose_potential_transition() # TODO: needs to iterate over self.sampler!
             if ptime > time+self.dt:
                 time += self.dt
                 yield time, self.state, transitions
@@ -355,7 +357,7 @@ class AverageTimeSampler(EveryTimeSampler):
         transitions = multiset()
         averages = multiset()
         while True:
-            ptime, trans, args = algorithm.propose_potential_transition() # XXX needs to iterate over self.sampler!
+            ptime, trans, args = algorithm.propose_potential_transition() # TODO: needs to iterate over self.sampler!
 
             if ptime > time+self.dt:
                 time += self.dt
