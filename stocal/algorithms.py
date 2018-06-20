@@ -368,14 +368,14 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         by TrajectorySampler.propose_potential_transition.
         """
         self.step += 1
-        self.time = time
+        self.time = time # time of transition, in order to perform transition
         transition.last_occurrence = time
-        self.state -= transition.true_reactants
+        self.state -= transition.true_reactants # Takes away the used up reactant from their respective total species count
         for rule in self.process.rules:
             for trans in rule.infer_transitions(transition.true_products, self.state):
                 trans.rule = rule
                 self.add_transition(trans)
-        self.state += transition.true_products
+        self.state += transition.true_products # Adds products to their respective total species
 
     def reject_transition(self, time, transition, *args):
         """Do not execute the given transition.
@@ -698,6 +698,7 @@ class Group(object):
         self.transitions = [] # 4th attributes/properties
         self.propensities = []# 5th attributes/properties of the objects of this class, which has a value of the MultiDict() variable for all objects
 
+
 class CompositionRejection(TrajectorySampler):
     """Implementation of Gillespie's direct method."""
     PMIN = 1
@@ -714,6 +715,7 @@ class CompositionRejection(TrajectorySampler):
         gmin = self.PMIN # gmin equals PMIN
         gmax = 2*self.PMIN # gmax is always double the value of PMIN
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
+        self.transitionnumber = None
 
         while gmax <= self.PMAX: # this loop groups the reactions into groups
             new_group = Group(gmin, gmax) # a object of the class Group is created and called "new_group"
@@ -759,28 +761,33 @@ class CompositionRejection(TrajectorySampler):
                 group_selected = group # the chosen group
                 break
 
-        transition = None
-        cat = group_selected.num_transition
-        pick = self.rng.randint(1, cat) # this block of code relates to step 3b
-        group_selected[pick]
+        transition = self.rng.choice(group_selected) # this block of code relates to step 3b
         break
+        return self.time + delta_t, transition, (group_selected,)
 
-        return self.time + delta_t, transition, tuple()
 
-
-    def perform_transition(self, time, transition): # relates to step 4.
-        super(CompositionRejection, self).perform_transition(time, transition)
+    def perform_transition(self, time, transition, group_selected): # relates to step 4.
+        super(CompositionRejection, self).perform_transition(time, transition) #equivlent TrajectorySampler.performa_transition(self, time, transition)
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.update_propensities(affected)
 
-    def is_applicable(self, time, transition, *args):
-        """Returns False for Event's that lack their reactants."""
-        if isinstance(transition, Event):
-            return transition.reactants <= self.state # isn't applicable
-        else:
-            return super(CompositionRejection, self).is_applicable(time, transition, *args) # is applicable
+        self.groups.clear() # clears the "self.groups" list, in order to add new regrouped groups
+        while gmax <= self.PMAX: # this loop groups the reactions into groups
+            new_group = Group(gmin, gmax) # a object of the class Group is created and called "new_group"
+            self.groups.append(new_group) # self.groups is a list, which has object called "new_group" added as it's item
+            gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles
+            gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
 
-    def update_propensities(self, affected_transitions): # relates to step 4 part 1.
+    def is_applicable(self, time, transition, group_selected):
+        """Returns False for Event's that lack their reactants."""
+
+         m = group_selected.gmax
+         r4 = self.rng.random(0, m)
+         propensity = self.propensities[self.transitionnumber]
+            return not propensity < r4
+
+
+    def update_propensities(self, affected_transitions): # relates to step 4 part 1. (Deals with the regrouping
         """Update propensities of all given transitions.
 
         If the new propensity of a transition is 0 and the transition
@@ -790,8 +797,13 @@ class CompositionRejection(TrajectorySampler):
             propensity = trans.propensity(self.state)
             if propensity == 0 and (trans.rule or isinstance(trans, Event)):
                 self.depleted.append(trans)
-            self.propensities.update_item(trans, propensity)
+            self.propensities.update_items(trans, propensity)
 
     def calculate_propensity(self, transition):
         """Return propensity of the given transition for current state."""
         return transition.propensity(self.state)
+
+
+
+
+
