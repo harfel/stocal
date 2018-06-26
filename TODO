@@ -1,5 +1,4 @@
 - Process.flatten to expand rule-based chemistries
-- test based specification for flattening
 - update changelog and tutorial
 = feature/flatten_rules
 + support for proper delay events
