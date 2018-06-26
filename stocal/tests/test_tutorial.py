@@ -107,6 +107,14 @@ class TestTutorial(unittest.TestCase):
         for _ in trajectory:
             pass
 
+    def test_flattening(self):
+        """Flattening a rule-based process"""
+        process = Process(rules=[Dilution()])
+        flat_process = process.flatten(['a', 'b', 'c'])
+        self.assertEqual(len(flat_process.transitions), 3)
+        self.assertEqual(len(flat_process.rules), 0)
+
+
     def test_types(self):
         """Specifying types via ReactionRule.signature"""
         process = Process(rules=[Association()])
