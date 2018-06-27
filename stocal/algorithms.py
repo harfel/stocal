@@ -771,12 +771,12 @@ class CompositionRejection(TrajectorySampler):
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.update_propensities(affected)
 
-        self.groups.clear() # clears the "self.groups" list, in order to add new regrouped groups
-        while gmax <= self.PMAX: # this loop groups the reactions into groups
-            new_group = Group(gmin, gmax) # a object of the class Group is created and called "new_group"
-            self.groups.append(new_group) # self.groups is a list, which has object called "new_group" added as it's item
-            gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles
-            gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
+        self.groups.clear() # clears the "self.groups" list, in order to add new regrouped groups.
+        while gmax <= self.PMAX: # this loop groups the reactions into groups.
+            new_group = Group(gmin, gmax) # a object of the class Group is created and called "new_group".
+            self.groups.append(new_group) # self.groups is a list, which has object called "new_group" added as it's item.
+            gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles.
+            gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles.
 
     def is_applicable(self, time, transition, group_selected):
         """Returns False for Event's that lack their reactants."""
