@@ -762,7 +762,7 @@ class CompositionRejection(TrajectorySampler):
                 break
 
         transition = self.rng.choice(group_selected) # this block of code relates to step 3b
-        break
+
         return self.time + delta_t, transition, (group_selected,)
 
 
@@ -781,10 +781,10 @@ class CompositionRejection(TrajectorySampler):
     def is_applicable(self, time, transition, group_selected):
         """Returns False for Event's that lack their reactants."""
 
-         m = group_selected.gmax
-         r4 = self.rng.random(0, m)
-         propensity = self.propensities[self.transitionnumber]
-            return not propensity < r4
+        m = group_selected.gmax
+        r4 = self.rng.random(0, m)
+        propensity = self.propensities[self.transitionnumber]
+        return not propensity < r4
 
 
     def update_propensities(self, affected_transitions): # relates to step 4 part 1. (Deals with the regrouping
