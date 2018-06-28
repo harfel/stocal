@@ -1,3 +1,7 @@
+- implement Cao et al. 2006 algorithm
+- validation for varying epsilon
+- update CHANGELOG and tutorial
+=
 + support for proper delay events
 * TrajectorySampler.__iter__ seems to stop at tmax even if more events could occur
 * stocal.algorithms.AndersonNRM is broken
