@@ -34,53 +34,53 @@ class CaoMethod(DirectMethod):
             # step 1: partition reactions -- Eq. (10)
             Jcrit, Jncr = self.identify_critical_reactions()
 
-            Irs = [s for s in self.state
-                   if any(s in trans.reactants for trans in self.transitions)]
-
-            Incr = [s for s in self.state
-                    if any(s in trans.reactants for trans in Jncr)]
+            Irs = set(s for trans in self.transitions for s in trans.reactants)
+            Incr = set(s for trans in Jncr for s in trans.reactants)
 
             if Incr:
                 # step 2: determine noncritical tau -- Eqs. (32) and (33)
                 mu = {s: sum(self._nu(trans, s)*a
-                             for trans, a in Jncr.items()) for s in Irs}
+                             for trans, a in Jncr.items()) for s in Incr}
                 var = {s: sum(self._nu(trans, s)**2*a
-                              for trans, a in Jncr.items()) for s in Irs}
+                              for trans, a in Jncr.items()) for s in Incr}
 
                 eps = {s: max(self.epsilon*self.state[s]*self.gi(s), 1.) for s in Incr}
 
-                tau_ncr1 = min(eps[s]/abs(mu[s]) for s in Incr)
-                tau_ncr2 = min(eps[s]**2/abs(var[s]) for s in Incr)
+                tau_ncr1 = min((eps[s]/abs(mu[s])) if mu[s] else float('inf') for s in Incr)
+                tau_ncr2 = min((eps[s]**2/abs(var[s])) if var[s] else float('inf') for s in Incr)
                 tau_ncr = min((tau_ncr1, tau_ncr2))
             else:
                 tau_ncr = float('inf')
 
-            # step 3: check whether to abandon tau leaping
             a0 = sum(mult*prop for _, prop, mult in self.propensities.items())
 
             if not a0:
                 break
-            
-            if tau_ncr < self.tauleap_threshold / a0:
-                it = DirectMethod.__iter__(self)
-                for _ in xrange(self.micro_steps):
-                    yield next(it)
-                    # XXX yield triple rather than transition:
-                    # trans = next(it)
-                    # yield self.time, self.state, {trans: 1}
-                continue
-            else:
+
+            while True:
+                # step 3: abandon tau leaping if not enough expected gain
+                if tau_ncr <= self.tauleap_threshold / a0:
+                    logging.debug("Abandon tau-leaping")
+                    it = DirectMethod.__iter__(self)
+                    for _ in xrange(self.micro_steps):
+                        yield next(it) # XXX yield triple rather than transition:
+                        # yield self.time, self.state, {trans: 1}
+                    logging.debug("Resume tau-leaping")
+                    break
+
                 # step 4: determine critical tau
-                ac = sum(propensity for trans, propensity in Jcrit.items()) if tau_ncr < float('inf') else a0
+                ac = sum(propensity for trans, propensity in Jcrit.items())
                 tau_crit = -log(self.rng.random())/ac if ac else float('inf')
 
                 # step 5: determine actual tau
-                tau = min((tau_ncr, tau_crit))
+                tau = min((tau_ncr, tau_crit, self.tmax-self.time))
 
                 # step 5a
                 firings = {trans: poisson(propensity*tau) # XXX does not use self.seed
                            for trans, propensity in Jncr.items()}
                 firings = {trans: n for trans, n in firings.items() if n}
+
+                # XXX there could have been more firings than allowed by self.steps
 
                 # step 5b
                 if tau == tau_crit:
@@ -93,44 +93,47 @@ class CaoMethod(DirectMethod):
                             break
                     firings[transition] = 1
 
-            # step 6: perform transitions
-            self.time += tau
-            all_reactants = sum((n*trans.true_reactants
-                                 for trans, n in firings.items()), multiset())
-            all_products = sum((n*trans.true_products
-                                for trans, n in firings.items()), multiset())
+                # step 6a: determine if reaction would produce negative copy numbers
+                # XXX these need to be true reactants and true products!
+                all_reactants = sum((n*trans.true_reactants
+                                     for trans, n in firings.items()), multiset())
+                all_products = sum((n*trans.true_products
+                                    for trans, n in firings.items()), multiset())
 
-            if any(self.state[s]<n
-                   for s, n in (all_reactants-all_products).items()):
-                # XXX account for potentially negative species
-                raise RuntimeError("negative species count encountered during simulation.")
+                if any(self.state[s]<n
+                       for s, n in (all_reactants-all_products).items()):
+                    tau_ncr /= 2
+                    continue
 
-            self.step += sum(firings.values()) # XXX seperate counts for step and num_transitions
-            self.state -= all_reactants
-            for rule in self.process.rules:
-                for trans in rule.infer_transitions(all_products, self.state):
-                    trans.rule = rule
-                    self.add_transition(trans)
-            self.state += all_products
+                else:
+                    # step 6b: perform transitions
+                    self.time += tau
+                    self.step += sum(firings.values()) # XXX seperate counts for step and num_transitions
+                    self.state -= all_reactants
+                    for rule in self.process.rules:
+                        for trans in rule.infer_transitions(all_products, self.state):
+                            trans.rule = rule
+                            self.add_transition(trans)
+                    self.state += all_products
 
-            # update propensities
-            affected_species = set().union(*(trans.affected_species
-                                             for trans in firings))
-            affected = self.dependency_graph.affected_transitions(affected_species)
-            self.update_propensities(affected)
+                    # update propensities
+                    affected_species = set().union(*(trans.affected_species
+                                                     for trans in firings))
+                    affected = self.dependency_graph.affected_transitions(affected_species)
+                    self.update_propensities(affected)
 
-            yield firings.keys()[0]
-            # XXX yield triple rather than transition:
-            #yield self.time, self.state, firings
+                    yield firings.keys()[0] if firings else None
+                    # XXX yield self.time, self.state, firings
+
+                    break
 
         if self.step != self.steps and self.tmax < float('inf'):
             self.time = self.tmax
 
-
     def identify_critical_reactions(self):
         def critical(trans, propensity):
             if not propensity:
-                return True
+                return False
             elif not trans.true_reactants:
                 return False
             elif L(trans) < self.n_crit:
@@ -193,10 +196,12 @@ class TestCaoMethod(TestTrajectorySampler):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+
     #from stocal.examples.pre2017 import process, initial_state
 
     #traj = CaoMethod(process, initial_state, 0.03, steps=sum(initial_state.values()))
     #for time, state, transitions in traj:
     #    print time, traj.step, sum(transitions.values())
-    
+
     unittest.main()
