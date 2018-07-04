@@ -8,6 +8,7 @@ This is a simple example of a process with only static (non-infered)
 reactions. The deterministic system exhibits ascillations when b>a+1."""
 
 import stocal
+print(stocal.__file__)
 
 a = 2.
 b = 10.

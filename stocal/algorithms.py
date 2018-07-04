@@ -698,6 +698,7 @@ class Group(object):
         self.transitions = [] # 4th attributes/properties
         self.propensities = []# 5th attributes/properties of the objects of this class, which has a value of the MultiDict() variable for all objects
 
+print("Here we are")
 
 class CompositionRejection(TrajectorySampler):
     """Implementation of Gillespie's direct method."""
@@ -724,7 +725,7 @@ class CompositionRejection(TrajectorySampler):
             gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
 
     def add_transition(self, transition): # not loop related
-        prop  = transition.propensity(self.state) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
+        prop = transition.propensity(self.state) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
 
         assert self.PMIN <= prop <= self.PMAX # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
 
