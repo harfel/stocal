@@ -27,6 +27,7 @@ class CaoMethod(DirectMethod):
 
     def __init__(self, process, state, epsilon=0.03, t=0., tmax=float('inf'), steps=None, seed=None):
         super(CaoMethod, self).__init__(process, state, t=t, tmax=tmax, steps=steps, seed=seed)
+        self.num_reactions = 0
         self.epsilon = epsilon
         self.rng2 = RandomState(seed)
         self.abandon_tauleap = -1
@@ -41,9 +42,9 @@ class CaoMethod(DirectMethod):
 
             if Incr:
                 # step 2: determine noncritical tau -- Eqs. (32) and (33)
-                mu = {s: sum(self._nu(trans, s)*a
+                mu = {s: sum(trans.stoichiometry.get(s, 0)*a
                              for trans, a in Jncr.items()) for s in Incr}
-                var = {s: sum(self._nu(trans, s)**2*a
+                var = {s: sum(trans.stoichiometry.get(s, 0)**2*a
                               for trans, a in Jncr.items()) for s in Incr}
                 eps = {s: max(self.epsilon*self.state[s]*self.gi(s), 1.) for s in Incr}
 
@@ -66,9 +67,10 @@ class CaoMethod(DirectMethod):
                     it = DirectMethod.__iter__(self)
                     for _ in range(self.micro_steps):
                         trans = next(it)
+                        self.num_reactions += 1
                         yield self.time, self.state, {trans: 1}
                     break
-                elif self.abandon_tauleap:
+                elif self.abandon_tauleap != -1:
                     logging.debug("Abandoned tau-leaping for %d steps" % (self.step-self.abandon_tauleap))
                     self.abandon_tauleap = -1
 
@@ -118,7 +120,8 @@ class CaoMethod(DirectMethod):
                 else:
                     # step 6b: perform transitions
                     self.time += tau
-                    self.step += new_reactions # XXX seperate counts for step and num_transitions
+                    self.step += 1
+                    self.num_reactions += new_reactions
                     self.state -= net_reactants
                     for rule in self.process.rules:
                         for trans in rule.infer_transitions(net_products, self.state):
@@ -153,9 +156,9 @@ class CaoMethod(DirectMethod):
                 return False
 
         def L(trans):
-            return min(-float(self.state[r])/self._nu(trans, r)
-                       for r in trans.true_reactants
-                       if self._nu(trans, r) < 0)
+            return min(-float(self.state[s])/trans.stoichiometry.get(s, 0)
+                       for s in trans.true_reactants
+                       if trans.stoichiometry.get(s, 0) < 0)
 
         crit = {}
         noncrit = {}
@@ -170,7 +173,6 @@ class CaoMethod(DirectMethod):
             if species not in trans.reactants:
                 continue
             order = sum(trans.reactants.values())
-            # XXX generalize the below
             if order == 1:
                 g = max(g, 1)
             elif order == 2 and trans.reactants[species] == 1:
@@ -186,10 +188,6 @@ class CaoMethod(DirectMethod):
             else:
                 raise RuntimeError("Tau-leaping not implemented for reactions of order %d" % order)
         return g
-
-    @staticmethod
-    def _nu(trans, r):
-        return trans.true_products[r] - trans.true_reactants[r]
 
 
 # XXX only here for validation purposes
