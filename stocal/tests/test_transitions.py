@@ -180,6 +180,11 @@ class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
         self.assertEqual(trans1.true_reactants, trans2.true_reactants)
         self.assertEqual(trans1.true_products, trans2.true_products)
 
+    def test_stoichiometry(self):
+        """stoichiometry is the net change of species"""
+        self.assertEqual(self.Transition({'a':1}, {'a':2}).stoichiometry, {'a':1})
+        self.assertEqual(self.Transition({'a':1}, {'b':2}).stoichiometry, {'a':-1, 'b':2})
+
     def test_hash(self):
         """Equal transitions must have equal hash values"""
         trans_1 = self.Transition({'a':1}, {'z':1})
