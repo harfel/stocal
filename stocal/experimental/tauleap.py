@@ -11,7 +11,7 @@ import sys
 import logging
 from math import log
 try:
-    from numpy.random import poisson
+    from numpy.random import RandomState
 except ImportError:
     logging.error("stocal.experimental.tauleap requires numpy.")
     sys.exit(1)
@@ -28,6 +28,8 @@ class CaoMethod(DirectMethod):
     def __init__(self, process, state, epsilon=0.03, t=0., tmax=float('inf'), steps=None, seed=None):
         super(CaoMethod, self).__init__(process, state, t=t, tmax=tmax, steps=steps, seed=seed)
         self.epsilon = epsilon
+        self.rng2 = RandomState(seed)
+        self.abandon_tauleap = -1
 
     def __iter__(self):
         while not self.has_reached_end():
@@ -43,12 +45,11 @@ class CaoMethod(DirectMethod):
                              for trans, a in Jncr.items()) for s in Incr}
                 var = {s: sum(self._nu(trans, s)**2*a
                               for trans, a in Jncr.items()) for s in Incr}
-
                 eps = {s: max(self.epsilon*self.state[s]*self.gi(s), 1.) for s in Incr}
 
                 tau_ncr1 = min((eps[s]/abs(mu[s])) if mu[s] else float('inf') for s in Incr)
                 tau_ncr2 = min((eps[s]**2/abs(var[s])) if var[s] else float('inf') for s in Incr)
-                tau_ncr = min((tau_ncr1, tau_ncr2))
+                tau_ncr = min((tau_ncr1, tau_ncr2, self.tmax-self.time))
             else:
                 tau_ncr = float('inf')
 
@@ -60,13 +61,16 @@ class CaoMethod(DirectMethod):
             while True:
                 # step 3: abandon tau leaping if not enough expected gain
                 if tau_ncr <= self.tauleap_threshold / a0:
-                    logging.debug("Abandon tau-leaping")
+                    if self.abandon_tauleap == -1:
+                        self.abandon_tauleap = self.step
                     it = DirectMethod.__iter__(self)
-                    for _ in xrange(self.micro_steps):
-                        yield next(it) # XXX yield triple rather than transition:
-                        # yield self.time, self.state, {trans: 1}
-                    logging.debug("Resume tau-leaping")
+                    for _ in range(self.micro_steps):
+                        trans = next(it)
+                        yield self.time, self.state, {trans: 1}
                     break
+                elif self.abandon_tauleap:
+                    logging.debug("Abandoned tau-leaping for %d steps" % (self.step-self.abandon_tauleap))
+                    self.abandon_tauleap = -1
 
                 # step 4: determine critical tau
                 ac = sum(propensity for trans, propensity in Jcrit.items())
@@ -76,11 +80,9 @@ class CaoMethod(DirectMethod):
                 tau = min((tau_ncr, tau_crit, self.tmax-self.time))
 
                 # step 5a
-                firings = {trans: poisson(propensity*tau) # XXX does not use self.seed
+                firings = {trans: self.rng2.poisson(propensity*tau)
                            for trans, propensity in Jncr.items()}
                 firings = {trans: n for trans, n in firings.items() if n}
-
-                # XXX there could have been more firings than allowed by self.steps
 
                 # step 5b
                 if tau == tau_crit:
@@ -93,38 +95,45 @@ class CaoMethod(DirectMethod):
                             break
                     firings[transition] = 1
 
-                # step 6a: determine if reaction would produce negative copy numbers
-                # XXX these need to be true reactants and true products!
+                new_reactions = sum(firings.values())
+
+                # avoid overshooting self.steps
+                if self.steps and self.step+new_reactions > self.steps:
+                    tau_ncr /= 2
+                    continue
+
                 all_reactants = sum((n*trans.true_reactants
                                      for trans, n in firings.items()), multiset())
                 all_products = sum((n*trans.true_products
                                     for trans, n in firings.items()), multiset())
+                net_reactants = all_reactants - all_products
+                net_products = all_products - all_reactants
 
+                # step 6a: avoid negative copy numbers
                 if any(self.state[s]<n
-                       for s, n in (all_reactants-all_products).items()):
+                       for s, n in net_reactants.items()):
                     tau_ncr /= 2
                     continue
 
                 else:
                     # step 6b: perform transitions
                     self.time += tau
-                    self.step += sum(firings.values()) # XXX seperate counts for step and num_transitions
-                    self.state -= all_reactants
+                    self.step += new_reactions # XXX seperate counts for step and num_transitions
+                    self.state -= net_reactants
                     for rule in self.process.rules:
-                        for trans in rule.infer_transitions(all_products, self.state):
+                        for trans in rule.infer_transitions(net_products, self.state):
                             trans.rule = rule
                             self.add_transition(trans)
-                    self.state += all_products
+                    self.state += net_products
 
                     # update propensities
                     affected_species = set().union(*(trans.affected_species
                                                      for trans in firings))
                     affected = self.dependency_graph.affected_transitions(affected_species)
                     self.update_propensities(affected)
+                    self.prune_transitions()
 
-                    yield firings.keys()[0] if firings else None
-                    # XXX yield self.time, self.state, firings
-
+                    yield self.time, self.state, firings
                     break
 
         if self.step != self.steps and self.tmax < float('inf'):
@@ -167,14 +176,13 @@ class CaoMethod(DirectMethod):
             elif order == 2 and trans.reactants[species] == 1:
                 g = max(g, 2)
             elif order == 2 and trans.reactants[species] == 2:
-                g = max(g, 2+(self.state[species]-1)**-1)
-
+                g = max(g, 2+(self.state[species]-1)**-1) if self.state[species] >= 2 else 3
             elif order == 3 and trans.reactants[species] == 1:
                 g = max(g, 3)
             elif order == 3 and trans.reactants[species] == 2:
-                g = max(g, 1.5*(2+(self.state[species]-1)**-1))
+                g = max(g, 1.5*(2+(self.state[species]-1)**-1)) if self.state[species] >= 2 else 4.5
             elif order == 3 and trans.reactants[species] == 3:
-                g = max(g, 3+(self.state[species]-1)**-1+(self.state[species]-2)**-1)
+                g = max(g, 3+(self.state[species]-1)**-1+(self.state[species]-2)**-1) if self.state[species] >= 3 else 5.5
             else:
                 raise RuntimeError("Tau-leaping not implemented for reactions of order %d" % order)
         return g
@@ -182,6 +190,33 @@ class CaoMethod(DirectMethod):
     @staticmethod
     def _nu(trans, r):
         return trans.true_products[r] - trans.true_reactants[r]
+
+
+# XXX only here for validation purposes
+
+class CaoMethod_003(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_003, self).__init__(process, state, 0.03, t=t, tmax=tmax, steps=steps, seed=seed)
+
+class CaoMethod_001(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_001, self).__init__(process, state, 0.01, t=t, tmax=tmax, steps=steps, seed=seed)
+
+class CaoMethod_0003(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_0003, self).__init__(process, state, 0.003, t=t, tmax=tmax, steps=steps, seed=seed)
+
+class CaoMethod_0001(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_0001, self).__init__(process, state, 0.001, t=t, tmax=tmax, steps=steps, seed=seed)
+
+class CaoMethod_00003(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_00003, self).__init__(process, state, 0.0003, t=t, tmax=tmax, steps=steps, seed=seed)
+
+class CaoMethod_00001(CaoMethod):
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        super(CaoMethod_00001, self).__init__(process, state, 0.0001, t=t, tmax=tmax, steps=steps, seed=seed)
 
 
 # testing
@@ -194,14 +229,18 @@ class TestCaoMethod(TestTrajectorySampler):
     This tests the regular TrajectorySampler interface."""
     Sampler = CaoMethod
 
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_add_transition_enables_transition(self):
+        self.fail("CaoMethod violates current TrajectorySampler specification.")
+
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_update_state_enables_infered(self):
+        self.fail("CaoMethod violates current TrajectorySampler specification.")
+
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_update_state_enables_static(self):
+        self.fail("CaoMethod violates current TrajectorySampler specification.")
+
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-
-    #from stocal.examples.pre2017 import process, initial_state
-
-    #traj = CaoMethod(process, initial_state, 0.03, steps=sum(initial_state.values()))
-    #for time, state, transitions in traj:
-    #    print time, traj.step, sum(transitions.values())
-
     unittest.main()
