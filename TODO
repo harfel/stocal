@@ -15,7 +15,6 @@
 - remove Process.trajectory->(trans) over Process.sample->(time,state,transitions)
 - regroup tests into specifications, unittests and bugs
 = release/2.0
-- tau leaping
 - utilities to simplify scipy/matplotlib interaction
 - arithmetic operations for Process
 - string rewrite rule support

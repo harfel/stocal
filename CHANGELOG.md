@@ -3,11 +3,12 @@
 ## [1.2]
 
 ### Added
-- Added modular trajectory sampling interface stocal.experimental.samplers
-- TrajectorySampler instances accept an optional random seed
 - Added Gibson & Bruck's NextReactionMethod
+- Added Cao et al's tau leaping method in stocal.experimental.tauleap
 - Statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
+- Added modular trajectory sampling interface stocal.experimental.samplers
 - Flattening of rule-based processes into static processes
+- TrajectorySampler instances accept an optional random seed
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
