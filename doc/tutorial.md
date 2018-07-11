@@ -234,6 +234,19 @@ process = Process(transitions=[feed],
 Note that no change is necessary for the dilution rule, since it already
 generates a reaction for every chemical in the system.
 
+*New in version 1.2:* Rule-based processes that expand into a finite
+set of transitions can be flattened into equivalent static processes
+that employ specific transitions rather than general rules:
+
+```python
+process = Process(rules=[Dilution()])
+flat_process = process.flatten(['a', 'b', 'c'])
+```
+This will generate a new process objects where the original rule is
+expanded into three transitions, each one modelling the specific
+dilution of one of the provided molecular species.
+
+
 ## Complex States
 
 So far, all our molecular species have been character sequences, either

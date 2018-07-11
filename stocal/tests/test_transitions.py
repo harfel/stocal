@@ -37,6 +37,51 @@ class TestProcess(unittest.TestCase):
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
         proc.trajectory({})
 
+    def test_flatten_returns_new_process(self):
+        """Process.flatten creates a new Process instance"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+        process = self.Process(rules=[Dimerize()])
+        self.assertIsNot(process.flatten(['a', 'b']), process)
+
+    def test_flatten_static_process_is_invariant(self):
+        """Processes without rules return a copy of themselves"""
+        process = self.Process(stocal.MassAction(['a'], ['b'], 1.))
+        self.assertEqual(process, process.flatten(['a', 'b']))
+
+    def test_flatten_flat_process_has_no_rules(self):
+        """All rules of a flat process are resolved"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+
+        self.assertFalse(self.Process([]).flatten([]).rules)
+        self.assertFalse(self.Process(rules=[Dimerize()]).flatten(['a', 'b']).rules)
+
+    def test_flatten_rules_generate_flat_transitions(self):
+        """Flattening converts applicable rules into transitions"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+
+        class Split(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, kl):
+                if len(kl) == 2:
+                    yield self.Transition([kl], [kl[:1], kl[1:]], 1.)
+
+        initial_species = ['a', 'b']
+        proc = self.Process(rules=[Dimerize(), Split()])
+        flat_proc = proc.flatten(initial_species)
+        self.assertEquals(len(flat_proc.transitions), 6)
+
 
 class TestRule(AbstractTestCase('Rule', stocal.Rule)):
     """Rule specification

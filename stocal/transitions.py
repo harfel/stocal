@@ -459,8 +459,8 @@ class ReactionRule(Rule):
             else:
                 return cls
         except AttributeError:
-            raise TypeError("%s.Transition not defined and not inferable"
-                            +" from novel_reactions signature"
+            raise TypeError(("%s.Transition not defined and not inferable"
+                            +" from novel_reactions signature")
                             % type(self).__name__)
 
     @property
@@ -581,6 +581,12 @@ class Process(object):
         self.transitions = transitions or []
         self.rules = rules or []
 
+    def __eq__(self, other):
+        return self.transitions == other.transitions and self.rules == other.rules
+
+    def __ne__(self, other):
+        return not self == other
+
     def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Create trajectory sampler for given state
 
@@ -608,3 +614,26 @@ class Process(object):
             from .algorithms import NextReactionMethod as Sampler
 
         return Sampler(self, state, tstart, tmax, steps)
+
+    def flatten(self, initial_species, max_steps=1000):
+        Proc = type(self)
+        flat_process = Proc(self.transitions)
+
+        novel_species = multiset({s:float('inf') for s in initial_species })
+        species = multiset()
+
+        for step in range(max_steps):
+            next_species = multiset()
+            for rule in self.rules:
+                for trans in rule.infer_transitions(novel_species, species):
+                    flat_process.transitions.append(trans)
+                    next_species += {s: float('inf') for s in trans.true_products if s not in species}
+            species += novel_species
+            if not next_species.domain:
+                break
+            else:
+                novel_species = next_species
+        else:
+            raise ValueError("Flattening did not converge within %d steps" % max_steps)
+
+        return flat_process
