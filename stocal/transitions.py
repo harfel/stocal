@@ -115,7 +115,7 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
 
     def __repr__(self):
         try:
-            return '<%s "%s">' % (
+            return '<%s %s>' % (
                 type(self).__name__, self
             )
         except AttributeError:
@@ -285,7 +285,7 @@ class MassAction(Reaction):
 
     def __repr__(self):
         try:
-            return '<%s "%s", %g>' % (
+            return '<%s %s, %g>' % (
                 type(self).__name__, self, self.constant
             )
         except AttributeError:
@@ -347,6 +347,14 @@ class Event(Transition):
         super(Event, self).__init__(reactants, products)
         self.time = time
         self.frequency = frequency
+
+    def __repr__(self):
+        try:
+            return '<%s %s, %g, frequency=%g>' % (
+                type(self).__name__, self, self.time, self.frequency
+            )
+        except AttributeError:
+            return super(Event, self).__repr__()
 
     def __eq__(self, other):
         """Structural congruence

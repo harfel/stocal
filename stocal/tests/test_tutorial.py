@@ -2,6 +2,8 @@
 """
 import unittest
 from stocal import MassAction, Event, ReactionRule, Process
+from stocal import algorithms
+from stocal.experimental import tauleap
 
 from stocal.tests.test_transitions import TestReactionRule
 
@@ -134,13 +136,17 @@ class TestTutorial(unittest.TestCase):
             pass
 
     def test_samplers_available(self):
-        from stocal.algorithms import *
-        from stocal.experimental.tauleap import CaoMethod
-        self.assertTrue(issubclass(DirectMethod, TrajectorySampler))
-        self.assertTrue(issubclass(FirstReactionMethod, TrajectorySampler))
-        self.assertTrue(issubclass(NextReactionMethod, TrajectorySampler))
-        self.assertTrue(issubclass(AndersonNRM, TrajectorySampler))
-        self.assertTrue(issubclass(CaoMethod, TrajectorySampler))
+        self.assertTrue(issubclass(algorithms.DirectMethod,
+                                   algorithms.TrajectorySampler))
+        self.assertTrue(issubclass(algorithms.FirstReactionMethod,
+                                   algorithms.TrajectorySampler))
+        self.assertTrue(issubclass(algorithms.NextReactionMethod,
+                                   algorithms.TrajectorySampler))
+        self.assertTrue(issubclass(algorithms.AndersonNRM,
+                                   algorithms.TrajectorySampler))
+        self.assertTrue(issubclass(tauleap.CaoMethod,
+                                   algorithms.TrajectorySampler))
+
 
 if __name__ == '__main__':
     unittest.main()
