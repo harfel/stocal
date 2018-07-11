@@ -527,6 +527,41 @@ have used default `MassAction` reactions before.
 stocal/examples/temperature_cycle.py gives an example of how reactions
 can be modified to take changing temperature instead of volumes instead.
 
+## Stochastic simulation algorithms
+
+stocal ships with several variants of the stochastic simulation algorithm,
+refered to as sampler. A call to `Process.trajectory` inspects the
+underlying process and will instantiate an appropriate sampler.
+Currently, this creates and instance of Gibson and Bruck's next reaction
+method, unless at least one transition of the process is time-dependent
+(in which case the method creates an instance of Anderon's method).
+
+If you want to control which simulation algorithm is instantiated, you
+can instantiate the desired sampler directly, as in, e.g.,
+
+```python
+sampler = algorithms.DirectMethod(process, state, tmax=100.)
+for transition in sampler:
+    print transition
+```
+
+Currently, stocal provides the following samplers:
+
+| algorithm          | description                                                                                                    |
+|------------------- | -------------------------------------------------------------------------------------------------------------- |
+|DirectMethod        | Original Gillespie algorithm                                                                                   |
+|FirstReactionMethod | Stochastic simulation algorithm that can operate account for scheduled events                                  |
+|NextReactionMethod  | Variant of FirstReactionMethod with improved performance *(new in version 1.2)*                                |
+|AndersonNRM         | Variant of NextReactionMethod that allows for propensity functions to be time-dependent *(new in version 1.1)* |
+|CaoMethod           | An (inexact) tau-leaping variant of SSA -- available in stocal.experimental.tauleap *(new in version 1.2)*     |
+
+Please refer to the class documentation for information about the exact
+implementation and reference publication.
+
+If you want to implement your own stochastic simulation algorithm, it
+should be programmed against the interface defined by
+`stocal.algorithms.TrajectorySampler`.
+
 ## Further Documentation
 
 The full API of stocal is available via pydoc:

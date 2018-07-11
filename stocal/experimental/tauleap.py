@@ -190,31 +190,32 @@ class CaoMethod(DirectMethod):
         return g
 
 
-# XXX only here for validation purposes
+if sys.argv[0].endswith('stocal/examples/validation.py'):
+    # Provide some specialized methods with fixed epsilon values
 
-class CaoMethod_003(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_003, self).__init__(process, state, 0.03, t=t, tmax=tmax, steps=steps, seed=seed)
-
-class CaoMethod_001(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_001, self).__init__(process, state, 0.01, t=t, tmax=tmax, steps=steps, seed=seed)
-
-class CaoMethod_0003(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_0003, self).__init__(process, state, 0.003, t=t, tmax=tmax, steps=steps, seed=seed)
-
-class CaoMethod_0001(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_0001, self).__init__(process, state, 0.001, t=t, tmax=tmax, steps=steps, seed=seed)
-
-class CaoMethod_00003(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_00003, self).__init__(process, state, 0.0003, t=t, tmax=tmax, steps=steps, seed=seed)
-
-class CaoMethod_00001(CaoMethod):
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
-        super(CaoMethod_00001, self).__init__(process, state, 0.0001, t=t, tmax=tmax, steps=steps, seed=seed)
+    class CaoMethod_003(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_003, self).__init__(process, state, 0.03, t=t, tmax=tmax, steps=steps, seed=seed)
+    
+    class CaoMethod_001(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_001, self).__init__(process, state, 0.01, t=t, tmax=tmax, steps=steps, seed=seed)
+    
+    class CaoMethod_0003(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_0003, self).__init__(process, state, 0.003, t=t, tmax=tmax, steps=steps, seed=seed)
+    
+    class CaoMethod_0001(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_0001, self).__init__(process, state, 0.001, t=t, tmax=tmax, steps=steps, seed=seed)
+    
+    class CaoMethod_00003(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_00003, self).__init__(process, state, 0.0003, t=t, tmax=tmax, steps=steps, seed=seed)
+    
+    class CaoMethod_00001(CaoMethod):
+        def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+            super(CaoMethod_00001, self).__init__(process, state, 0.0001, t=t, tmax=tmax, steps=steps, seed=seed)
 
 
 # testing

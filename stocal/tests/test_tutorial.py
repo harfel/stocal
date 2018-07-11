@@ -133,6 +133,14 @@ class TestTutorial(unittest.TestCase):
         for _ in trajectory:
             pass
 
+    def test_samplers_available(self):
+        from stocal.algorithms import *
+        from stocal.experimental.tauleap import CaoMethod
+        self.assertTrue(issubclass(DirectMethod, TrajectorySampler))
+        self.assertTrue(issubclass(FirstReactionMethod, TrajectorySampler))
+        self.assertTrue(issubclass(NextReactionMethod, TrajectorySampler))
+        self.assertTrue(issubclass(AndersonNRM, TrajectorySampler))
+        self.assertTrue(issubclass(CaoMethod, TrajectorySampler))
 
 if __name__ == '__main__':
     unittest.main()
