@@ -1,5 +1,3 @@
-* TrajectorySampler.__iter__ seems to stop at tmax even if more events could occur
-=
 * stocal.algorithms.AndersonNRM is broken
 * stocal.experimental.samplers do not chain properly where invoking self.propose_potential_transition, etc.
 * Event.__repr__ does not show full init signature
