@@ -702,8 +702,8 @@ print("Here we are")
 
 class CompositionRejection(TrajectorySampler):
     """Implementation of Gillespie's direct method."""
-    PMIN = 1
-    PMAX = 1024
+    PMIN = 0.03125 # 1/32 = 0.03125
+    PMAX = 1024 # (1/32) x 2^15 = 1024
 
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         if any(not isinstance(r, Reaction) for r in process.transitions):
@@ -713,6 +713,7 @@ class CompositionRejection(TrajectorySampler):
         self.dependency_graph = DependencyGraph() # 1st attributes/properties of the objects of this class
         self.depleted = [] # 3rd attributes/properties of the objects of this class
         self.groups = [] # 4th attributes/properties of the objects of this class
+        self.gzero = [] # 5th attributes/properties of the objects of this class
         gmin = self.PMIN # gmin equals PMIN
         gmax = 2*self.PMIN # gmax is always double the value of PMIN
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
@@ -726,11 +727,15 @@ class CompositionRejection(TrajectorySampler):
 
     def add_transition(self, transition): # not loop related
         prop = transition.propensity(self.state) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
-
+        print(prop)
+        print(self.PMIN)
+        print(self.PMAX)
         assert self.PMIN <= prop <= self.PMAX # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
 
         for g in self.groups: # for every item in the list called self.groups.
-            if g.gmax > prop: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
+            if prop == 0:
+                self.gzero.append(transition)
+            elif g.gmax > prop: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
                 break # terminates the current loop and resumes execution at the next statement.
 
             g.transitions.append(transition)
@@ -771,6 +776,16 @@ class CompositionRejection(TrajectorySampler):
         super(CompositionRejection, self).perform_transition(time, transition) #equivlent TrajectorySampler.performa_transition(self, time, transition)
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.update_propensities(affected)
+
+        for i in affected:
+            prop = affected.propensity(self.state)
+            if prop == 0:
+                self.gzero.append(transition)
+
+        for i in self.gzero:
+            prop = self.gzero.propensity(self.state)
+            if prop != 0:
+                self.groups.append(affected)
 
         self.groups.clear() # clears the "self.groups" list, in order to add new regrouped groups.
         while gmax <= self.PMAX: # this loop groups the reactions into groups.
