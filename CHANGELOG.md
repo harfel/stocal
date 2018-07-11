@@ -5,16 +5,18 @@
 ### Added
 - Added Gibson & Bruck's NextReactionMethod
 - Added Cao et al's tau leaping method in stocal.experimental.tauleap
-- Statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
+- Added statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
 - Added modular trajectory sampling interface stocal.experimental.samplers
-- Flattening of rule-based processes into static processes
+- Added flattening of rule-based processes into static processes
 - TrajectorySampler instances accept an optional random seed
+
+### Deprecated
+- Deprecated AndersonNRM in favour of AndersonMethod
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
-- Improved performance of DirectMethod and AndersonNRM
+- Improved performance of DirectMethod and AndersonMethod
 - Improved performance of transition inference in ReactionRule
-
 
 ## [1.1.2] - 2018-05-23
 

@@ -637,8 +637,8 @@ class Process(object):
 
         # select suitable simulation algorithm
         if any(not r.is_autonomous for r in transition_types()):
-            # AndersonNRM for processes with non-autonomous reactions
-            from .algorithms import AndersonNRM as Sampler
+            # AndersonMethod for processes with non-autonomous reactions
+            from .algorithms import AndersonMethod as Sampler
         else:
             # NextReactionMethod for anything else
             from .algorithms import NextReactionMethod as Sampler

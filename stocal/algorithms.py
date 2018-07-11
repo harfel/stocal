@@ -636,7 +636,7 @@ class NextReactionMethod(FirstReactionMethod):
         return transition.next_occurrence(self.time, self.state, self.rng)
 
 
-class AndersonNRM(NextReactionMethod):
+class AndersonMethod(NextReactionMethod):
     """Next reaction method modified for time-dependent processes
 
     A stochastic simulation algorithm, published in
@@ -651,7 +651,7 @@ class AndersonNRM(NextReactionMethod):
     def add_transition(self, transition):
         """Add transition with own internal clock (T, P)"""
         from math import log
-        super(AndersonNRM, self).add_transition(
+        super(AndersonMethod, self).add_transition(
             transition,
             T=0, P=-log(self.rng.random())
         )
@@ -674,7 +674,7 @@ class AndersonNRM(NextReactionMethod):
             for time, data in self.firings[trans]:
                 data.T += int_a_dt(trans, time-self.time)
 
-        super(AndersonNRM, self).perform_transition(time, transition)
+        super(AndersonMethod, self).perform_transition(time, transition)
 
     def calculate_next_occurrence(self, transition, data):
         """Determine next firing time of a transition in global time scale"""
@@ -684,3 +684,10 @@ class AndersonNRM(NextReactionMethod):
         else:
             return self.time + transition.propensity_meets_target(
                 self.state, self.time, target)
+
+
+class AndersonNRM(AndersonMethod):
+    """Deprecated. Identical to AndersonMethod"""
+    def __init__(self, *args, **opts):
+        warnings.warn("Use AndersonMethod instead", DeprecationWarning)
+        super(AndersonMethod, self).__init__(*args, **opts)

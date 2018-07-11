@@ -142,7 +142,7 @@ class TestTutorial(unittest.TestCase):
                                    algorithms.TrajectorySampler))
         self.assertTrue(issubclass(algorithms.NextReactionMethod,
                                    algorithms.TrajectorySampler))
-        self.assertTrue(issubclass(algorithms.AndersonNRM,
+        self.assertTrue(issubclass(algorithms.AndersonMethod,
                                    algorithms.TrajectorySampler))
         self.assertTrue(issubclass(tauleap.CaoMethod,
                                    algorithms.TrajectorySampler))

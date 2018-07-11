@@ -552,7 +552,7 @@ Currently, stocal provides the following samplers:
 |DirectMethod        | Original Gillespie algorithm                                                                                   |
 |FirstReactionMethod | Stochastic simulation algorithm that can operate account for scheduled events                                  |
 |NextReactionMethod  | Variant of FirstReactionMethod with improved performance *(new in version 1.2)*                                |
-|AndersonNRM         | Variant of NextReactionMethod that allows for propensity functions to be time-dependent *(new in version 1.1)* |
+|AndersonMethod      | Variant of NextReactionMethod that allows for propensity functions to be time-dependent *(new in version 1.1)* |
 |CaoMethod           | An (inexact) tau-leaping variant of SSA -- available in stocal.experimental.tauleap *(new in version 1.2)*     |
 
 Please refer to the class documentation for information about the exact

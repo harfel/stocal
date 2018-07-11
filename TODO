@@ -1,17 +1,17 @@
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
-- deprecate AndersonNRM -> AndersonMethod
 - deprecate ReactionRule -> TransitionRule
 - deprecate TrajectorySampler -> StochasticSimulationAlgorithm
 - deprecate pylint invalid arguments
 - make sure that examples and tutorial tests pass without Deprecation warning
 = feature/deprecations
-* stocal.algorithms.AndersonNRM is broken
+* stocal.algorithms.AndersonMethod is broken
 * stocal.experimental.samplers do not chain properly where invoking self.propose_potential_transition, etc.
 * allow species equals 0 in initial state?
 + support for proper delay events (-> feature/events)
 = release/1.2
 - remove dict support in MassAction.reactions and ReactionRule.infer_transitions
 - remove invalid-name arguments
+- remove AndersonNRM
 - regroup tests into specifications, unittests and bugs
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
