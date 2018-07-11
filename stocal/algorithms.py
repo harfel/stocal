@@ -388,7 +388,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
 
     def has_reached_end(self):
         """True if given max steps or tmax are reached."""
-        return (self.steps is not None and self.step >= self.steps) or self.time >= self.tmax
+        return (self.steps is not None and self.step >= self.steps) or self.time > self.tmax
 
     def __iter__(self):
         """Standard interface to sample a stochastic trajectory.

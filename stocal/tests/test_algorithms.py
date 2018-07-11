@@ -209,6 +209,18 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertEqual(sampler.step, 2)
         self.assertEqual(sampler.time, 10)
 
+    def test_iter_includes_all_events_at_tmax(self):
+        proc = stocal.Process([
+            stocal.Event({}, {'a':1}, 10, 10),
+            stocal.Event({}, {'b':1},  0, 10),
+        ])
+        sampler = self.Sampler(proc, {}, tmax=10)
+        for _ in sampler:
+            pass
+        self.assertEqual(sampler.step, 3)
+        self.assertEqual(sampler.time, 10)
+        self.assertEqual(sampler.state, {'a':1, 'b':2})
+
     def test_exact_number_of_events(self):
         """sampler performs specified number of events"""
         proc = stocal.Process([
