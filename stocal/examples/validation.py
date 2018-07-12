@@ -254,7 +254,7 @@ def run_validation(args):
     # collect algorithms to validate
     if not args.algo:
         from stocal import algorithms
-        args.algo = get_implementations(algorithms, algorithms.TrajectorySampler)
+        args.algo = get_implementations(algorithms, algorithms.StochasticSimulationAlgorithm)
 
     # collect models for validation
     if not args.models:

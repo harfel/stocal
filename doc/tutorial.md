@@ -560,7 +560,7 @@ implementation and reference publication.
 
 If you want to implement your own stochastic simulation algorithm, it
 should be programmed against the interface defined by
-`stocal.algorithms.TrajectorySampler`.
+`stocal.algorithms.StochasticSimulationAlgorithm`.
 
 ## Further Documentation
 

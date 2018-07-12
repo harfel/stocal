@@ -8,10 +8,11 @@
 - Added statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
 - Added modular trajectory sampling interface stocal.experimental.samplers
 - Added flattening of rule-based processes into static processes
-- TrajectorySampler instances accept an optional random seed
+- StochasticSimulationAlgorithm instances accept an optional random seed
 
 ### Deprecated
 - Deprecated AndersonNRM in favour of AndersonMethod
+- Deprecated TrajectorySampler in favour of StochasticSimulationAlgorithm
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.

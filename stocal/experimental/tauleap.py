@@ -225,20 +225,20 @@ from stocal.tests.test_algorithms import TestTrajectorySampler
 class TestCaoMethod(TestTrajectorySampler):
     """Test CaoMethod
 
-    This tests the regular TrajectorySampler interface."""
+    This tests the regular StochasticSimulationAlgorithm interface."""
     Sampler = CaoMethod
 
     @unittest.skip("Sampler does not adhere to specification")
     def test_add_transition_enables_transition(self):
-        self.fail("CaoMethod violates current TrajectorySampler specification.")
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
 
     @unittest.skip("Sampler does not adhere to specification")
     def test_update_state_enables_infered(self):
-        self.fail("CaoMethod violates current TrajectorySampler specification.")
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
 
     @unittest.skip("Sampler does not adhere to specification")
     def test_update_state_enables_static(self):
-        self.fail("CaoMethod violates current TrajectorySampler specification.")
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
 
 
 if __name__ == '__main__':

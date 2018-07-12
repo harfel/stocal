@@ -47,8 +47,8 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
     catalysts).
 
     Instances also have an attribute self.rule which defaults to None
-    and which is set by the TrajectorySampler if a Transition has been
-    inferred by a Rule.
+    and which is set by the StochasticSimulationAlgorithm if a
+    Transition has been inferred by a Rule.
 
     Modiying any of these attributes after initialization is an error
     and leads to undefined behavior.
@@ -212,9 +212,9 @@ class Reaction(Transition):
         """Determine next reaction firing time.
 
         This is a helper function to use Reactions in next-firing-time
-        based TrajectorySampler's. The method randomly draws a delay
-        from a Poisson distribution with mean propensity  and returns
-        the given current time plus the delay.
+        based StochasticSimulationAlgorithm's. The method randomly draws
+        a delay from a Poisson distribution with mean propensity  and
+        returns the given current time plus the delay.
         """
         from math import log
         if not rng:
@@ -602,8 +602,8 @@ class Process(object):
     """Stochastic process class
 
     A collection of all transitions and rules that define a
-    stochastic process. When initializing a TrajectorySampler with
-    a Process instance, transitions get copied over into the sampler.
+    stochastic process. When initializing a StochasticSimulationAlgorithm
+    with a Process instance, transitions get copied over into the sampler.
     This makes it possible to use a single process instance with
     multiple samplers.
     """

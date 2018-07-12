@@ -137,15 +137,15 @@ class TestTutorial(unittest.TestCase):
 
     def test_samplers_available(self):
         self.assertTrue(issubclass(algorithms.DirectMethod,
-                                   algorithms.TrajectorySampler))
+                                   algorithms.StochasticSimulationAlgorithm))
         self.assertTrue(issubclass(algorithms.FirstReactionMethod,
-                                   algorithms.TrajectorySampler))
+                                   algorithms.StochasticSimulationAlgorithm))
         self.assertTrue(issubclass(algorithms.NextReactionMethod,
-                                   algorithms.TrajectorySampler))
+                                   algorithms.StochasticSimulationAlgorithm))
         self.assertTrue(issubclass(algorithms.AndersonMethod,
-                                   algorithms.TrajectorySampler))
+                                   algorithms.StochasticSimulationAlgorithm))
         self.assertTrue(issubclass(tauleap.CaoMethod,
-                                   algorithms.TrajectorySampler))
+                                   algorithms.StochasticSimulationAlgorithm))
 
 
 if __name__ == '__main__':

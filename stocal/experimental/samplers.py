@@ -240,7 +240,7 @@ class Sampler(with_metaclass(abc.ABCMeta, object)):
 
 
 class _Wrapper(Sampler):
-    """Wrapper to use algorithm.TrajectorySampler with Sampler interface
+    """Wrapper to use StochasticSimulationAlgorithm with Sampler interface
 
     This class only exists for transition to the new interface and will
     be removed when no longer necessary. Please do not use explicitly
