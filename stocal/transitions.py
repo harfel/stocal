@@ -546,39 +546,6 @@ class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
         if not isinstance(state, multiset):
             warnings.warn("state must be a multiset.", DeprecationWarning)
 
-        def combinations(reactants, signature, annotated_species, novel):
-            """Yield all novel combinations comaptible with signature
-
-            See class doc for details."""
-            if not signature:
-                if novel:
-                    yield reactants
-                return
-
-            skipped = []
-            while annotated_species:
-                species, start, end = annotated_species.pop(0)
-                if isinstance(species, signature[0]):
-                    break
-                else:
-                    skipped.append((species, start, end))
-            else:
-                if not annotated_species:
-                    return
-
-            for combination in combinations(reactants,
-                                            signature,
-                                            skipped+annotated_species,
-                                            novel):
-                yield combination
-            if end > 1:
-                annotated_species.insert(0, (species, start-1, end-1))
-            for combination in combinations(reactants+[species],
-                                            signature[1:],
-                                            skipped+annotated_species,
-                                            novel or start == 1):
-                yield combination
-
         # could be simplified if specification would enforce multiset state:
         # next_state = state + last_products
         # novel_species = sorted((
@@ -593,10 +560,47 @@ class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
              min(new_species.get(species, 0)+state.get(species, 0),
                  len([typ for typ in self.signature if isinstance(species, typ)])))
             for species in set(new_species).union(state)
-        ), key=lambda item: item[1]-item[2])
-        for reactants in combinations([], self.signature, novel_species, False):
+            if any(isinstance(species, typ) for typ in self.signature)
+        ), key=lambda item: item[2]-item[1])
+        for reactants in self._combinations([], self.signature, novel_species, False):
             for trans in self.novel_reactions(*reactants):
                 yield trans
+
+    def _combinations(self, reactants, signature, annotated_species, novel):
+        """Yield all novel combinations comaptible with signature
+
+        See class doc for details."""
+        if not signature:
+            if novel:
+                yield reactants
+            return
+        elif not novel and all(end < start
+                               for _, start, end in annotated_species):
+            return
+
+        skipped = []
+        while annotated_species:
+            species, start, end = annotated_species.pop(0)
+            if isinstance(species, signature[0]):
+                break
+            else:
+                skipped.append((species, start, end))
+        else:
+            if not annotated_species:
+                return
+
+        for combination in self._combinations(reactants,
+                                              signature,
+                                              skipped+annotated_species,
+                                              novel):
+            yield combination
+        if end > 1:
+            annotated_species.insert(0, (species, start-1, end-1))
+        for combination in self._combinations(reactants+[species],
+                                              signature[1:],
+                                              skipped+annotated_species,
+                                              novel or start == 1):
+            yield combination
 
 
 class Process(object):
