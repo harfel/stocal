@@ -683,8 +683,8 @@ class AndersonMethod(NextReactionMethod):
             transition.affected_species
         )
         for trans in affected:
-            for time, data in self.firings[trans]:
-                data.T += int_a_dt(trans, time-self.time)
+            for t, data in self.firings[trans]:
+                data.T += int_a_dt(trans, t-self.time)
 
         super(AndersonMethod, self).perform_transition(time, transition)
 
