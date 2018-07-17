@@ -270,6 +270,9 @@ class TestAndersonNRM(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
     Sampler = stocal.algorithms.AndersonNRM
 
+class TestCompositionRejection(TestTrajectorySampler):
+
+    Sampler = stocal.algorithms.CompositionRejection
 
 if __name__ == '__main__':
     unittest.main()
