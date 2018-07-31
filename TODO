@@ -14,6 +14,7 @@
 - regroup tests into specifications, unittests and bugs
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
+- persistency support (save and resume simulations)
 - arithmetic operations for Process
 - string rewrite rule support
 - other kinetic laws, e.g. Hill function

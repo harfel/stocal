@@ -13,6 +13,7 @@
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
 - Improved performance of DirectMethod and AndersonNRM
+- Improved performance of transition inference in ReactionRule
 
 
 ## [1.1.2] - 2018-05-23
