@@ -671,16 +671,12 @@ class AndersonMethod(NextReactionMethod):
     def perform_transition(self, time, transition, data):
         from math import log
 
-        last_time = self.time
-
         def int_a_dt(trans, delta_t):
             """Integrate propensity for given delta_t"""
             if isinstance(trans, Event):
                 return 0
             else:
-                return trans.propensity_integral(self.state, last_time, delta_t)
-
-        super(NextReactionMethod, self).perform_transition(time, transition)
+                return trans.propensity_integral(self.state, self.time, delta_t)
 
         affected = self.dependency_graph.affected_transitions(
             transition.affected_species
@@ -692,9 +688,9 @@ class AndersonMethod(NextReactionMethod):
 
         for trans in affected:
             for t, data in self.firings[trans]:
-                data.T += int_a_dt(trans, time-last_time)
+                data.T += int_a_dt(trans, time-self.time)
 
-        self.update_firing_times(time, transition, data)
+        super(AndersonNRM, self).perform_transition(time, transition)
 
     def calculate_next_occurrence(self, transition, data):
         """Determine next firing time of a transition in global time scale"""
