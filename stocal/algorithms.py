@@ -697,7 +697,7 @@ class Group(object):
         self.num_transitions = 0 # 3rd attributes/properties of the objects of this class, which has value 0 for all objects
         self.transitions = [] # 4th attributes/properties
         self.propensities = []# 5th attributes/properties of the objects of this class, which has a value of the MultiDict() variable for all objects
-
+        self.group_total_propensity = sum(self.propensities)
 print("Here we are")
 
 class CompositionRejection(TrajectorySampler):
@@ -714,6 +714,9 @@ class CompositionRejection(TrajectorySampler):
         self.depleted = [] # 3rd attributes/properties of the objects of this class
         self.groups = [] # 4th attributes/properties of the objects of this class
         self.gzero = Group(0, 0) # 5th attributes/properties of the objects of this class
+        self.all_transitions = []
+        self.total_propensity = sum(g.group_total_propensity for g in self.groups)
+        self.current_prop = None
         gmin = self.PMIN # gmin equals PMIN
         gmax = 2*self.PMIN # gmax is always double the value of PMIN
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
@@ -725,25 +728,29 @@ class CompositionRejection(TrajectorySampler):
             gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles
             gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
 
+
     def add_transition(self, transition): # not loop related
         prop = transition.propensity(self.state) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
         self.add_transition_with_prop(transition, prop)
+        self.all_transitions.append(transition)
 
     def add_transition_with_prop(self, transition, propensity):
-        prop = transition.propensity(self.state)
+        prop = propensity
         print(prop)
         print(self.PMIN)
         print(self.PMAX)
-        assert self.PMIN <= prop <= self.PMAX # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
+        assert self.PMIN < prop <= self.PMAX or prop == 0 # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
 
         if prop == 0:
+            global g
             g = self.gzero
-        else:
-            for g in self.groups: # for every item in the list called self.groups.
-                if g.gmax > prop: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
+        elif prop > 0:
+            for grp in self.groups: # for every item in the list called self.groups.
+                if grp.gmax >= prop > grp.gmin: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
+                    g = grp
                     break # terminates the current loop and resumes execution at the next statement.
 
-            g.transitions.append(transition)
+            g.transitions.append(transition) # Error of gmax, use debugger
             g.propensities.append(prop)# calls method(in this case the method/function is "add_item()")  of inherited class(superclass) for any given object of the "group class"
             g.num_transitions += 1 # group.num_transitions = group.num_transitions + 1. group.num_transitions holds total number of transitions
 
@@ -760,18 +767,27 @@ class CompositionRejection(TrajectorySampler):
 
     @property
     def transitions(self):
-        return self.propensities.keys()
+        return self.all_transitions # transitions in gzero and not in gzero, make a list called all_transitions
 
     def propose_potential_transition(self):  # relates loop = pseudocode
+        from math import log
+
+        if not self.total_propensity:
+            return float('inf'), None, tuple()
+
         a = sum(g.num_transitions for g in self.groups)
+        if a == 0:
+            return float('inf'), None, tuple()
         pick = self.rng.randint(1, a) # each reaction has an equal chance(likelihood) of occurring
-        for group in self.groups():
+        for group in self.groups:
             pick -= group.num_transitions  # pick = pick - group.num_transitions
             if pick <= 0:
                 group_selected = group # the chosen group
                 break
 
-        transition = self.rng.choice(group_selected) # this block of code relates to step 3b
+        transition = self.rng.choice(group_selected.transitions) # this block of code relates to step 3b
+
+        delta_t = -log(self.rng.random()) / self.total_propensity # Error, total_propensity must be calculated(without linear-time), use paper for advice
 
         return self.time + delta_t, transition, (group_selected,)
 
@@ -814,6 +830,8 @@ class CompositionRejection(TrajectorySampler):
                 if trans in g.transitions:
                     prop = trans.propensity(self.state)
                     if g.gmin <= prop < g.max: # build on <--
+                        t = g.transitions.index(trans)
+                        g.propensities[t] = prop # XXX result in a linear time algorithm
                         pass  # update trans' propensity value in the group
                     else:
                         # regroup
@@ -829,6 +847,8 @@ class CompositionRejection(TrajectorySampler):
     def calculate_propensity(self, transition):
         """Return propensity of the given transition for current state."""
         return transition.propensity(self.state)
+        self.current_prop = transition.propensity(self.state)
+
 
 
 
