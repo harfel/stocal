@@ -716,7 +716,6 @@ class CompositionRejection(TrajectorySampler):
         self.gzero = Group(0, 0) # 5th attributes/properties of the objects of this class
         self.all_transitions = []
         self.total_propensity = sum(g.group_total_propensity for g in self.groups)
-        self.current_prop = None
         gmin = self.PMIN # gmin equals PMIN
         gmax = 2*self.PMIN # gmax is always double the value of PMIN
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
@@ -847,7 +846,6 @@ class CompositionRejection(TrajectorySampler):
     def calculate_propensity(self, transition):
         """Return propensity of the given transition for current state."""
         return transition.propensity(self.state)
-        self.current_prop = transition.propensity(self.state)
 
 
 
