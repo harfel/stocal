@@ -1,4 +1,4 @@
-* stocal.algorithms.AndersonMethod is broken
+* stocal.algorithms.Andersonmethod does not respond correctly to update_state
 =
 * stocal.experimental.samplers do not chain properly where invoking self.propose_potential_transition, etc.
 * allow species equals 0 in initial state?
