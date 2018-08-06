@@ -1,0 +1,44 @@
+\documentclass[notitlepage]{revtex4-1}
+\usepackage{graphicx}
+\graphicspath{{validation_data/1.1.2-64-g0d0fc6f/}}
+
+\begin{document}
+\title{DSMTS Validation results for \textit{stocal} samplers}
+\author{version: \VAR{version}}
+\maketitle{}
+
+For each algorithm and model, figures show:
+\begin{itemize}
+\item on the left averaged trajectories of all system species over time
+obtained by simulation (green) versus reported values from the DSMTS
+repository (blue);
+
+\item in the center the absolute standard error of sample averages
+($\bar X_{t}$) from the reported mean ($\mu_{t}$) as a function of
+sample size $N$:
+\[
+	\left|\frac{\bar X_{t}-\mu_{t}}{\sigma_{t}^{2}}\right| \sim \mathcal{N}\left(0, \frac{1}{\sqrt{N}}\right),
+\]
+where $\sigma_{t}$ is the reported standard deviation.
+The red line ($3/\sqrt{N}$) is an upper bound for the error scaling
+at three times the reported standard deviation and should be only
+occasionally exceeded;
+
+\item on the right the relative standard error between sampled
+($\bar S_{t}^{2}$) and reported standard deviation ($\sigma_{t}^{2}$)
+as a function of sample size:
+\[
+	\left|\frac{\bar S_{t}^{2}}{\sigma_{t}^{2}} - 1\right| \sim \mathcal{N}\left(0, \frac{2}{N}\right) .
+\]
+The red line ($5/\sqrt{N/2}$) is an upper bound for the error scaling
+at five times the reported standard deviation and should be only
+occasionally exceeded.
+\end{itemize}
+
+\BLOCK{ for method_name, figures in methods.items() }
+\section{\VAR{method_name}}
+\BLOCK{ for figure in figures }
+\includegraphics[width=\textwidth]{\VAR{figure}}
+\BLOCK{ endfor }
+\BLOCK{ endfor }
+\end{document}

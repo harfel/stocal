@@ -1,2 +1,3 @@
 include README.md
 include doc/*
+include stocal/examples/dsmts/*.csv
