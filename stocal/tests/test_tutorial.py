@@ -1,35 +1,35 @@
 """Test that the exampe is working
 """
 import unittest
-from stocal import MassAction, Event, ReactionRule, Process
+from stocal import MassAction, Event, TransitionRule, Process
 from stocal import algorithms
 from stocal.experimental import tauleap
 
-from stocal.tests.test_transitions import TestReactionRule
+from stocal.tests.test_transitions import TestReactionRule as TestTransitionRule
 
 
-class Dilution(ReactionRule):
+class Dilution(TransitionRule):
     """Dilution rule"""
     Transition = MassAction
 
     def novel_reactions(self, species):
         yield self.Transition([species], [], 0.001)
 
-class TestDilution(TestReactionRule):
+class TestDilution(TestTransitionRule):
     Rule = Dilution
 
 
-class Polymerization(ReactionRule):
+class Polymerization(TransitionRule):
     """Polymerization rule"""
     Transition = MassAction
 
     def novel_reactions(self, k, l):
         yield self.Transition([k, l], [k+l], 10.)
 
-class TestPolymerization(TestReactionRule):
+class TestPolymerization(TestTransitionRule):
     Rule = Polymerization
 
-class Hydrolysis(ReactionRule):
+class Hydrolysis(TransitionRule):
     """Hydrolysis rule"""
     Transition = MassAction
 
@@ -38,7 +38,7 @@ class Hydrolysis(ReactionRule):
             constant = 10.*i*(len(k)-i)
             yield self.Transition([k], [k[:i], k[i:]], constant)
 
-class TestHydrolysis(TestReactionRule):
+class TestHydrolysis(TestTransitionRule):
     Rule = Hydrolysis
 
 
@@ -48,14 +48,14 @@ class Protein(str):
 class Rna(str):
     pass
 
-class Association(ReactionRule):
+class Association(TransitionRule):
     Transition = MassAction
     signature = [Protein, Rna]
 
     def novel_reactions(self, protein, rna):
         yield self.Transition([protein, rna], [(protein, rna)], 1.)
 
-class TestAssociation(TestReactionRule):
+class TestAssociation(TestTransitionRule):
     Rule = Association
 
 
@@ -118,7 +118,7 @@ class TestTutorial(unittest.TestCase):
 
 
     def test_types(self):
-        """Specifying types via ReactionRule.signature"""
+        """Specifying types via TransitionRule.signature"""
         process = Process(rules=[Association()])
         trajectory = process.trajectory({Protein('TF'):40,
                                          Rna('mRNA_a'):10,

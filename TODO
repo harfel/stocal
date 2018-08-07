@@ -1,5 +1,4 @@
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
-- deprecate ReactionRule -> TransitionRule
 - deprecate pylint invalid arguments
 - make sure that examples and tutorial tests pass without Deprecation warning
 = feature/deprecations
@@ -8,10 +7,11 @@
 * allow species equals 0 in initial state?
 + support for proper delay events (-> feature/events)
 = release/1.2
-- remove dict support in MassAction.reactions and ReactionRule.infer_transitions
+- remove dict support in MassAction.reactions and TransitionRule.infer_transitions
 - remove invalid-name arguments
 - remove AndersonNRM
 - remove TrajectorySampler
+- remove ReactionRule
 - regroup tests into specifications, unittests and bugs
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction

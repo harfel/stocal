@@ -22,7 +22,7 @@ BB = stocal.molecular_type("BB")
 # We now define a base class for generic polymerzation. We will derive
 # typed polymerization rules from this genereic base class.
 
-class Polymerization(stocal.ReactionRule):
+class Polymerization(stocal.TransitionRule):
     """Generic polymerization rule.
     
     Polymerization.Transition's are MassAction reactions.

@@ -422,9 +422,9 @@ class Rule(with_metaclass(abc.ABCMeta, object)):
         raise StopIteration
 
 
-class _ReactionRuleMetaclass(abc.ABCMeta):
+class _TransitionRuleMetaclass(abc.ABCMeta):
     def __call__(self):
-        cls = super(_ReactionRuleMetaclass, self).__call__()
+        cls = super(_TransitionRuleMetaclass, self).__call__()
         cls.order = self.get_order(cls)
         if not hasattr(cls, 'signature'):
             cls.signature = self.get_signature(cls)
@@ -448,7 +448,7 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
             return len(inspect.getargspec(cls.novel_reactions).args) - 1
 
     def get_signature(self, cls):
-        """Type signature of ReactionRule.novel_reactions
+        """Type signature of TransitionRule.novel_reactions
 
         In python2, this defaults to self.order*[object]. Override the
         attribute in a subclass to constrain reactant types of
@@ -470,11 +470,11 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
     def get_Transition(self, cls):
         """Return transition type from novel_reactions return annotation
 
-        In python3, ReactionRule.Transition is optional and can alternatively
-        be provided as novel_reactions return type annotation:
+        In python3, TransitionRule.Transition is optional and can
+        alternatively be provided as novel_reactions return type annotation:
 
         from typing import Iterator
-        class MyRule(stocal.ReactionRule):
+        class MyRule(stocal.TransitionRule):
             def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
 
         In python2, the property raises an AttributeError.
@@ -496,7 +496,7 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
                             % cls.__name__)
 
 
-class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
+class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
     """Abstract base class that facilitates inference of Reactions
 
     This class provides a standard implementation of infer_transitions
@@ -504,22 +504,22 @@ class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
     state and new_species, that only became possible because of species
     in new_species, and could not have been formed by reactants in state
     alone. For each combination, the inference algorithm calls
-    ReactionRule.novel_reactions. This method, to be implemented by a
+    TransitionRule.novel_reactions. This method, to be implemented by a
     subclass, should return an iterable over every reaction that takes
     the novel species as reactants.
 
-    If ReactionRule.signature is given, it must evaluate to a sequence
+    If TransitionRule.signature is given, it must evaluate to a sequence
     of type objects. Combinations are then only formed among reactants
     that are instances of the given type. In python3, the signature can
     automatically be inferred from type annotations of the
     novel_reactions parameters (defaulting to object for every
     non-annotated parameter).
     
-    In python3, ReactionRule.Transition can alternatively be provided
+    In python3, TransitionRule.Transition can alternatively be provided
     as novel_reactions return type annotation:
 
         from typing import Iterator
-        class MyRule(stocal.ReactionRule):
+        class MyRule(stocal.TransitionRule):
             def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
     """
 
@@ -667,3 +667,11 @@ class Process(object):
             raise ValueError("Flattening did not converge within %d steps" % max_steps)
 
         return flat_process
+
+
+class ReactionRule(TransitionRule):
+    """Deprecated. Identical to TransitionRule"""
+    def __init__(self, *args, **opts):
+        warnings.warn("Use TransitionRule instead", DeprecationWarning)
+        super(ReactionRule, self).__init__(*args, **opts)
+

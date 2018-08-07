@@ -13,11 +13,12 @@
 ### Deprecated
 - Deprecated AndersonNRM in favour of AndersonMethod
 - Deprecated TrajectorySampler in favour of StochasticSimulationAlgorithm
+- Deprecated ReactionRule in favour of TransitionRule
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
 - Improved performance of DirectMethod and AndersonMethod
-- Improved performance of transition inference in ReactionRule
+- Improved performance of transition inference in TransitionRule
 
 ## [1.1.2] - 2018-05-23
 
