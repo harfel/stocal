@@ -22,7 +22,7 @@ BB = stocal.molecular_type("BB")
 # We now define a base class for generic polymerzation. We will derive
 # typed polymerization rules from this genereic base class.
 
-class Polymerization(stocal.ReactionRule):
+class Polymerization(stocal.TransitionRule):
     """Generic polymerization rule.
     
     Polymerization.Transition's are MassAction reactions.
@@ -99,6 +99,6 @@ process = stocal.Process(rules=[R() for R in Polymerization.__subclasses__()])
 # And we go in to sample the trajectory of the process...
 
 if __name__ == '__main__':
-    traj = process.trajectory(state, steps=1000)
+    traj = process.sample(state, steps=1000)
     for trans in traj:
         print(traj.time, traj.state)

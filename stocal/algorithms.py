@@ -21,8 +21,9 @@
 """Stochastic simulation algorithms
 
 This module provides implementations of different stochastic simulation
-algorithms. All implementations have to implement the TrajectorySampler
-interface by subclassing this abstract base class.
+algorithms. All implementations have to implement the
+StochasticSimulationAlgorithm interface by subclassing this abstract
+base class.
 
 The module also provides several helper classes for general stochastic
 simulation algorithms. DependencyGraph is a generic species-dependency
@@ -245,7 +246,7 @@ class PriorityQueue(object):
             self._queue[key] = instances
 
 
-class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
+class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
     """Abstract base class for stochastic trajectory samplers.
 
     This is the interface for stochastic trajectory samplers, i.e.
@@ -259,9 +260,9 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
     >>> for transition in trajectory:
     ...     print trajectory.time, trajectory.state, transition
 
-    When implementing a novel TrajectorySampler, make sure to only
-    generate random numbers using the TrajectorySampler.rng random
-    number generator.
+    When implementing a novel StochasticSimulationAlgorithm, make sure
+    to only generate random numbers using the
+    StochasticSimulationAlgorithm.rng random number generator.
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         """Initialize the sampler for the given Process and state.
@@ -305,16 +306,17 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         """
         return []
 
-    def update_state(self, dct):
+    def update_state(self, mapping):
         """Modify sampler state.
 
         Update system state and infer new applicable transitions.
         """
+        mapping = mapping if isinstance(mapping, multiset) else multiset(mapping)
         for rule in self.process.rules:
-            for trans in rule.infer_transitions(dct, self.state):
+            for trans in rule.infer_transitions(mapping, self.state):
                 trans.rule = rule
                 self.add_transition(trans)
-        self.state.update(dct)
+        self.state.update(mapping)
 
     @abc.abstractmethod
     def add_transition(self, transition):
@@ -340,7 +342,8 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         Must return a triple where the first item is the time of the
         proposed transition, the second item the transition itself,
         and the last item a tuple of additional arguments that are
-        passed through to calls to TrajectorySampler.perform_transition.
+        passed through to calls to
+        StochasticSimulationAlgorithm.perform_transition.
         Time and transition have to be picked from the correct
         probability distributions.
         """
@@ -365,7 +368,7 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         for every rule of the process.
         If overwritten by a subclass, the signature can have additional
         arguments which are populated with the argument tuple returned
-        by TrajectorySampler.propose_potential_transition.
+        by StochasticSimulationAlgorithm.propose_potential_transition.
         """
         self.step += 1
         self.time = time
@@ -402,7 +405,8 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
         Consider to overwrite self.propose_potential_transition,
         self.is_applicable, self.perform_transition,
         self.reject_transition or self.has_reached_end in favour of
-        overloading __iter__ when implementing a TrajectorySampler.
+        overloading __iter__ when implementing a
+        StochasticSimulationAlgorithm.
         """
         while not self.has_reached_end():
             time, transition, args = self.propose_potential_transition()
@@ -420,7 +424,15 @@ class TrajectorySampler(with_metaclass(abc.ABCMeta, object)):
             self.time = self.tmax
 
 
-class DirectMethod(TrajectorySampler):
+class TrajectorySampler(StochasticSimulationAlgorithm):
+    """Deprecated. Identical to StochasticSimulationAlgorithm"""
+    def __init__(self, *args, **opts):
+        warnings.warn("Use StochasticSimulationAlgorithm instead",
+                      DeprecationWarning)
+        super(TrajectorySampler, self).__init__(*args, **opts)
+
+
+class DirectMethod(StochasticSimulationAlgorithm):
     """Implementation of Gillespie's direct method.
 
     The standard stochastic simulation algorithm, published in
@@ -435,7 +447,7 @@ class DirectMethod(TrajectorySampler):
     calculated for all transitions and time and occuring transition
     are drawn from the appropriate probability distributions.
 
-    See help(TrajectorySampler) for usage information.
+    See help(StochasticSimulationAlgorithm) for usage information.
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         if any(not isinstance(r, Reaction) for r in process.transitions):
@@ -505,7 +517,7 @@ class DirectMethod(TrajectorySampler):
             self.propensities.update_item(trans, propensity)
 
 
-class FirstReactionMethod(TrajectorySampler):
+class FirstReactionMethod(StochasticSimulationAlgorithm):
     """Implementation of Gillespie's first reaction method.
 
     A stochastic simulation algorithm, published in
@@ -514,7 +526,7 @@ class FirstReactionMethod(TrajectorySampler):
     FirstReactionMethod works with processes that feature deterministic
     transitions, i.e. Event's.
 
-    See help(TrajectorySampler) for usage information.
+    See help(StochasticSimulationAlgorithm) for usage information.
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self._transitions = []
@@ -576,7 +588,7 @@ class NextReactionMethod(FirstReactionMethod):
     FirstReactionMethod whose runtime scales logarithmically with the
     number of reactions.
 
-    See help(TrajectorySampler) for usage information.
+    See help(StochasticSimulationAlgorithm) for usage information.
     """
     def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
         self.dependency_graph = DependencyGraph()
@@ -636,7 +648,7 @@ class NextReactionMethod(FirstReactionMethod):
         return transition.next_occurrence(self.time, self.state, self.rng)
 
 
-class AndersonNRM(NextReactionMethod):
+class AndersonMethod(NextReactionMethod):
     """Next reaction method modified for time-dependent processes
 
     A stochastic simulation algorithm, published in
@@ -646,12 +658,12 @@ class AndersonNRM(NextReactionMethod):
     This sampler correctly treats non-autonomous transitions, i.e.
     transitions with time dependent stochastic rates.
 
-    See help(TrajectorySampler) for usage information.
+    See help(StochasticSimulationAlgorithm) for usage information.
     """
     def add_transition(self, transition):
         """Add transition with own internal clock (T, P)"""
         from math import log
-        super(AndersonNRM, self).add_transition(
+        super(AndersonMethod, self).add_transition(
             transition,
             T=0, P=-log(self.rng.random())
         )
@@ -674,7 +686,7 @@ class AndersonNRM(NextReactionMethod):
             for time, data in self.firings[trans]:
                 data.T += int_a_dt(trans, time-self.time)
 
-        super(AndersonNRM, self).perform_transition(time, transition)
+        super(AndersonMethod, self).perform_transition(time, transition)
 
     def calculate_next_occurrence(self, transition, data):
         """Determine next firing time of a transition in global time scale"""
@@ -684,3 +696,10 @@ class AndersonNRM(NextReactionMethod):
         else:
             return self.time + transition.propensity_meets_target(
                 self.state, self.time, target)
+
+
+class AndersonNRM(AndersonMethod):
+    """Deprecated. Identical to AndersonMethod"""
+    def __init__(self, *args, **opts):
+        warnings.warn("Use AndersonMethod instead", DeprecationWarning)
+        super(AndersonMethod, self).__init__(*args, **opts)

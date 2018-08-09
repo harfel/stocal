@@ -21,7 +21,7 @@ process = stocal.Process([
 ])
 
 if __name__ == '__main__':
-    traj = process.trajectory({}, tmax=50)
+    traj = process.sample({}, tmax=50)
     print("# time\tx\ty\tc\td")
-    for transition in traj:
+    for dt, transitions in traj:
         print(traj.time, '\t'.join(str(traj.state[s]) for s in "xycd"))

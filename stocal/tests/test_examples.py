@@ -6,7 +6,7 @@ import unittest
 import sys
 import os
 
-from stocal.tests.test_transitions import TestReactionRule, TestMassAction
+from stocal.tests.test_transitions import TestReactionRule as TestTransitionRule, TestMassAction
 
 from stocal.examples.pre2017 import DegradationRule
 from stocal.examples.pre2017 import LigationRule
@@ -18,7 +18,7 @@ class TestBrusselator(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.brusselator import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -27,7 +27,7 @@ class TestEvents(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.events import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -36,11 +36,11 @@ class TestPre2017(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.pre2017 import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
-class TestPre2017Rule(TestReactionRule):
+class TestPre2017Rule(TestTransitionRule):
     """Base class for rules used in pre2017"""
     def setUp(self):
         self.rule = self.Rule()
@@ -119,7 +119,7 @@ class TestPre2017AutoCatalysis(TestMassAction):
                 reactants, products, c)
 
 
-class TestTypedRules(TestReactionRule):
+class TestTypedRules(TestTransitionRule):
     from stocal.examples.typed_rules import AA_BB as Rule
 
     def test_infer_transitions_signature(self):
@@ -140,7 +140,7 @@ class TestTemperatureCycle(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.temperature_cycle import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 

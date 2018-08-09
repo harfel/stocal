@@ -47,8 +47,8 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
     catalysts).
 
     Instances also have an attribute self.rule which defaults to None
-    and which is set by the TrajectorySampler if a Transition has been
-    inferred by a Rule.
+    and which is set by the StochasticSimulationAlgorithm if a
+    Transition has been inferred by a Rule.
 
     Modiying any of these attributes after initialization is an error
     and leads to undefined behavior.
@@ -212,9 +212,9 @@ class Reaction(Transition):
         """Determine next reaction firing time.
 
         This is a helper function to use Reactions in next-firing-time
-        based TrajectorySampler's. The method randomly draws a delay
-        from a Poisson distribution with mean propensity  and returns
-        the given current time plus the delay.
+        based StochasticSimulationAlgorithm's. The method randomly draws
+        a delay from a Poisson distribution with mean propensity  and
+        returns the given current time plus the delay.
         """
         from math import log
         if not rng:
@@ -298,15 +298,14 @@ class MassAction(Reaction):
         """
         from functools import reduce # for python3 compatibility
 
-        if not isinstance(state, multiset):
-            warnings.warn("state must be a multiset.", DeprecationWarning)
+        state = state if isinstance(state, multiset) else multiset(state)
 
         def choose(n, k):
             """binomial coefficient"""
             return reduce(lambda x, i: x*(n+1-i)/i, range(1, k+1), 1)
         return reduce(
             lambda a, b: a*b,
-            (choose(state.get(s, 0), n) for s, n in self.reactants.items()),
+            (choose(state[s], n) for s, n in self.reactants.items()),
             self.constant
         )
 
@@ -422,9 +421,9 @@ class Rule(with_metaclass(abc.ABCMeta, object)):
         raise StopIteration
 
 
-class _ReactionRuleMetaclass(abc.ABCMeta):
+class _TransitionRuleMetaclass(abc.ABCMeta):
     def __call__(self):
-        cls = super(_ReactionRuleMetaclass, self).__call__()
+        cls = super(_TransitionRuleMetaclass, self).__call__()
         cls.order = self.get_order(cls)
         if not hasattr(cls, 'signature'):
             cls.signature = self.get_signature(cls)
@@ -448,7 +447,7 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
             return len(inspect.getargspec(cls.novel_reactions).args) - 1
 
     def get_signature(self, cls):
-        """Type signature of ReactionRule.novel_reactions
+        """Type signature of TransitionRule.novel_reactions
 
         In python2, this defaults to self.order*[object]. Override the
         attribute in a subclass to constrain reactant types of
@@ -470,11 +469,11 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
     def get_Transition(self, cls):
         """Return transition type from novel_reactions return annotation
 
-        In python3, ReactionRule.Transition is optional and can alternatively
-        be provided as novel_reactions return type annotation:
+        In python3, TransitionRule.Transition is optional and can
+        alternatively be provided as novel_reactions return type annotation:
 
         from typing import Iterator
-        class MyRule(stocal.ReactionRule):
+        class MyRule(stocal.TransitionRule):
             def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
 
         In python2, the property raises an AttributeError.
@@ -496,7 +495,7 @@ class _ReactionRuleMetaclass(abc.ABCMeta):
                             % cls.__name__)
 
 
-class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
+class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
     """Abstract base class that facilitates inference of Reactions
 
     This class provides a standard implementation of infer_transitions
@@ -504,22 +503,22 @@ class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
     state and new_species, that only became possible because of species
     in new_species, and could not have been formed by reactants in state
     alone. For each combination, the inference algorithm calls
-    ReactionRule.novel_reactions. This method, to be implemented by a
+    TransitionRule.novel_reactions. This method, to be implemented by a
     subclass, should return an iterable over every reaction that takes
     the novel species as reactants.
 
-    If ReactionRule.signature is given, it must evaluate to a sequence
+    If TransitionRule.signature is given, it must evaluate to a sequence
     of type objects. Combinations are then only formed among reactants
     that are instances of the given type. In python3, the signature can
     automatically be inferred from type annotations of the
     novel_reactions parameters (defaulting to object for every
     non-annotated parameter).
     
-    In python3, ReactionRule.Transition can alternatively be provided
+    In python3, TransitionRule.Transition can alternatively be provided
     as novel_reactions return type annotation:
 
         from typing import Iterator
-        class MyRule(stocal.ReactionRule):
+        class MyRule(stocal.TransitionRule):
             def novel_reactions(self, *reactants) -> Iterator[TransitionClass]:
     """
 
@@ -536,23 +535,12 @@ class ReactionRule(Rule, with_metaclass(_ReactionRuleMetaclass, Rule)):
 
         see help(type(self)) for an explanation of the algorithm.
         """
-        if not isinstance(new_species, multiset):
-            warnings.warn("last_products must be a multiset.", DeprecationWarning)
-        if not isinstance(state, multiset):
-            warnings.warn("state must be a multiset.", DeprecationWarning)
-
-        # could be simplified if specification would enforce multiset state:
-        # next_state = state + last_products
-        # novel_species = sorted((
-        #    (species, state[species]+1,
-        #     min(next_state[species],
-        #         len([typ for typ in self.signature if isinstance(species, typ)])))
-        #    for species in set(new_species).union(state)
-        #), key=lambda item: item[1]-item[2])
+        new_species = new_species if isinstance(new_species, multiset) else multiset(new_species)
+        state = state if isinstance(state, multiset) else multiset(state)
 
         novel_species = sorted((
-            (species, state.get(species, 0)+1,
-             min(new_species.get(species, 0)+state.get(species, 0),
+            (species, state[species]+1,
+             min(new_species[species]+state[species],
                  len([typ for typ in self.signature if isinstance(species, typ)])))
             for species in set(new_species).union(state)
             if any(isinstance(species, typ) for typ in self.signature)
@@ -602,8 +590,8 @@ class Process(object):
     """Stochastic process class
 
     A collection of all transitions and rules that define a
-    stochastic process. When initializing a TrajectorySampler with
-    a Process instance, transitions get copied over into the sampler.
+    stochastic process. When initializing a StochasticSimulationAlgorithm
+    with a Process instance, transitions get copied over into the sampler.
     This makes it possible to use a single process instance with
     multiple samplers.
     """
@@ -620,14 +608,25 @@ class Process(object):
     def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Create trajectory sampler for given state
 
-        The method automatically chooses a suitable sampler for the
-        given stochastic process, initialized with the given state
-        and time.
-        """
-        if t:
-            warnings.warn("pass start time as tstart", DeprecationWarning)
-        tstart = tstart or t
+        Depreated: please use Process.sample instead.
 
+        The method does the same as Process.trajectory, but returns
+        a sampler that only yields individual Transition objects
+        in each iteration:
+ 
+        >>> process = Process()
+        >>> state = {}
+        >>> trajectory = process.trajectory(state)
+        >>> for transition in trajectory():
+        ...     print(trajectory.time, trajectory.state, transition)
+
+        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
+        on the sampler class.
+        """
+        warnings.warn("Use Process.sample instead", DeprecationWarning)
+        return self._trajectory(state, tstart=tstart or t, tmax=tmax, steps=steps, seed=seed)
+
+    def _trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         def transition_types():
             """Yield all generated transtion types of the process"""
             for trans in self.transitions:
@@ -637,13 +636,49 @@ class Process(object):
 
         # select suitable simulation algorithm
         if any(not r.is_autonomous for r in transition_types()):
-            # AndersonNRM for processes with non-autonomous reactions
-            from .algorithms import AndersonNRM as Sampler
+            # AndersonMethod for processes with non-autonomous reactions
+            from .algorithms import AndersonMethod as Sampler
         else:
             # NextReactionMethod for anything else
             from .algorithms import NextReactionMethod as Sampler
 
         return Sampler(self, state, tstart, tmax, steps)
+
+    def sample(self, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
+        """Create trajectory sampler for given state
+
+        The method returns an automatically chosen sampling algorithm
+        suitable for the given stochastic process. The returned sampler
+        can be iterated over to generate transitions along a trajectory:
+ 
+        >>> process = Process()
+        >>> state = {}
+        >>> trajectory = process.trajectory(state)
+        >>> for dt, transitions in trajectory():
+        ...     print(trajectory.time, trajectory.state, transitions)
+
+        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
+        on the sampler class.
+        """
+        # This method yields transitions according to the future
+        # StochasticSimulationAlgorithm specification in the form
+        # (dt, transition_dct). It is planned to replace the current
+        # trajectory method.
+        sampler = self._trajectory(state, tstart=tstart, tmax=tmax, steps=steps, seed=seed)
+
+        class _Wrapper(object):
+            def __getattr__(self, attr):
+                return getattr(sampler, attr)
+
+            def __setattr__(self, attr, val):
+                return setattr(sampler, attr, val)
+
+            def __iter__(self):
+                time = sampler.time
+                for transition in sampler:
+                    yield sampler.time-time, {transition: 1}
+                    time = sampler.time
+        return _Wrapper()
 
     def flatten(self, initial_species, max_steps=1000):
         Proc = type(self)
@@ -667,3 +702,11 @@ class Process(object):
             raise ValueError("Flattening did not converge within %d steps" % max_steps)
 
         return flat_process
+
+
+class ReactionRule(TransitionRule):
+    """Deprecated. Identical to TransitionRule"""
+    def __init__(self, *args, **opts):
+        warnings.warn("Use TransitionRule instead", DeprecationWarning)
+        super(ReactionRule, self).__init__(*args, **opts)
+

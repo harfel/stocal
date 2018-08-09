@@ -191,14 +191,14 @@ class TestEveryTimeSampler(TestSampler):
         for a,b in zip((result[0] for result in sampler), target):
             self.assertEqual(a, b)
 
-    def test_iter_performs_all_transitions(self, N=20):
+    def test_iter_performs_all_transitions(self, target=20):
         """Sampler.__iter__ performs all transitions"""
         process = Process([stocal.MassAction(['a'], [], .1)])
-        sampler = self.Sampler(process.sample({'a': N}), skip=True)
+        sampler = self.Sampler(process.sample({'a': target}), skip=True)
         total = 0
         for time, state, trans in sampler:
             total += sum(trans.values())
-        self.assertEqual(total, N)
+        self.assertEqual(total, target)
 
     def test_iter_works_when_chained(self):
         """test that every and until can be chained"""
@@ -222,14 +222,14 @@ class TestEveryStepSampler(TestSampler):
         for a,b in zip((result[0] for result in sampler), target):
             self.assertEqual(a, b)
 
-    def test_iter_performs_all_transitions(self, N=100):
+    def test_iter_performs_all_transitions(self, target=100):
         """Sampler.__iter__ performs all transitions"""
         process = Process([stocal.MassAction(['a'], [], 1.)])
-        sampler = self.Sampler(process.sample({'a': N}))
+        sampler = self.Sampler(process.sample({'a': target}))
         total = 0
         for time, state, trans in sampler:
             total += sum(trans.values())
-        self.assertEqual(total, N)
+        self.assertEqual(total, target)
 
 
 class TestAverageTimeSampler(TestEveryTimeSampler):
