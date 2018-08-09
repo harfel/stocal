@@ -1,5 +1,4 @@
 - deprecate Process.trajectory->(trans) over Process.sample->(time,state,transitions)
-- deprecate pylint invalid arguments
 - make sure that examples and tutorial tests pass without Deprecation warning
 = feature/deprecations
 * stocal.algorithms.AndersonMethod is broken

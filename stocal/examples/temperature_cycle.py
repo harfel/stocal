@@ -19,9 +19,9 @@ dG = log(x_tot/3.)  # a free energy that leads to equipartition for T=1
 dH = -10            # enthalpy change of association
 dS = dH - dG        # entropy change of association
 
-def temp(t, low=0.5, high=1.5, period=50):
+def temp(time, low=0.5, high=1.5, period=50):
     """Temperature cycle"""
-    return low+(high-low)*(sin(2*pi*t/period)+1)/2.
+    return low+(high-low)*(sin(2*pi*time/period)+1)/2.
 
 
 class Dissociation(stocal.MassAction):
