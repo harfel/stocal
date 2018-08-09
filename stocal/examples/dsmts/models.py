@@ -67,15 +67,16 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
         dirname = os.path.dirname(__file__)
         fname = cls.__name__ + '-mean.csv'
         path = os.path.join(dirname, fname)
-        reader = DictReader(open(path))
-        species = reader.fieldnames[1:]
-        times = []
-        mean = {s: [] for s in species}
-        for record in reader:
-            times.append(record['time'])
-            for s in species:
-                mean[s] = np.append(mean[s], [float(record[s])])
-        return np.array(times), mean
+        with open(path) as stats:
+            reader = DictReader(stats)
+            species = reader.fieldnames[1:]
+            times = []
+            mean = {s: [] for s in species}
+            for record in reader:
+                times.append(record['time'])
+                for s in species:
+                    mean[s] = np.append(mean[s], [float(record[s])])
+            return np.array(times), mean
 
     @classmethod
     def reported_stdevs(cls):
@@ -90,15 +91,16 @@ class DSMTS_Test(with_metaclass(abc.ABCMeta, object)):
         dirname = os.path.dirname(__file__)
         fname = cls.__name__ + '-sd.csv'
         path = os.path.join(dirname, fname)
-        reader = DictReader(open(path))
-        species = reader.fieldnames[1:]
-        times = []
-        mean = {s: [] for s in species}
-        for record in reader:
-            times.append(record['time'])
-            for s in species:
-                mean[s] = np.append(mean[s], [float(record[s])**.5])
-        return np.array(times), mean
+        with open(path) as stats:
+            reader = DictReader(stats)
+            species = reader.fieldnames[1:]
+            times = []
+            mean = {s: [] for s in species}
+            for record in reader:
+                times.append(record['time'])
+                for s in species:
+                    mean[s] = np.append(mean[s], [float(record[s])**.5])
+            return np.array(times), mean
 
 
 class DSMTS_001_01(DSMTS_Test):

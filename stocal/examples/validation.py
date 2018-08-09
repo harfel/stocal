@@ -95,7 +95,8 @@ class DataStore(object):
                 fname = os.path.join(dirpath, name)
                 if fname.endswith('.dat'):
                     try:
-                        config = pickle.load(open(fname, 'rb')).config
+                        with open(fname, 'rb') as fstats:
+                            config = pickle.load(fstats).config
                         yield fname, self.get_stats(config)
                     except Exception as exc:
                         logging.warn("Could not access data in %s", fname)
@@ -126,28 +127,29 @@ class DataStore(object):
 
         fname = self.get_path_for_config(config)
         if os.path.exists(fname):
-            stats = pickle.load(open(fname, 'rb'))
-            N = stats.runs + 1
-            times = stats.times
-            delta = {
-                s: values - stats.mean[s]
-                for s, values in result[1].items()
-            }
-            mean = {
-                s: values + delta[s]/float(N)
-                for s, values in stats.mean.items()
-            }
-            delta2 = {
-                s: values - mean[s]
-                for s, values in result[1].items()
-            }
-            M2 = {
-                s: values + delta[s]*delta2[s]
-                for s, values in stats.M2.items()
-            }
-            conv_mean = stats.conv_mean
-            conv_stdev = stats.conv_stdev
-            copyfile(fname, fname+'~')
+            with open(fname, 'rb') as fstats:
+                stats = pickle.load(fstats)
+                N = stats.runs + 1
+                times = stats.times
+                delta = {
+                    s: values - stats.mean[s]
+                    for s, values in result[1].items()
+                }
+                mean = {
+                    s: values + delta[s]/float(N)
+                    for s, values in stats.mean.items()
+                }
+                delta2 = {
+                    s: values - mean[s]
+                    for s, values in result[1].items()
+                }
+                M2 = {
+                    s: values + delta[s]*delta2[s]
+                    for s, values in stats.M2.items()
+                }
+                conv_mean = stats.conv_mean
+                conv_stdev = stats.conv_stdev
+                copyfile(fname, fname+'~')
 
         else:
             N = 1
@@ -176,7 +178,8 @@ class DataStore(object):
         """Read stats for a given configuration"""
         import pickle
         fname = self.get_path_for_config(config)
-        return pickle.load(open(fname, 'rb'))
+        with open(fname, 'rb') as fstats:
+            return pickle.load(fstats)
 
 
 def run_simulation(Model, Algorithm, max_steps=100000):
