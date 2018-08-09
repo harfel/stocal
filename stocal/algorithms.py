@@ -306,16 +306,17 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
         """
         return []
 
-    def update_state(self, dct):
+    def update_state(self, mapping):
         """Modify sampler state.
 
         Update system state and infer new applicable transitions.
         """
+        mapping = mapping if isinstance(mapping, multiset) else multiset(mapping)
         for rule in self.process.rules:
-            for trans in rule.infer_transitions(dct, self.state):
+            for trans in rule.infer_transitions(mapping, self.state):
                 trans.rule = rule
                 self.add_transition(trans)
-        self.state.update(dct)
+        self.state.update(mapping)
 
     @abc.abstractmethod
     def add_transition(self, transition):

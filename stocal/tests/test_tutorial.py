@@ -1,7 +1,7 @@
 """Test that the exampe is working
 """
 import unittest
-from stocal import MassAction, Event, TransitionRule, Process
+from stocal import MassAction, Event, TransitionRule, Process, multiset
 from stocal import algorithms
 from stocal.experimental import tauleap
 
@@ -116,7 +116,6 @@ class TestTutorial(unittest.TestCase):
         self.assertEqual(len(flat_process.transitions), 3)
         self.assertEqual(len(flat_process.rules), 0)
 
-
     def test_types(self):
         """Specifying types via TransitionRule.signature"""
         process = Process(rules=[Association()])
@@ -124,7 +123,9 @@ class TestTutorial(unittest.TestCase):
                                          Rna('mRNA_a'):10,
                                          Rna('mRNA_b'):10},
                                         steps=100)
-        self.assertEqual(len(trajectory.transitions), 2)
+        flat_process = process.flatten(trajectory.state.domain)
+        self.assertEqual(len(list(flat_process.transitions)), 2)        
+
         for _ in trajectory:
             pass
 

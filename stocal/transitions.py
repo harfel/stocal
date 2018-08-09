@@ -298,15 +298,14 @@ class MassAction(Reaction):
         """
         from functools import reduce # for python3 compatibility
 
-        if not isinstance(state, multiset):
-            warnings.warn("state must be a multiset.", DeprecationWarning)
+        state = state if isinstance(state, multiset) else multiset(state)
 
         def choose(n, k):
             """binomial coefficient"""
             return reduce(lambda x, i: x*(n+1-i)/i, range(1, k+1), 1)
         return reduce(
             lambda a, b: a*b,
-            (choose(state.get(s, 0), n) for s, n in self.reactants.items()),
+            (choose(state[s], n) for s, n in self.reactants.items()),
             self.constant
         )
 
@@ -536,23 +535,12 @@ class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
 
         see help(type(self)) for an explanation of the algorithm.
         """
-        if not isinstance(new_species, multiset):
-            warnings.warn("last_products must be a multiset.", DeprecationWarning)
-        if not isinstance(state, multiset):
-            warnings.warn("state must be a multiset.", DeprecationWarning)
-
-        # could be simplified if specification would enforce multiset state:
-        # next_state = state + last_products
-        # novel_species = sorted((
-        #    (species, state[species]+1,
-        #     min(next_state[species],
-        #         len([typ for typ in self.signature if isinstance(species, typ)])))
-        #    for species in set(new_species).union(state)
-        #), key=lambda item: item[1]-item[2])
+        new_species = new_species if isinstance(new_species, multiset) else multiset(new_species)
+        state = state if isinstance(state, multiset) else multiset(state)
 
         novel_species = sorted((
-            (species, state.get(species, 0)+1,
-             min(new_species.get(species, 0)+state.get(species, 0),
+            (species, state[species]+1,
+             min(new_species[species]+state[species],
                  len([typ for typ in self.signature if isinstance(species, typ)])))
             for species in set(new_species).union(state)
             if any(isinstance(species, typ) for typ in self.signature)
