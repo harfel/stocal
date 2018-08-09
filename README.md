@@ -33,7 +33,8 @@ process = stocal.Process([
 
 # Sample a stochastic trajectory of the process
 initial_state = {}
-trajectory = process.trajectory(initial_state, tmax=100) :
+trajectory = process.sample(initial_state, tmax=100) :
+for dt, transitions in trajectory:
 	print trajectory.time, trajectory.state['A2']
 ```
 

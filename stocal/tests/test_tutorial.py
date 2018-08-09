@@ -1,4 +1,4 @@
-"""Test that the exampe is working
+"""Test that all tutorial examples are working
 """
 import unittest
 from stocal import MassAction, Event, TransitionRule, Process, multiset
@@ -77,7 +77,7 @@ class TestTutorial(unittest.TestCase):
         r1 = MassAction({'A': 2}, {'A2': 1}, 1.)
         r2 = MassAction({'A2': 1}, {'A': 2}, 10.)
         process = Process([r1, r2])
-        trajectory = process.trajectory({'A':100}, steps=1000)
+        trajectory = process.sample({'A':100}, steps=1000)
         for _ in trajectory:
             result = trajectory.time, trajectory.state.get('A', 0), trajectory.state.get('A2', 0)
 
@@ -87,7 +87,7 @@ class TestTutorial(unittest.TestCase):
         r2 = MassAction({'A2': 1}, {'A': 2}, 10.)
         feed = Event([], ['A'], 0.0, 1.0)
         process = Process([r1, r2, feed])
-        trajectory = process.trajectory({}, steps=100)
+        trajectory = process.sample({}, steps=100)
         for _ in trajectory:
             pass
 
@@ -97,7 +97,7 @@ class TestTutorial(unittest.TestCase):
         r2 = MassAction({'A2': 1}, {'A': 2}, 10.)
         feed = Event([], ['A'], 0.0, 1.0)
         process = Process([r1, r2, feed], [Dilution()])
-        trajectory = process.trajectory({}, steps=100)
+        trajectory = process.sample({}, steps=100)
         for _ in trajectory:
             pass
 
@@ -105,7 +105,7 @@ class TestTutorial(unittest.TestCase):
         """Adding general polymerization and hydrolysis"""
         feed = Event([], ['A'], 0.0, 1.0)
         process = Process(transitions=[feed], rules=[Dilution(), Polymerization(), Hydrolysis()])
-        trajectory = process.trajectory({}, steps=100)
+        trajectory = process.sample({}, steps=100)
         for _ in trajectory:
             pass
 
@@ -119,10 +119,10 @@ class TestTutorial(unittest.TestCase):
     def test_types(self):
         """Specifying types via TransitionRule.signature"""
         process = Process(rules=[Association()])
-        trajectory = process.trajectory({Protein('TF'):40,
-                                         Rna('mRNA_a'):10,
-                                         Rna('mRNA_b'):10},
-                                        steps=100)
+        trajectory = process.sample({Protein('TF'):40,
+                                     Rna('mRNA_a'):10,
+                                     Rna('mRNA_b'):10},
+                                    steps=100)
         flat_process = process.flatten(trajectory.state.domain)
         self.assertEqual(len(list(flat_process.transitions)), 2)        
 
@@ -132,7 +132,7 @@ class TestTutorial(unittest.TestCase):
     def test_time_dependence(self):
         """Specifying volume-dependent reactions"""
         process = Process([VolumeDependentMassAction(['x', 'x'], ['x2'], 1.)])
-        trajectory = process.trajectory({'x':100}, steps=100)
+        trajectory = process.sample({'x':100}, steps=100)
         for _ in trajectory:
             pass
 

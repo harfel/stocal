@@ -14,6 +14,7 @@
 - Deprecated AndersonNRM in favour of AndersonMethod
 - Deprecated TrajectorySampler in favour of StochasticSimulationAlgorithm
 - Deprecated ReactionRule in favour of TransitionRule
+- Deprecated Process.trajectory in favour of Process.sample
 
 ### Changed
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.

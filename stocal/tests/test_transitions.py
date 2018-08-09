@@ -37,6 +37,27 @@ class TestProcess(unittest.TestCase):
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
         proc.trajectory({})
 
+    def test_sample_arguments(self):
+        """Process.trajectory can be called with optional arguments"""
+        proc = self.Process([])
+        proc.sample({})
+        proc.sample({}, 1.)
+        proc.sample({}, 1., 2.)
+        proc.sample({}, tstart=1.)
+        proc.sample({}, tmax=2.)
+        proc.sample({}, steps=10)
+
+    def test_sample_with_events(self):
+        """Partly deterministic processes return an appropriate sampler"""
+        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
+        proc.sample({})
+
+    def test_sample_return_type_behavior(self):
+        """Partly deterministic processes return an appropriate sampler"""
+        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
+        traj = iter(proc.sample({}))
+        self.assertEqual(len(next(traj)), 2)
+
     def test_flatten_returns_new_process(self):
         """Process.flatten creates a new Process instance"""
         class Dimerize(stocal.ReactionRule):

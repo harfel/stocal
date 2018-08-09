@@ -82,6 +82,6 @@ process = stocal.Process(
 
 
 if __name__ == '__main__':
-    traj = process.trajectory(initial_state, tmax=100.)
+    traj = process.sample(initial_state, tmax=100.)
     for _ in traj:
         print(traj.time, traj.state)

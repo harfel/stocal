@@ -99,6 +99,6 @@ process = stocal.Process(rules=[R() for R in Polymerization.__subclasses__()])
 # And we go in to sample the trajectory of the process...
 
 if __name__ == '__main__':
-    traj = process.trajectory(state, steps=1000)
+    traj = process.sample(state, steps=1000)
     for trans in traj:
         print(traj.time, traj.state)

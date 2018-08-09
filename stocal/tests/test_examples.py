@@ -18,7 +18,7 @@ class TestBrusselator(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.brusselator import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -27,7 +27,7 @@ class TestEvents(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.events import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -36,7 +36,7 @@ class TestPre2017(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.pre2017 import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -140,7 +140,7 @@ class TestTemperatureCycle(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.temperature_cycle import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 

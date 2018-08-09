@@ -43,15 +43,15 @@ process = Process([r1, r2])
 ```
 
 We can use this process, to sample stochastic trajectories. The method
-`Process.trajectory` instantiates a trajectory sampler for a given
+`Process.sample` instantiates a trajectory sampler for a given
 initial condition and stop criterion. The trajectory sampler implements
 the iterator protocol, so we can simply iterate through the trajectory,
 invoking one stochastic transition at a time. With each transition,
 time and state of the trajectory are properly updated: 
 
 ```python
-trajectory = process.trajectory({'A':100}, steps=1000)
-for transition in trajectory :
+trajectory = process.sample({'A':100}, steps=1000)
+for dt, transitions in trajectory :
     print trajectory.time, trajectory.state['A'], trajectory.state['A2']
 ```
 
@@ -530,7 +530,7 @@ can be modified to take changing temperature instead of volumes instead.
 ## Stochastic simulation algorithms
 
 stocal ships with several variants of the stochastic simulation algorithm,
-refered to as sampler. A call to `Process.trajectory` inspects the
+refered to as sampler. A call to `Process.sample` inspects the
 underlying process and will instantiate an appropriate sampler.
 Currently, this creates and instance of Gibson and Bruck's next reaction
 method, unless at least one transition of the process is time-dependent
@@ -541,8 +541,8 @@ can instantiate the desired sampler directly, as in, e.g.,
 
 ```python
 sampler = algorithms.DirectMethod(process, state, tmax=100.)
-for transition in sampler:
-    print transition
+for dt, transitions in sampler:
+    print(dt, transitions)
 ```
 
 Currently, stocal provides the following samplers:

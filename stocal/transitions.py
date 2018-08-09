@@ -608,14 +608,25 @@ class Process(object):
     def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Create trajectory sampler for given state
 
-        The method automatically chooses a suitable sampler for the
-        given stochastic process, initialized with the given state
-        and time.
-        """
-        if t:
-            warnings.warn("pass start time as tstart", DeprecationWarning)
-        tstart = tstart or t
+        Depreated: please use Process.sample instead.
 
+        The method does the same as Process.trajectory, but returns
+        a sampler that only yields individual Transition objects
+        in each iteration:
+ 
+        >>> process = Process()
+        >>> state = {}
+        >>> trajectory = process.trajectory(state)
+        >>> for transition in trajectory():
+        ...     print(trajectory.time, trajectory.state, transition)
+
+        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
+        on the sampler class.
+        """
+        warnings.warn("Use Process.sample instead", DeprecationWarning)
+        return self._trajectory(state, tstart=tstart or t, tmax=tmax, steps=steps, seed=seed)
+
+    def _trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         def transition_types():
             """Yield all generated transtion types of the process"""
             for trans in self.transitions:
@@ -632,6 +643,42 @@ class Process(object):
             from .algorithms import NextReactionMethod as Sampler
 
         return Sampler(self, state, tstart, tmax, steps)
+
+    def sample(self, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
+        """Create trajectory sampler for given state
+
+        The method returns an automatically chosen sampling algorithm
+        suitable for the given stochastic process. The returned sampler
+        can be iterated over to generate transitions along a trajectory:
+ 
+        >>> process = Process()
+        >>> state = {}
+        >>> trajectory = process.trajectory(state)
+        >>> for dt, transitions in trajectory():
+        ...     print(trajectory.time, trajectory.state, transitions)
+
+        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
+        on the sampler class.
+        """
+        # This method yields transitions according to the future
+        # StochasticSimulationAlgorithm specification in the form
+        # (dt, transition_dct). It is planned to replace the current
+        # trajectory method.
+        sampler = self._trajectory(state, tstart=tstart, tmax=tmax, steps=steps, seed=seed)
+
+        class _Wrapper(object):
+            def __getattr__(self, attr):
+                return getattr(sampler, attr)
+
+            def __setattr__(self, attr, val):
+                return setattr(sampler, attr, val)
+
+            def __iter__(self):
+                time = sampler.time
+                for transition in sampler:
+                    yield sampler.time-time, {transition: 1}
+                    time = sampler.time
+        return _Wrapper()
 
     def flatten(self, initial_species, max_steps=1000):
         Proc = type(self)
