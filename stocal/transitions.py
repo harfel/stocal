@@ -642,7 +642,7 @@ class Process(object):
             # NextReactionMethod for anything else
             from .algorithms import NextReactionMethod as Sampler
 
-        return Sampler(self, state, tstart, tmax, steps)
+        return Sampler(self, state, tstart=tstart, tmax=tmax, steps=steps, seed=seed)
 
     def sample(self, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Create trajectory sampler for given state

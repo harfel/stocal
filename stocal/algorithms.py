@@ -264,7 +264,7 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
     to only generate random numbers using the
     StochasticSimulationAlgorithm.rng random number generator.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Initialize the sampler for the given Process and state.
 
         State is a dictionary that maps chemical species to positive
@@ -274,7 +274,11 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
         """
         from random import Random
 
-        if t < 0:
+        if t:
+            warnings.warn("Argument t has been renamed to tstart.", DeprecationWarning)
+            tstart = t
+
+        if tstart < 0:
             raise ValueError("t must not be negative.")
         if tmax < 0:
             raise ValueError("tmax must not be negative.")
@@ -449,7 +453,7 @@ class DirectMethod(StochasticSimulationAlgorithm):
 
     See help(StochasticSimulationAlgorithm) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, **sampler_options):
         if any(not isinstance(r, Reaction) for r in process.transitions):
             raise ValueError("DirectMethod only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
@@ -457,7 +461,7 @@ class DirectMethod(StochasticSimulationAlgorithm):
         self.dependency_graph = DependencyGraph()
         self.propensities = MultiDict()
         self.depleted = []
-        super(DirectMethod, self).__init__(process, state, t, tmax, steps, seed)
+        super(DirectMethod, self).__init__(process, state, **sampler_options)
 
     @property
     def transitions(self):
@@ -528,10 +532,10 @@ class FirstReactionMethod(StochasticSimulationAlgorithm):
 
     See help(StochasticSimulationAlgorithm) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, **sampler_options):
         self._transitions = []
         self.firings = []
-        super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
+        super(FirstReactionMethod, self).__init__(process, state, **sampler_options)
 
     @property
     def transitions(self):
@@ -590,11 +594,11 @@ class NextReactionMethod(FirstReactionMethod):
 
     See help(StochasticSimulationAlgorithm) for usage information.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, **sampler_options):
         self.dependency_graph = DependencyGraph()
         self.firings = PriorityQueue(self.calculate_next_occurrence)
         self.depleted = []
-        super(FirstReactionMethod, self).__init__(process, state, t, tmax, steps, seed)
+        super(FirstReactionMethod, self).__init__(process, state, **sampler_options)
 
     @property
     def transitions(self):
@@ -732,11 +736,11 @@ class AndersonFRM(FirstReactionMethod):
     more efficient implementation in AndersonMethod currently fails
     validation for this scenario.
     """
-    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, **sampler_options):
         warnings.warn("AndersonFRM will be removed in future versions.", DeprecationWarning)
         self.T = []
         self.P = []
-        super(AndersonNRM, self).__init__(process, state, t, tmax, steps, seed)
+        super(AndersonNRM, self).__init__(process, state, **sampler_options)
 
     def add_transition(self, transition):
         from math import log
