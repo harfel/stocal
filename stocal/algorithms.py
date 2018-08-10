@@ -703,9 +703,87 @@ class AndersonMethod(NextReactionMethod):
             return self.time + transition.propensity_meets_target(
                 self.state, self.time, target)
 
+    def update_state(self, dct):
+        # XXX AndersonMethod.update_state does not validate against DSMTS.
+        warnings.warn("""AndersonMethod.update_state behavior is currently invalid.
+        
+        If this functionality is vital, use AndersonFRM instead,
+        which provides a correct but significantly slower implementation.
+        """, Warning)
+        super(AndersonMethod, self).update_state(dct)
+
 
 class AndersonNRM(AndersonMethod):
     """Deprecated. Identical to AndersonMethod"""
     def __init__(self, *args, **opts):
         warnings.warn("Use AndersonMethod instead", DeprecationWarning)
         super(AndersonMethod, self).__init__(*args, **opts)
+
+
+class AndersonFRM(FirstReactionMethod):
+    """First reaction method modified for time-dependent processes
+
+    This sampler is an inefficient implementation of Anderson's method,
+    and will be removed in future versions.
+
+    It should only be used when simulating processes with time-dependent
+    transitions in situations where
+    StochasticSimulationAlgorithm.update_state is used, because the
+    more efficient implementation in AndersonMethod currently fails
+    validation for this scenario.
+    """
+    def __init__(self, process, state, t=0., tmax=float('inf'), steps=None, seed=None):
+        warnings.warn("AndersonFRM will be removed in future versions.", DeprecationWarning)
+        self.T = []
+        self.P = []
+        super(AndersonNRM, self).__init__(process, state, t, tmax, steps, seed)
+
+    def add_transition(self, transition):
+        from math import log
+
+        super(AndersonNRM, self).add_transition(transition)
+        self.T.append(0)
+        self.P.append(-log(self.rng.random()))
+
+    def prune_transitions(self):
+        depleted = [
+            k[0] for t, r, k in self.firings
+            if t == float('inf') and (r.rule or isinstance(r, Event))
+        ]
+        for k in reversed(depleted):
+            del self.transitions[k]
+            del self.T[k]
+            del self.P[k]
+
+    def propose_potential_transition(self):
+        def eq_13(trans, target):
+            """Determine timestep for a transition in global time scale"""
+            if isinstance(trans, Event):
+                return trans.next_occurrence(self.time)
+            else:
+                return trans.propensity_meets_target(self.state, self.time, target) +  self.time
+
+        self.firings = [
+            (eq_13(trans, Pk-Tk), trans, (k,))
+            for k, (trans, Pk, Tk)
+            in enumerate(zip(self.transitions, self.P, self.T))
+        ]
+        if self.firings:
+            return min(self.firings, key=lambda item: item[0])
+        else:
+            return float('inf'), None, tuple()
+
+    def perform_transition(self, time, transition, mu):
+        from math import log
+
+        def int_a_dt(trans, delta_t):
+            """Integrate propensity for given delta_t"""
+            if isinstance(trans, Event):
+                return 0
+            else:
+                return trans.propensity_integral(self.state, self.time, delta_t)
+
+        self.T = [Tk+int_a_dt(trans, time-self.time) for Tk, trans in
+                  zip(self.T, self.transitions)]
+        self.P[mu] -= log(self.rng.random())
+        super(AndersonNRM, self).perform_transition(time, transition)
