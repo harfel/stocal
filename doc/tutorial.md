@@ -532,7 +532,7 @@ can be modified to take changing temperature instead of volumes instead.
 stocal ships with several variants of the stochastic simulation algorithm,
 refered to as sampler. A call to `Process.sample` inspects the
 underlying process and will instantiate an appropriate sampler.
-Currently, this creates and instance of Gibson and Bruck's next reaction
+Currently, this creates an instance of Gibson and Bruck's next reaction
 method, unless at least one transition of the process is time-dependent
 (in which case the method creates an instance of Anderon's method).
 

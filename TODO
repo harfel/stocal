@@ -1,13 +1,16 @@
-* stocal.experimental.samplers do not chain properly where invoking self.propose_potential_transition, etc.
-* allow species equals 0 in initial state?
+* stocal.algorithms.AndersonMethod.update_state is broken
+* stocal.experimental.samplers do not chain as claimed
 + support for proper delay events (-> feature/events)
-= release/1.2
+= release/1.3
 - remove dict support in MassAction.reactions and TransitionRule.infer_transitions
 - remove invalid-name arguments
 - remove AndersonNRM
 - remove TrajectorySampler
 - remove ReactionRule
+- remove Process.trajectory
+- allow species equals 0 in initial state?
 - regroup tests into specifications, unittests and bugs
+- move stocal.experimental.CaoMethod into stocal.algorithms
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
 - persistency support (save and resume simulations)
