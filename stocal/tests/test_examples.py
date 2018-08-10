@@ -4,7 +4,9 @@ Most tests simply check that the example can be run without error.
 """
 import unittest
 import sys
-from stocal.tests.test_transitions import TestReactionRule, TestMassAction
+import os
+
+from stocal.tests.test_transitions import TestReactionRule as TestTransitionRule, TestMassAction
 
 from stocal.examples.pre2017 import DegradationRule
 from stocal.examples.pre2017 import LigationRule
@@ -13,16 +15,11 @@ from stocal.examples.pre2017 import AutoCatalysisRule
 
 class TestBrusselator(unittest.TestCase):
     """Test examples.brusselator"""
-    def setUp(self):
-        self.stdout = sys.stdout
-        sys.stdout = open('/dev/null', 'w')
-
-    def tearDown(self):
-        sys.stdout = self.stdout
-
     def test_example(self):
-        """test running the module"""
-        import stocal.examples.brusselator
+        """test process instantiation"""
+        from stocal.examples.brusselator import process
+        for _ in process.sample({}, steps=100):
+            pass
 
 
 class TestEvents(unittest.TestCase):
@@ -30,7 +27,7 @@ class TestEvents(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.events import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
@@ -39,11 +36,11 @@ class TestPre2017(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.pre2017 import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
 
 
-class TestPre2017Rule(TestReactionRule):
+class TestPre2017Rule(TestTransitionRule):
     """Base class for rules used in pre2017"""
     def setUp(self):
         self.rule = self.Rule()
@@ -122,7 +119,7 @@ class TestPre2017AutoCatalysis(TestMassAction):
                 reactants, products, c)
 
 
-class TestTypedRules(TestReactionRule):
+class TestTypedRules(TestTransitionRule):
     from stocal.examples.typed_rules import AA_BB as Rule
 
     def test_infer_transitions_signature(self):
@@ -143,8 +140,44 @@ class TestTemperatureCycle(unittest.TestCase):
     def test_example(self):
         """test process instantiation"""
         from stocal.examples.temperature_cycle import process
-        for _ in process.trajectory({}, steps=100):
+        for _ in process.sample({}, steps=100):
             pass
+
+
+class TestValidation(unittest.TestCase):
+    """Test validation example"""
+    from stocal.examples.validation import DataStore
+    
+    def setUp(self):
+        from tempfile import mkdtemp
+        self.tmpdir = mkdtemp(prefix='stocal-tmp')
+        self.store = self.DataStore(self.tmpdir)
+
+    def tearDown(self):
+        from shutil import rmtree
+        rmtree(self.tmpdir)
+
+    def test_run(self):
+        """Assert that validation run is executable"""
+        from argparse import Namespace
+        from stocal.algorithms import DirectMethod as TestMethod
+        from stocal.examples.dsmts.models import DSMTS_001_01 as TestModel
+        from stocal.examples.validation import run_validation
+
+        args = Namespace(models=[TestModel], algo=[TestMethod], N=3,
+                         cpu=1, store=self.store)
+        run_validation(args)
+
+    def test_report(self):
+        """Assert that validation report is executable"""
+        # populate the store first...
+        from argparse import Namespace
+        from stocal.examples.validation import report_validation
+
+        report_name = os.path.join(self.tmpdir, 'validation.tex')
+        args = Namespace(reportfile=report_name, cpu=1, store=self.store)
+        self.test_run()
+        report_validation(args)
 
 
 if __name__ == '__main__':

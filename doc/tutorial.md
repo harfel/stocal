@@ -43,15 +43,15 @@ process = Process([r1, r2])
 ```
 
 We can use this process, to sample stochastic trajectories. The method
-`Process.trajectory` instantiates a trajectory sampler for a given
+`Process.sample` instantiates a trajectory sampler for a given
 initial condition and stop criterion. The trajectory sampler implements
 the iterator protocol, so we can simply iterate through the trajectory,
 invoking one stochastic transition at a time. With each transition,
 time and state of the trajectory are properly updated: 
 
 ```python
-trajectory = process.trajectory({'A':100}, steps=1000)
-for transition in trajectory :
+trajectory = process.sample({'A':100}, steps=1000)
+for dt, transitions in trajectory :
     print trajectory.time, trajectory.state['A'], trajectory.state['A2']
 ```
 
@@ -124,7 +124,7 @@ reactions. As such, rules generate a whole set of reactions.
 Defining a rule requires to create a python
 [class](https://docs.python.org/2/tutorial/classes.html) with some
 required attributes and methods. The class needs to be derived from
-`ReactionRule`, which requires our subclass to have the following
+`TransitionRule`, which requires our subclass to have the following
 attributes:
 
 | attribute         | description                                                                         |
@@ -135,7 +135,7 @@ attributes:
 Taking this all together, we define the following Dilution rule: 
 
 ```python
-class Dilution(ReactionRule) :
+class Dilution(TransitionRule) :
     Transition = MassAction
 
     def novel_reactions(self, species) :
@@ -160,7 +160,7 @@ alternatively be provided as return type annotation of the
 ```python
 from typing import Iterator
 
-class Dilution(ReactionRule) :
+class Dilution(TransitionRule) :
     def novel_reactions(self, species) -> Iterator[MassAction]:
         yield MassAction([species], [], 0.001)
 ```
@@ -191,7 +191,7 @@ To model this, we define a rule class for the polymerization that
 generates a Polymerization reaction for any two reactants:
 
 ```python
-class Polymerization(ReactionRule) :
+class Polymerization(TransitionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k, l) :
@@ -210,7 +210,7 @@ constants of these reactions depends on the lengths of the hydrolysis
 products, so that polymers are more likely to break in the middle.
 
 ```python
-class Hydrolysis(ReactionRule) :
+class Hydrolysis(TransitionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k) :
@@ -233,6 +233,19 @@ process = Process(transitions=[feed],
 
 Note that no change is necessary for the dilution rule, since it already
 generates a reaction for every chemical in the system.
+
+*New in version 1.2:* Rule-based processes that expand into a finite
+set of transitions can be flattened into equivalent static processes
+that employ specific transitions rather than general rules:
+
+```python
+process = Process(rules=[Dilution()])
+flat_process = process.flatten(['a', 'b', 'c'])
+```
+This will generate a new process objects where the original rule is
+expanded into three transitions, each one modelling the specific
+dilution of one of the provided molecular species.
+
 
 ## Complex States
 
@@ -337,7 +350,7 @@ potentially form two different polymerization products: _k+l_ and _l+k_.
 Therefore, the polymerization rule has to generate both reactions:
 
 ```python
-class Polymerization(ReactionRule) :
+class Polymerization(TransitionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k, l) :
@@ -383,7 +396,7 @@ with the above overloads for `__eq__`, `__ne__` and `__hash__`.
 The nondirectional Polymerization rule now becomes:
 
 ```python
-class Polymerization(ReactionRule) :
+class Polymerization(TransitionRule) :
     Transition = MassAction
 
     def novel_reactions(self, k, l) :
@@ -412,14 +425,14 @@ reaction rules. For this example, we look into modelling the association
 of proteins with mRNA's. We want to define a rule for the association of
 an arbitrary protein with an arbitrary mRNA. 
 
-With the above ReactionRule's we would need to constantly check whether
-the species supplied to `ReactionRule.novel_reactions` are indeed
+With the above TransitionRule's we would need to constantly check whether
+the species supplied to `TransitionRule.novel_reactions` are indeed
 proteins and RNA's and only yield a transition in case they are. Not
 knowing which argument of the reactant combination is the protein and
 which the RNA further complicates the code.
 
 ```python
-class Association(ReactionRule):
+class Association(TransitionRule):
     Transition = MassAction
 
     def novel_reactions(self, k, l):
@@ -443,16 +456,16 @@ class Rna(str):
     pass
 ```
 
-We can now write a typed `ReactionRule` for their association, simply by
-setting the optional ReactionRule attribute `signature` to the list of
-types that the rule should accept. When defining a signature, it must
+We can now write a typed `TransitionRule` for their association, simply
+by setting the optional TransitionRule attribute `signature` to the list
+of types that the rule should accept. When defining a signature, it must
 have the same number of elements as the `novel_reactions` method.
 `novel_reactions` will now only be called with arguments that adhere to
 the type given in the signature. In our case, writing the rule becomes
 as simple as:
 
 ```python
-class Association(ReactionRule):
+class Association(TransitionRule):
     Transition = MassAction
     signature = [Protein, Rna]
 
@@ -466,7 +479,7 @@ rule signature:
 ```python
 from typing import Iterator
 
-class Association(ReactionRule):
+class Association(TransitionRule):
     def novel_reactions(self, protein: Protein, rna: Rna) -> Iterator[MassAction]:
         yield MassAction([protein, rna], [(protein,rna)], 1.)
 ```
@@ -513,6 +526,41 @@ We can now use `VolumeDependentMassAction` in any place where we
 have used default `MassAction` reactions before.
 stocal/examples/temperature_cycle.py gives an example of how reactions
 can be modified to take changing temperature instead of volumes instead.
+
+## Stochastic simulation algorithms
+
+stocal ships with several variants of the stochastic simulation algorithm,
+refered to as sampler. A call to `Process.sample` inspects the
+underlying process and will instantiate an appropriate sampler.
+Currently, this creates an instance of Gibson and Bruck's next reaction
+method, unless at least one transition of the process is time-dependent
+(in which case the method creates an instance of Anderon's method).
+
+If you want to control which simulation algorithm is instantiated, you
+can instantiate the desired sampler directly, as in, e.g.,
+
+```python
+sampler = algorithms.DirectMethod(process, state, tmax=100.)
+for dt, transitions in sampler:
+    print(dt, transitions)
+```
+
+Currently, stocal provides the following samplers:
+
+| algorithm          | description                                                                                                    |
+|------------------- | -------------------------------------------------------------------------------------------------------------- |
+|DirectMethod        | Original Gillespie algorithm                                                                                   |
+|FirstReactionMethod | Stochastic simulation algorithm that can operate account for scheduled events                                  |
+|NextReactionMethod  | Variant of FirstReactionMethod with improved performance *(new in version 1.2)*                                |
+|AndersonMethod      | Variant of NextReactionMethod that allows for propensity functions to be time-dependent *(new in version 1.1)* |
+|CaoMethod           | An (inexact) tau-leaping variant of SSA -- available in stocal.experimental.tauleap *(new in version 1.2)*     |
+
+Please refer to the class documentation for information about the exact
+implementation and reference publication.
+
+If you want to implement your own stochastic simulation algorithm, it
+should be programmed against the interface defined by
+`stocal.algorithms.StochasticSimulationAlgorithm`.
 
 ## Further Documentation
 

@@ -8,7 +8,7 @@ def readme():
 
 
 setup(name = "stocal",
-      version = "1.1.2",
+      version = "1.2",
       description = "simple rule-based stochastic simulation",
       long_description = readme(),
       classifiers=[
@@ -24,7 +24,8 @@ setup(name = "stocal",
       author = "Harold Fellermann",
       author_email = "harold.fellermann@newcastle.ac.uk",
       license='MIT',
-      packages = ["stocal", "stocal.examples", "stocal.tests"],
+      packages = ["stocal", "stocal.examples", "stocal.experimental", "stocal.tests"],
       include_package_data=True,
       zip_safe = True,
-      test_suite = 'stocal.tests')
+      test_suite = 'stocal.tests',
+      install_requires=['pqdict'])

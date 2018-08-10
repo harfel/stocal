@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.2] - 2018-08-10
+
+### Added
+- Added Gibson & Bruck's NextReactionMethod
+- Added Cao et al's tau leaping method in stocal.experimental.tauleap
+- Added statistical validation suite in stocal.examples.validation and stocal.samples.dsmts
+- Added modular trajectory sampling interface stocal.experimental.samplers
+- Added flattening of rule-based processes into static processes
+- StochasticSimulationAlgorithm instances accept an optional random seed
+
+### Deprecated
+- Deprecated AndersonNRM in favour of AndersonMethod
+- Deprecated TrajectorySampler in favour of StochasticSimulationAlgorithm
+- Deprecated ReactionRule in favour of TransitionRule
+- Deprecated Process.trajectory in favour of Process.sample
+
+### Changed
+- TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
+- Improved performance of DirectMethod and AndersonMethod
+- Improved performance of transition inference in TransitionRule
+
 ## [1.1.2] - 2018-05-23
 
 ### Fixed
@@ -17,6 +38,7 @@
 
 ### Changed
 - MassAction.__repr__ now also prints rate constant
+
 
 ## [1.1] - 2018-03-08
 

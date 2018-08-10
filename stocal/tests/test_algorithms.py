@@ -96,6 +96,13 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         self.assertEqual(time, float('inf'))
         self.assertEqual(transition, None)
 
+    def test_propose_potential_transition_seed(self):
+        """Samplers initialized with the same random seed propose equal transitions"""
+        process = stocal.Process([stocal.MassAction([], ['a'], 1.)])
+        sampler_a = self.Sampler(process, {'a':100}, seed=10)
+        sampler_b = self.Sampler(process, sampler_a.state, seed=10)
+        self.assertEqual(sampler_a.propose_potential_transition(), sampler_b.propose_potential_transition())
+
     def test_propose_potential_transition_in_finite_time(self):
         """Proposed (time,transition) for empty process is (inf,None)"""
         process = stocal.Process([stocal.MassAction([], ['a'], 1.)])
@@ -108,21 +115,24 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         transition = stocal.MassAction([], ['a'], 1.)
         process = stocal.Process([transition])
         sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition)
+        time, trans, args = sampler.propose_potential_transition()
+        sampler.perform_transition(time, trans, *args)
         self.assertEqual(sampler.step, 1)
 
     def test_perform_transition_advances_time(self):
         transition = stocal.MassAction([], ['a'], 1.)
         process = stocal.Process([transition])
         sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition)
-        self.assertEqual(sampler.time, 1.)
+        time, trans, args = sampler.propose_potential_transition()
+        sampler.perform_transition(time, trans, *args)
+        self.assertGreater(sampler.time, 0.)
 
     def test_perform_transition_changes_state(self):
         transition = stocal.MassAction([], ['a'], 1.)
         process = stocal.Process([transition])
         sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition)
+        time, trans, args = sampler.propose_potential_transition()
+        sampler.perform_transition(time, trans, *args)
         self.assertEqual(sampler.state, {'a':1})
 
     def test_iter_empty(self):
@@ -162,6 +172,14 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         self.assertEqual(sampler.step, 0)
         self.assertEqual(sampler.time, 0.)
 
+    def test_transitions_counts_mutliplicities(self):
+        """Sampler.transitions should give access to all transitions."""
+        proc = stocal.Process()
+        sampler = self.Sampler(proc, {})
+        sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
+        sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
+        sampler.add_transition(stocal.MassAction({}, {'b':1}, 1.))
+        self.assertEqual(len(sampler.transitions), 3)
 
 
 class TestDirectMethod(TestTrajectorySampler):
@@ -190,6 +208,18 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertEqual(sampler.state, {'a':1, 'b':1})
         self.assertEqual(sampler.step, 2)
         self.assertEqual(sampler.time, 10)
+
+    def test_iter_includes_all_events_at_tmax(self):
+        proc = stocal.Process([
+            stocal.Event({}, {'a':1}, 10, 10),
+            stocal.Event({}, {'b':1},  0, 10),
+        ])
+        sampler = self.Sampler(proc, {}, tmax=10)
+        for _ in sampler:
+            pass
+        self.assertEqual(sampler.step, 3)
+        self.assertEqual(sampler.time, 10)
+        self.assertEqual(sampler.state, {'a':1, 'b':2})
 
     def test_exact_number_of_events(self):
         """sampler performs specified number of events"""
@@ -240,30 +270,16 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         self.assertEqual(traj.state, stocal.structures.multiset({}))
 
 
+class TestNextReactionMethod(TestFirstReactionMethod):
+    """Test stocal.algorithms.DirectMethod
+
+    This tests the regular TrajectorySampler interface."""
+    Sampler = stocal.algorithms.NextReactionMethod
+
+
 class TestAndersonNRM(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
     Sampler = stocal.algorithms.AndersonNRM
-
-    def test_perform_transition_advances_steps(self):
-        transition = stocal.MassAction([], ['a'], 1.)
-        process = stocal.Process([transition])
-        sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition, 0)
-        self.assertEqual(sampler.step, 1)
-
-    def test_perform_transition_advances_time(self):
-        transition = stocal.MassAction([], ['a'], 1.)
-        process = stocal.Process([transition])
-        sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition, 0)
-        self.assertEqual(sampler.time, 1.)
-
-    def test_perform_transition_changes_state(self):
-        transition = stocal.MassAction([], ['a'], 1.)
-        process = stocal.Process([transition])
-        sampler = self.Sampler(process, {}, tmax=100.)
-        sampler.perform_transition(1., transition, 0)
-        self.assertEqual(sampler.state, {'a':1})
 
 
 if __name__ == '__main__':

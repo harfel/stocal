@@ -35,7 +35,7 @@ beta = 1000**-2
 initial_state = {c: 200000 for c in 'ab'}
 
 
-class DegradationRule(stocal.ReactionRule):
+class DegradationRule(stocal.TransitionRule):
     """Break a string into any two nonempty substrings"""
     Transition = stocal.MassAction
 
@@ -49,7 +49,7 @@ class DegradationRule(stocal.ReactionRule):
             yield self.Transition([kl], [k, l], 1.)
 
 
-class LigationRule(stocal.ReactionRule):
+class LigationRule(stocal.TransitionRule):
     """Join any two strings into their concatenations"""
     Transition = stocal.MassAction
 
@@ -61,7 +61,7 @@ class LigationRule(stocal.ReactionRule):
         yield self.Transition([k, l], [l+k], alpha)
 
 
-class AutoCatalysisRule(stocal.ReactionRule):
+class AutoCatalysisRule(stocal.TransitionRule):
     """Replicate any string from two matching substrings"""
     Transition = stocal.MassAction
 
@@ -82,6 +82,6 @@ process = stocal.Process(
 
 
 if __name__ == '__main__':
-    traj = process.trajectory(initial_state, tmax=100.)
+    traj = process.sample(initial_state, tmax=100.)
     for _ in traj:
         print(traj.time, traj.state)

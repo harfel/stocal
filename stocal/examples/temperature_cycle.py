@@ -19,9 +19,9 @@ dG = log(x_tot/3.)  # a free energy that leads to equipartition for T=1
 dH = -10            # enthalpy change of association
 dS = dH - dG        # entropy change of association
 
-def temp(t, low=0.5, high=1.5, period=50):
+def temp(time, low=0.5, high=1.5, period=50):
     """Temperature cycle"""
-    return low+(high-low)*(sin(2*pi*t/period)+1)/2.
+    return low+(high-low)*(sin(2*pi*time/period)+1)/2.
 
 
 class Dissociation(stocal.MassAction):
@@ -44,9 +44,9 @@ process = stocal.Process([
     Dissociation(['x2'], ['x', 'x'], k_forward),
 ])
 
-state = {'x2': x_tot/3, 'x': x_tot-2*x_tot/3}
+state = {'x2': x_tot//3, 'x': x_tot-2*x_tot//3}
 
 if __name__ == '__main__':
-    traj = process.trajectory(state, tmax=125.)
+    traj = process.sample(state, tmax=125.)
     for trans in traj:
         print(traj.time, traj.state['x'], traj.state['x2'], temp(traj.time))

@@ -13,13 +13,15 @@ import stocal
 a = 2.
 b = 10.
 
-traj = stocal.Process([
+process = stocal.Process([
     stocal.MassAction({}, {"x": 1}, a),
     stocal.MassAction({"x": 2, "y": 1}, {"x": 3}, 1.),
     stocal.MassAction({"x": 1}, {"y": 1, "c": 1}, b),
     stocal.MassAction({"x": 1}, {"d": 1}, 1.),
-]).trajectory({}, tmax=50)
+])
 
-print("# time\tx\ty\tc\td")
-for transition in traj:
-    print(traj.time, '\t'.join(str(traj.state[s]) for s in "xycd"))
+if __name__ == '__main__':
+    traj = process.sample({}, tmax=50)
+    print("# time\tx\ty\tc\td")
+    for dt, transitions in traj:
+        print(traj.time, '\t'.join(str(traj.state[s]) for s in "xycd"))

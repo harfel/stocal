@@ -37,6 +37,72 @@ class TestProcess(unittest.TestCase):
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
         proc.trajectory({})
 
+    def test_sample_arguments(self):
+        """Process.trajectory can be called with optional arguments"""
+        proc = self.Process([])
+        proc.sample({})
+        proc.sample({}, 1.)
+        proc.sample({}, 1., 2.)
+        proc.sample({}, tstart=1.)
+        proc.sample({}, tmax=2.)
+        proc.sample({}, steps=10)
+
+    def test_sample_with_events(self):
+        """Partly deterministic processes return an appropriate sampler"""
+        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
+        proc.sample({})
+
+    def test_sample_return_type_behavior(self):
+        """Partly deterministic processes return an appropriate sampler"""
+        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
+        traj = iter(proc.sample({}))
+        self.assertEqual(len(next(traj)), 2)
+
+    def test_flatten_returns_new_process(self):
+        """Process.flatten creates a new Process instance"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+        process = self.Process(rules=[Dimerize()])
+        self.assertIsNot(process.flatten(['a', 'b']), process)
+
+    def test_flatten_static_process_is_invariant(self):
+        """Processes without rules return a copy of themselves"""
+        process = self.Process(stocal.MassAction(['a'], ['b'], 1.))
+        self.assertEqual(process, process.flatten(['a', 'b']))
+
+    def test_flatten_flat_process_has_no_rules(self):
+        """All rules of a flat process are resolved"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+
+        self.assertFalse(self.Process([]).flatten([]).rules)
+        self.assertFalse(self.Process(rules=[Dimerize()]).flatten(['a', 'b']).rules)
+
+    def test_flatten_rules_generate_flat_transitions(self):
+        """Flattening converts applicable rules into transitions"""
+        class Dimerize(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, k, l):
+                if len(k) == len(l) == 1:
+                    yield self.Transition([k, l], [k+l], 1.)
+
+        class Split(stocal.ReactionRule):
+            Transition = stocal.MassAction
+            def novel_reactions(self, kl):
+                if len(kl) == 2:
+                    yield self.Transition([kl], [kl[:1], kl[1:]], 1.)
+
+        initial_species = ['a', 'b']
+        proc = self.Process(rules=[Dimerize(), Split()])
+        flat_proc = proc.flatten(initial_species)
+        self.assertEquals(len(flat_proc.transitions), 6)
+
 
 class TestRule(AbstractTestCase('Rule', stocal.Rule)):
     """Rule specification
@@ -134,6 +200,11 @@ class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
         self.assertNotEqual(trans1.true_products, trans1.products)
         self.assertEqual(trans1.true_reactants, trans2.true_reactants)
         self.assertEqual(trans1.true_products, trans2.true_products)
+
+    def test_stoichiometry(self):
+        """stoichiometry is the net change of species"""
+        self.assertEqual(self.Transition({'a':1}, {'a':2}).stoichiometry, {'a':1})
+        self.assertEqual(self.Transition({'a':1}, {'b':2}).stoichiometry, {'a':-1, 'b':2})
 
     def test_hash(self):
         """Equal transitions must have equal hash values"""
