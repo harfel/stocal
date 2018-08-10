@@ -1,4 +1,3 @@
-= release/1.2
 * stocal.algorithms.AndersonMethod.update_state is broken
 * stocal.experimental.samplers do not chain as claimed
 + support for proper delay events (-> feature/events)

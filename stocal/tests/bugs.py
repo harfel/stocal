@@ -54,14 +54,14 @@ class Issue3(unittest.TestCase):
         it = iter(traj)
 
         try:
-            trans = it.next()
+            trans = next(it)
         except StopIteration:
             self.fail("Static event not fired.")
         self.assertEqual(traj.time, 1)
         self.assertEqual(traj.state, {'a': 1})
 
         try:
-            trans = it.next()
+            trans = next(it)
         except StopIteration:
             self.fail("Infered event not fired.")
         self.assertEqual(traj.time, 10)

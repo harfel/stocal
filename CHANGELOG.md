@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2]
+## [1.2] - 2018-08-10
 
 ### Added
 - Added Gibson & Bruck's NextReactionMethod
