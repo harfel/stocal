@@ -279,7 +279,7 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
             raise ValueError("tmax must not be negative.")
         if steps is not None and steps < 0:
             raise ValueError("steps must not be negative.")
-        if any(n <= 0 for n in state.values()):
+        if any(n < 0 for n in state.values()):
             raise ValueError("state copy numbers must be positive")
 
         self.process = process

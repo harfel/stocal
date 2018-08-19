@@ -14,6 +14,7 @@
 - TransitionRule.infer_transitions can no longer be called with dicts, use multisets instead
 - PriorityQueue.keys and MultiDict.keys return generators rather than lists
 - Moved stocal.experimental.tauleap.CaoMethod into stocal.algorithms
+- StochasticSimulationAlgorithm now accepts 0 counts in initial state
 
 
 ## [1.2] - 2018-08-10
@@ -36,6 +37,7 @@
 - TrajectorySampler instances now use an internal random number generator (sampler.rng) rather than python's global one.
 - Improved performance of DirectMethod and AndersonMethod
 - Improved performance of transition inference in TransitionRule
+
 
 ## [1.1.2] - 2018-05-23
 

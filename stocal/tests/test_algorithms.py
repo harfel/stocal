@@ -36,8 +36,10 @@ class TestStochasticSimulationAlgorithm(AbstractTestCase('Sampler', stocal.algor
             self.Sampler(proc, {}, tmax=-1.)
         with self.assertRaises(ValueError):
             self.Sampler(proc, {}, steps=-1)
-        with self.assertRaises(ValueError):
+        try:
             self.Sampler(proc, {'a':0})
+        except Exception:
+            self.fail("Sampler does not accept 0 count in initial state.")
         with self.assertRaises(ValueError):
             self.Sampler(proc, {'a':-1})
 

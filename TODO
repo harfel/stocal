@@ -1,3 +1,4 @@
+- modified StochasticSimulationAlgorithm.__iter__ protocol
 - add public API documentation
 - regroup tests into specifications, unittests and bugs
 - reorganize stocal/tests/test_examples.py
@@ -5,13 +6,7 @@
 
 OLD TODOs
 * stocal.algorithms.AndersonMethod.update_state is broken
-+ every argument to StochasticSimulationAlgorithm for sampling interval
-+ flexible yield results from StochasticSimulationAlgorithm.__iter__
-+ support for proper delay events (-> feature/events)
-= release/1.3
-- allow species equals 0 in initial state?
-= release/2.0
-- utilities to simplify scipy/matplotlib interaction
++ support for proper delay events
 - persistency support (save and resume simulations)
 - arithmetic operations for Process
 - string rewrite rule support
