@@ -49,11 +49,13 @@ class TestProcess(unittest.TestCase):
 
     def test_sample_with_events(self):
         """Partly deterministic processes return an appropriate sampler"""
+        # XXX test does not test what it claims to test
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
         proc.sample({})
 
     def test_sample_return_type_behavior(self):
         """Partly deterministic processes return an appropriate sampler"""
+        # XXX test does not test what it claims to test
         proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
         traj = iter(proc.sample({}))
         self.assertEqual(len(next(traj)), 2)

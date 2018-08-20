@@ -20,6 +20,9 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """Chainable process samplers
 
+WARNING: This module does currently not perform as described and is
+scheduled to disappear in future versions.
+
 This module is currently experimental. Its API might change without
 notification, and there is no guarantee that it will be adopted by
 the stable stocal core.
@@ -108,9 +111,9 @@ and calculate averages of these states.
 See the Sampler documentation for a full explanation of Sampler factory
 methods.
 
-# XXX Chaining of Samplers as described in the doc is currently broken
 """
 import abc
+import warnings
 try:
     from itertools import izip as zip
     range = xrange
@@ -120,6 +123,8 @@ except ImportError:
 import stocal.transitions
 from stocal._utils import with_metaclass
 from stocal.structures import multiset
+
+warnings.warn("Module will disappear in future versions.", DeprecationWarning)
 
 StandardProcess = stocal.transitions.Process
 
