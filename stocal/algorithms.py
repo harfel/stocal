@@ -689,21 +689,21 @@ class AndersonNRM(NextReactionMethod):
 
         super(AndersonNRM, self).perform_transition(time, transition)
 
-class Group(object):
+class Group(object): # holds information for each group of transitions
 
     def __init__(self, gmin, gmax):
-        self.gmin = gmin # 1st attributes/properties of the objects of this class
-        self.gmax = gmax # 2nd attributes/properties of the objects of this class
-        self.num_transitions = 0 # 3rd attributes/properties of the objects of this class, which has value 0 for all objects
-        self.transitions = [] # 4th attributes/properties
-        self.propensities = []# 5th attributes/properties of the objects of this class, which has a value of the MultiDict() variable for all objects
+        self.gmin = gmin
+        self.gmax = gmax
+        self.num_transitions = 0
+        self.transitions = []
+        self.propensities = []
 
-    def group_total_propensities(self):
+    def group_total_propensities(self): # sum of all propensities for the transition in the group
         return sum(self.propensities)
 
-    def transition_propensity(self, r):
-        l = self.transitions.index(r) # position of transition in list
-        propensity = self.propensities[l] # locates prop in list
+    def transition_propensity(self, r): # returns the propensity for a given transition
+        l = self.transitions.index(r)
+        propensity = self.propensities[l]
         return propensity
 
 class CompositionRejection(TrajectorySampler):
@@ -716,46 +716,46 @@ class CompositionRejection(TrajectorySampler):
             raise ValueError("CompositionRejection only works with Reactions.")
         if any(not issubclass(r.Transition, Reaction) for r in process.rules):
             raise ValueError("CompositionRejection only works with Reactions.")
-        self.dependency_graph = DependencyGraph() # 1st attributes/properties of the objects of this class
-        self.depleted = [] # 3rd attributes/properties of the objects of this class
-        self.groups = [] # 4th attributes/properties of the objects of this class
-        self.gzero = Group(0, 0) # 5th attributes/properties of the objects of this class
-        self.gmin = self.PMIN #gmin equals PMIN
-        self.gmax = 2*self.PMIN #gmax is always double the value of PMIN
-        self.group_index = {} #empty dictionary, holding group and index of pruned(self.depleted) reactions
+        self.dependency_graph = DependencyGraph()
+        self.depleted = []
+        self.groups = []
+        self.gzero = Group(0, 0)
+        self.gmin = self.PMIN
+        self.gmax = 2*self.PMIN
+        self.group_index = {} # empty dictionary, holding group and index of pruned(self.depleted) reactions
         super(CompositionRejection, self).__init__(process, state, t, tmax, steps, seed)
 
-        while self.gmax < self.PMAX: # this loop groups the reactions into groups
+        while self.gmax < self.PMAX: # this while loop groups the reactions into groups
             new_group = Group(self.gmin, self.gmax) # a object of the class Group is created and called "new_group"
             self.groups.append(new_group) # self.groups is a list, which has object called "new_group" added as it's item
             self.gmin *= 2 # gmin = gmin * 2, for every iteration of loop gmin value doubles
             self.gmax *= 2 # gmax = gmax * 2, for every iteration of loop gmax value doubles
 
 
-    def add_transition(self, transition): # not loop related
-        prop = self.calculate_propensity(transition) # State is a dictionary that maps chemical species to positive integers denoting their copy number(propensity of given transition).
-        self.add_transition_with_prop(transition, prop) # passes transitons along "add_transition_with_prop" sorting function
+    def add_transition(self, transition): # adds transitions
+        prop = self.calculate_propensity(transition) # assigns propensity to prop variable
+        self.add_transition_with_prop(transition, prop)
         self.dependency_graph.add_reaction(transition) # adds transition to dependency graph
 
 
     def add_transition_with_prop(self, transition, propensity): # Sorts transitions into either Gzero or Self.groups
         prop = propensity
-        assert self.PMIN <= prop <= self.PMAX or prop == 0, "Abnormal prop" # makes sure that the propensity of given transition(height of bar) is between the established maximum and minimum propensity values, for the entire system.
+        assert self.PMIN <= prop <= self.PMAX or prop == 0, "Abnormal prop"
 
         if prop == 0:
             g = self.gzero
 
-            g.transitions.append(transition)  # Error of gmax, use debugger
-            g.propensities.append(prop)  # calls method(in this case the method/function is "add_item()")  of inherited class(superclass) for any given object of the "group class"
-            g.num_transitions += 1  # group.num_transitions = group.num_transitions + 1. group.num_transitions holds total number of transitions
+            g.transitions.append(transition)
+            g.propensities.append(prop)
+            g.num_transitions += 1
         else:
-            for grp in self.groups: # for every item in the list called self.groups.
-                if grp.gmax >= prop > grp.gmin: # if the given item's gmax(max prop of group) is more than prop(reaction propensity)
+            for grp in self.groups:
+                if grp.gmax >= prop > grp.gmin:
                     gr = grp
 
-                    gr.transitions.append(transition)  # Error of gmax, use debugger
-                    gr.propensities.append(prop)  # calls method(in this case the method/function is "add_item()")  of inherited class(superclass) for any given object of the "group class"
-                    gr.num_transitions += 1  # group.num_transitions = group.num_transitions + 1. group.num_transitions holds total number of transitions
+                    gr.transitions.append(transition)
+                    gr.propensities.append(prop)
+                    gr.num_transitions += 1
                     break # terminates the current loop and resumes execution at the next statement.
 
 
@@ -764,90 +764,95 @@ class CompositionRejection(TrajectorySampler):
         affected_transitions = self.dependency_graph.affected_transitions(dct)
         self.update_propensities(affected_transitions)
 
-    def prune_transitions(self): # Deals with concentrations of chemical species in system. Takes away reaction with propensities = 0
+    def prune_transitions(self): # Takes away reaction with propensities of 0.
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
-            del self.propensities[trans] # XXXX replace with removing from del Group.selected.propensities[Group_selected.transition.index(trans)]
+            del self.propensities[trans]
             g = self.group_index[trans]
             Group = g[0] # the last group the transition was in
             index = g[1] # the list index of transition and propensity in Group
             del Group.propensities[index] # removes trans's propensity from Group propensity list
             del Group.transitions[index] # removes trans from Group transition list
 
-        self.depleted = []
-        self.group_index = {}
+        self.depleted = [] # empties given list
+        self.group_index = {} # empties given list
 
     @property
     def transitions(self): # outputs list of all current transitions
         a = [x.transitions for x in self.groups] # list of all transitions in self.groups
-        b = self.gzero.transitions # self.gzero transition list
+        b = self.gzero.transitions # self.gzero's transition list assigned to variable b.
         q = [x for x in a if x not in b] # list of transitions in self.groups that aren't in self.gzero
         all_transitions = b + q # Transitions in both self.groups and self.gzero
-        return all_transitions # transitions in gzero and not in gzero, make a list called all_transitions
+        return all_transitions
 
-    def propose_potential_transition(self):  # relates loop = pseudocode
+    def propose_potential_transition(self):  # proposes a transition, relates to Composition aspect of SSA-CR
         from math import log
 
-        total_propensity = sum(g.group_total_propensities() for g in self.groups) # Note: linear and not constant time scaling
+        total_propensity = sum(g.group_total_propensities() for g in self.groups)
 
         if not total_propensity:
-            return float('inf'), None, (None, None) # () instead of (None, )
+            return float('inf'), None, (None, )
 
         import random
-        pick = random.uniform(0, 1) * total_propensity  # each reaction has an equal chance(likelihood) of occurring, r1
+        pick = random.uniform(0, 1) * total_propensity # each reaction has an equal chance(likelihood) of occurring, "r1"
         for group in self.groups:
-            pick -= group.num_transitions  # pick = pick - group.num_transitions
+            pick -= group.num_transitions
             if pick <= 0:
                 group_selected = group # the chosen group
                 break
 
-        delta_t = -log(self.rng.random()) / total_propensity # computes time increment, r2
+        delta_t = -log(self.rng.random()) / total_propensity # computes time increment, "r2"
 
-        r3 = random.randint(1, group_selected.num_transitions) # xaxis
+        r3 = random.randint(1, group_selected.num_transitions) # x-axis
 
-        transition = group_selected.propensities[r3-1] # transition = self.rng.choice(group_selected.transitions) # picks a reaction
+        transition = group_selected.propensities[r3-1]  # picks a reaction/transition
 
-        #print("Tree", self.rng.random(), random.uniform(0, 1) )
+
 
         return self.time + delta_t, transition, (group_selected, )
 
-    def perform_transition(self, time, transition, group_selected): # relates to step 4.
-        super(CompositionRejection, self).perform_transition(time, transition, group_selected) #equivlent TrajectorySampler.performa_transition(self, time, transition)
-        affected = self.dependency_graph.affected_transitions(transition.affected_species)
-        self.update_propensities(affected)
-
-
-
-    def is_applicable(self, time, transition, group_selected): # checking propensity of proposed transition(r4)
-        """Returns False for Event's that lack their reactants."""
-        m = group_selected.gmax
-        print("Groups Selec", m, group_selected, "time is", time, "tra is", transition, "Vat")
-        propensity = group_selected.transition_propensity(transition)
-        import random
-        r4 = random.uniform(0, m) #self.rng.random(0, m)#yaxis
-        if propensity >= r4: # is_applicable returns True, if r4 =< propensity
-            return transition.reactants <= self.state  # isn't applicable
+    def perform_transition(self, time, transition, group_selected): # relates to step 4 of SSA-CR algorithm.
+        if transition == None:
+            pass
         else:
-            return super(CompositionRejection, self).is_applicable(time, transition, group_selected)
+            super(CompositionRejection, self).perform_transition(time, transition, group_selected)
+            affected = self.dependency_graph.affected_transitions(transition.affected_species)
+            self.update_propensities(affected)
 
 
-    def update_propensities(self, affected_transitions): # relates to step 4 part 1. (Deals with the regrouping
+
+    def is_applicable(self, time, transition, group_selected): # relates to the rejection aspect of SSA-CR algorithm
+
+        if transition == None:
+            pass
+        else:
+            m = group_selected.gmax
+            propensity = group_selected.transition_propensity(transition)
+            import random
+            r4 = random.uniform(0, m) # y-axis, computes r4
+            if propensity >= r4: # is_applicable returns True, if r4 =< propensity
+                return False  # isn't applicable
+            else:
+                return True # is applicable
+
+
+    def update_propensities(self, affected_transitions): # relates to step 4 part 1. Deals with regrouping.
         """Update propensities of all given transitions.
 
         If the new propensity of a transition is 0 and the transition
         has been derived by a rule or is an Event, the transition gets
         added to self.depleted for later pruning."""
 
-        for g in self.groups: # # Looks at all affected reactions and updates their propensity
+        for g in self.groups: # Looks at all affected reactions and updates their propensity
             for trans in affected_transitions:
                 if trans in g.transitions:
                     prop = trans.propensity(self.state) # assigns update propensity to prop variable
                     t = g.propensities.index(g.transition_propensity(trans)) # Find's the index of the transition's propensity
                     g.propensities[t] = prop  # Updates the propensity of the transition in it's list
                     if g.gmin < prop <= g.max: # build on <--
-                        pass  # update trans' propensity value in the group
+                        pass  # update trans propensity value in the group
                     else: # # if transition doesn't belong to it's group due to prop change, it is regrouped
-                        # regroup: work on removing and adding
+
                         g.transitions.remove(trans) # removes transitions from it's previous group
                         g.propensities.remove(prop) # removes transition's propensity from it's previous group
                         g.num_transitions -= 1 # reduces number of group transitions by one
@@ -857,15 +862,15 @@ class CompositionRejection(TrajectorySampler):
         for trans in affected_transitions:
             if trans in self.gzero.transitions:
                 prop = trans.propensity(self.state) # assigns update propensity to prop variable
-                t = g.propensities.index(g.transition_propensity(trans))  # Find's the index of the transition's propensity
-                g.propensities[t] = prop  # Updates the propensity of the transition in it's list
-                if g.gmin < prop <= g.max: # build on <--
+                t = self.gzero.propensities.index(self.gzero.transition_propensity(trans))  # Find's the index of the transition's propensity
+                self.gzero.propensities[t] = prop  # Updates the propensity of the transition in it's list
+                if self.gzero.gmin < prop <= self.gzero.gmax: # build on <--
                     pass  # update trans' propensity value in the group
                 else: # # if transition doesn't belong to it's group due to prop change, it is regrouped
-                    # regroup: work on removing and adding
-                    g.transitions.remove(trans) # removes transitions from it's previous group
-                    g.propensities.remove(prop) # removes transition's propensity from it's previous group
-                    g.num_transitions -= 1 # reduces number of group transitions by one
+
+                    self.gzero.transitions.remove(trans) # removes transitions from it's previous group
+                    self.gzero.propensities.remove(prop) # removes transition's propensity from it's previous group
+                    self.gzero.num_transitions -= 1 # reduces number of group transitions by one
                     self.add_transition_with_prop(trans, prop) # performs the regrouping
 
         for trans in affected_transitions: # prunes affected reaction if prop = 0
