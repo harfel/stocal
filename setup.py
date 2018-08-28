@@ -1,6 +1,23 @@
 #! /usr/bin/env python
-
+import os
 from setuptools import setup
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+def find_version(*file_paths):
+    import re
+    def read(*parts):
+        import codecs
+        with codecs.open(os.path.join(here, *parts), 'r') as fp:
+            return fp.read()
+
+    version_file = read(*file_paths)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
 
 def readme():
     with open('README.md') as f:
@@ -8,7 +25,7 @@ def readme():
 
 
 setup(name = "stocal",
-      version = "1.2.1",
+      version = find_version("stocal", "__init__.py"),
       description = "simple rule-based stochastic simulation",
       long_description = readme(),
       classifiers=[
