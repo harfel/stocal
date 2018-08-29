@@ -2,6 +2,9 @@
 
 ## [2.0]
 
+### Fixed
+- Process.__eq__ did not account for different ordering of transitions or rules
+
 ### Removed
 - Removed stocal.algorithm.TrajectorySampler
 - Removed stocal.algorithms.AndersonNRM

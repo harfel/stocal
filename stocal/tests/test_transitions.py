@@ -15,6 +15,19 @@ class TestProcess(unittest.TestCase):
     """
     Process = stocal.Process
 
+    class Dimerize(stocal.TransitionRule):
+        Transition = stocal.MassAction
+        def novel_reactions(self, k, l):
+            if len(k) == len(l) == 1:
+                yield self.Transition([k, l], [k+l], 1.)
+
+    class Split(stocal.TransitionRule):
+        Transition = stocal.MassAction
+        def novel_reactions(self, kl):
+            if len(kl) == 2:
+                yield self.Transition([kl], [kl[:1], kl[1:]], 1.)
+
+
     def test_init(self):
         """Processes can be initialized with and without reactions/rules"""
         self.Process([])
@@ -22,6 +35,19 @@ class TestProcess(unittest.TestCase):
         self.Process([], rules=[])
         self.Process(rules=[])
         self.Process(transitions=[])
+
+    def test_equal_transitions(self):
+        """Process equality does not depend on ordering of transitions"""
+        r1 = stocal.MassAction({}, {'a': 1}, 1.)
+        r2 = stocal.MassAction({'a': 1}, {}, 1.)
+        self.assertEqual(self.Process([r1, r2]), self.Process([r2, r1]))
+
+    def test_equal_rules(self):
+        """Process equality does not depend on ordering of transitions"""
+        r1 = self.Dimerize()
+        r2 = self.Split()
+        self.assertEqual(self.Process(rules=[r1, r2]),
+                         self.Process(rules=[r2, r1]))
 
     def test_sample_arguments(self):
         """Process.trajectory can be called with optional arguments"""
@@ -48,46 +74,23 @@ class TestProcess(unittest.TestCase):
 
     def test_flatten_returns_new_process(self):
         """Process.flatten creates a new Process instance"""
-        class Dimerize(stocal.TransitionRule):
-            Transition = stocal.MassAction
-            def novel_reactions(self, k, l):
-                if len(k) == len(l) == 1:
-                    yield self.Transition([k, l], [k+l], 1.)
-        process = self.Process(rules=[Dimerize()])
+        process = self.Process(rules=[self.Dimerize()])
         self.assertIsNot(process.flatten(['a', 'b']), process)
 
     def test_flatten_static_process_is_invariant(self):
         """Processes without rules return a copy of themselves"""
-        process = self.Process(stocal.MassAction(['a'], ['b'], 1.))
+        process = self.Process([stocal.MassAction(['a'], ['b'], 1.)])
         self.assertEqual(process, process.flatten(['a', 'b']))
 
     def test_flatten_flat_process_has_no_rules(self):
         """All rules of a flat process are resolved"""
-        class Dimerize(stocal.TransitionRule):
-            Transition = stocal.MassAction
-            def novel_reactions(self, k, l):
-                if len(k) == len(l) == 1:
-                    yield self.Transition([k, l], [k+l], 1.)
-
         self.assertFalse(self.Process([]).flatten([]).rules)
-        self.assertFalse(self.Process(rules=[Dimerize()]).flatten(['a', 'b']).rules)
+        self.assertFalse(self.Process(rules=[self.Dimerize()]).flatten(['a', 'b']).rules)
 
     def test_flatten_rules_generate_flat_transitions(self):
         """Flattening converts applicable rules into transitions"""
-        class Dimerize(stocal.TransitionRule):
-            Transition = stocal.MassAction
-            def novel_reactions(self, k, l):
-                if len(k) == len(l) == 1:
-                    yield self.Transition([k, l], [k+l], 1.)
-
-        class Split(stocal.TransitionRule):
-            Transition = stocal.MassAction
-            def novel_reactions(self, kl):
-                if len(kl) == 2:
-                    yield self.Transition([kl], [kl[:1], kl[1:]], 1.)
-
         initial_species = ['a', 'b']
-        proc = self.Process(rules=[Dimerize(), Split()])
+        proc = self.Process(rules=[self.Dimerize(), self.Split()])
         flat_proc = proc.flatten(initial_species)
         self.assertEquals(len(flat_proc.transitions), 6)
 

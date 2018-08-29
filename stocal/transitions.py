@@ -592,7 +592,15 @@ class Process(object):
         self.rules = rules or []
 
     def __eq__(self, other):
-        return self.transitions == other.transitions and self.rules == other.rules
+        """Process equality
+
+        Two Process instances are equal if all their transitions and
+        rules are equal."""
+        def unordered(lst):
+            return {item: lst.count(item) for item in set(lst)}
+
+        return (unordered(self.transitions) == unordered(other.transitions)
+                and unordered(self.rules) == unordered(other.rules))
 
     def __ne__(self, other):
         return not self == other
