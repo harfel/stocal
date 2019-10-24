@@ -2,8 +2,10 @@
 
 ## [2.0]
 
-### Rmoved
-- Keyword argument t to StochasticSimulationAlgorithm
+### Removed
+- Removed keyword argument t to StochasticSimulationAlgorithm
+- Removed stocal.algorithms.AndersonNRM
+
 
 ## [1.2] - 2018-08-10
 

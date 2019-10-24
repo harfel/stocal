@@ -9,7 +9,6 @@ OLD TODOs
 + support for proper delay events (-> feature/events)
 = release/1.3
 - remove dict support in MassAction.reactions and TransitionRule.infer_transitions
-- remove AndersonNRM
 - remove TrajectorySampler
 - remove ReactionRule
 - remove Process.trajectory

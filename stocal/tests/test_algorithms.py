@@ -244,7 +244,7 @@ class TestFirstReactionMethod(TestTrajectorySampler):
         process = stocal.Process(transitions=[stocal.Event([], ['a'], 1)],
                                  rules=[Rule()])
 
-        traj = stocal.algorithms.AndersonNRM(process, {})
+        traj = self.Sampler(process, {})
         it = iter(traj)
 
         try:
@@ -277,9 +277,9 @@ class TestNextReactionMethod(TestFirstReactionMethod):
     Sampler = stocal.algorithms.NextReactionMethod
 
 
-class TestAndersonNRM(TestFirstReactionMethod):
+class TestAndersonMethod(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
-    Sampler = stocal.algorithms.AndersonNRM
+    Sampler = stocal.algorithms.AndersonMethod
 
 
 if __name__ == '__main__':

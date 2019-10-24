@@ -713,13 +713,6 @@ class AndersonMethod(NextReactionMethod):
         super(AndersonMethod, self).update_state(dct)
 
 
-class AndersonNRM(AndersonMethod):
-    """Deprecated. Identical to AndersonMethod"""
-    def __init__(self, *args, **opts):
-        warnings.warn("Use AndersonMethod instead", DeprecationWarning)
-        super(AndersonMethod, self).__init__(*args, **opts)
-
-
 class AndersonFRM(FirstReactionMethod):
     """First reaction method modified for time-dependent processes
 

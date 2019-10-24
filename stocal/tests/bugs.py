@@ -50,7 +50,7 @@ class Issue3(unittest.TestCase):
                                       rules=[self.Rule()])
 
     def test_expanding_anderson_nrm(self):
-        traj = stocal.algorithms.AndersonNRM(self.process, {})
+        traj = stocal.algorithms.AndersonMethod(self.process, {})
         it = iter(traj)
 
         try:
