@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0]
+
+### Rmoved
+- Keyword argument t to StochasticSimulationAlgorithm
+
 ## [1.2] - 2018-08-10
 
 ### Added

@@ -264,7 +264,7 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
     to only generate random numbers using the
     StochasticSimulationAlgorithm.rng random number generator.
     """
-    def __init__(self, process, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
+    def __init__(self, process, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
         """Initialize the sampler for the given Process and state.
 
         State is a dictionary that maps chemical species to positive
@@ -273,10 +273,6 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
         can be provided.
         """
         from random import Random
-
-        if t:
-            warnings.warn("Argument t has been renamed to tstart.", DeprecationWarning)
-            tstart = t
 
         if tstart < 0:
             raise ValueError("t must not be negative.")
@@ -290,7 +286,7 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
         self.process = process
         self.step = 0
         self.steps = steps
-        self.time = t
+        self.time = tstart
         self.tmax = tmax
         self.rng = Random(seed)
 

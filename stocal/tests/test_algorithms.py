@@ -16,7 +16,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         """init can be called with optional arguments"""
         proc = stocal.Process([])
         self.assertEqual(self.Sampler(proc, {}).time, 0.)
-        self.assertEqual(self.Sampler(proc, {}, t=1.).time, 1.)
+        self.assertEqual(self.Sampler(proc, {}, tstart=1.).time, 1.)
         self.assertEqual(self.Sampler(proc, {}, tmax=10.).tmax, 10.)
         self.assertEqual(self.Sampler(proc, {}, steps=10).steps, 10)
 
@@ -30,7 +30,7 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         """
         proc = stocal.Process([])
         with self.assertRaises(ValueError):
-            self.Sampler(proc, {}, t=-1.)
+            self.Sampler(proc, {}, tstart=-1.)
         with self.assertRaises(ValueError):
             self.Sampler(proc, {}, tmax=-1.)
         with self.assertRaises(ValueError):
