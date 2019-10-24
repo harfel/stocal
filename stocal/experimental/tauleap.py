@@ -220,9 +220,9 @@ if sys.argv[0].endswith('stocal/examples/validation.py'):
 
 # testing
 import unittest
-from stocal.tests.test_algorithms import TestTrajectorySampler
+from stocal.tests.test_algorithms import TestStochasticSimulationAlgorithm
 
-class TestCaoMethod(TestTrajectorySampler):
+class TestCaoMethod(TestStochasticSimulationAlgorithm):
     """Test CaoMethod
 
     This tests the regular StochasticSimulationAlgorithm interface."""

@@ -4,13 +4,14 @@ from stocal.tests.abstract_test import AbstractTestCase
 import stocal
 
 
-class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.TrajectorySampler)):
+class TestStochasticSimulationAlgorithm(AbstractTestCase('Sampler', stocal.algorithms.StochasticSimulationAlgorithm)):
     """Test Trajectory sampler interface
 
 	This abstract test case provides tests that specify the
-	TrajectorySampler interface. Every concrete TrajectorySampler should
-	provide a test case derived from TestTrajectorySampler which stes
-	the class attribute Sampler to the implementation class.
+	StochasticSimulationAlgorithm interface. Every concrete
+    StochasticSimulationAlgorithm should provide a test case derived
+    from TestStochasticSimulationAlgorithm which stes the class
+    attribute Sampler to the implementation class.
     """
     def test_init_optional_args(self):
         """init can be called with optional arguments"""
@@ -182,18 +183,20 @@ class TestTrajectorySampler(AbstractTestCase('Sampler', stocal.algorithms.Trajec
         self.assertEqual(len(sampler.transitions), 3)
 
 
-class TestDirectMethod(TestTrajectorySampler):
+class TestDirectMethod(TestStochasticSimulationAlgorithm):
     """Test stocal.algorithms.DirectMethod
 
-    This tests the regular TrajectorySampler interface."""
+    This tests the regular StochasticSimulationAlgorithm interface."""
     Sampler = stocal.algorithms.DirectMethod
 
 
-class TestFirstReactionMethod(TestTrajectorySampler):
+class TestFirstReactionMethod(TestStochasticSimulationAlgorithm):
     """Test stocal.algorithms.FirstReactionMethod
 
-    In addition to regular TrajectorySampler's this implementation
-    has to properly work with deterministic stocal.Event's"""
+    In addition to regular StochasticSimulationAlgorithm's this
+    implementation has to properly work with deterministic
+    stocal.Event's
+    """
     Sampler = stocal.algorithms.FirstReactionMethod
 
     def test_iter_simultaneous_events(self):
@@ -273,7 +276,7 @@ class TestFirstReactionMethod(TestTrajectorySampler):
 class TestNextReactionMethod(TestFirstReactionMethod):
     """Test stocal.algorithms.DirectMethod
 
-    This tests the regular TrajectorySampler interface."""
+    This tests the regular StochasticSimulationAlgorithm interface."""
     Sampler = stocal.algorithms.NextReactionMethod
 
 

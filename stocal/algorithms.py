@@ -424,14 +424,6 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
             self.time = self.tmax
 
 
-class TrajectorySampler(StochasticSimulationAlgorithm):
-    """Deprecated. Identical to StochasticSimulationAlgorithm"""
-    def __init__(self, *args, **opts):
-        warnings.warn("Use StochasticSimulationAlgorithm instead",
-                      DeprecationWarning)
-        super(TrajectorySampler, self).__init__(*args, **opts)
-
-
 class DirectMethod(StochasticSimulationAlgorithm):
     """Implementation of Gillespie's direct method.
 

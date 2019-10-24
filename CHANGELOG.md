@@ -4,8 +4,8 @@
 
 ### Removed
 - Removed keyword argument t to StochasticSimulationAlgorithm
+- Removed stocal.algorithm.TrajectorySampler
 - Removed stocal.algorithms.AndersonNRM
-
 
 ## [1.2] - 2018-08-10
 
