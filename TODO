@@ -1,3 +1,8 @@
+- add public API documentation
+- regroup tests into specifications, unittests and bugs
+= release 2.0
+
+OLD TODOs
 * stocal.algorithms.AndersonMethod.update_state is broken
 + every argument to StochasticSimulationAlgorithm for sampling interval
 + flexible yield results from StochasticSimulationAlgorithm.__iter__
@@ -10,7 +15,6 @@
 - remove ReactionRule
 - remove Process.trajectory
 - allow species equals 0 in initial state?
-- regroup tests into specifications, unittests and bugs
 - move stocal.experimental.CaoMethod into stocal.algorithms
 - remove stocal.experimental.samplers
 - reorganize stocal/tests/test_examples.py
@@ -26,3 +30,9 @@
 - C/C++/D implementation
 = version 2.1+
 = version 3
+
+Simulation engine
+-----------------
+All number crunching should be done lazy and potentially in another
+task/process. Samplers should be able to be stoped, resumed, loaded
+and saved.

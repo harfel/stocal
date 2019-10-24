@@ -56,20 +56,16 @@ pip install stocal
 ```
 The development version can be obtained from github using the following commands:
 ```shell
-git clone https://github.com/harfel/stocal.git
-cd stocal
-git checkout develop
-sudo python setup.py install
+pip install git+https://github.com/harfel/stocal.git@develop
 ```
 
 
 ## Issue Reporting and Contributing
 
 Please post any issues that might occur with stocal on the
-<a href="https://github.com/harfel/stocal/issues">github issue
-tracker</a>.
-If you are interested in contributing to stocal, pull requests
-and any other inquiries will be dealt with as soon as possible.
+[github issue tracker](https://github.com/harfel/stocal/issues).
+If you are interested in contributing to stocal, please consult the
+guidelines in doc/developer.rst.
 
 
 ## License
