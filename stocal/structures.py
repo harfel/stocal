@@ -1,6 +1,9 @@
 """Collection of useful data structures"""
 
-from collections import Mapping
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping # for python2 compatibility
 from numbers import Number
 
 class multiset(dict):
