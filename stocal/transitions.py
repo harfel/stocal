@@ -605,27 +605,6 @@ class Process(object):
     def __ne__(self, other):
         return not self == other
 
-    def trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
-        """Create trajectory sampler for given state
-
-        Depreated: please use Process.sample instead.
-
-        The method does the same as Process.trajectory, but returns
-        a sampler that only yields individual Transition objects
-        in each iteration:
- 
-        >>> process = Process()
-        >>> state = {}
-        >>> trajectory = process.trajectory(state)
-        >>> for transition in trajectory():
-        ...     print(trajectory.time, trajectory.state, transition)
-
-        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
-        on the sampler class.
-        """
-        warnings.warn("Use Process.sample instead", DeprecationWarning)
-        return self._trajectory(state, tstart=tstart or t, tmax=tmax, steps=steps, seed=seed)
-
     def _trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
         def transition_types():
             """Yield all generated transtion types of the process"""

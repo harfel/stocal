@@ -6,6 +6,7 @@
 - Removed keyword argument t to StochasticSimulationAlgorithm
 - Removed stocal.algorithm.TrajectorySampler
 - Removed stocal.algorithms.AndersonNRM
+- Removed Process.trajectory
 
 ## [1.2] - 2018-08-10
 

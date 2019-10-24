@@ -28,8 +28,8 @@ class Issue2(unittest.TestCase):
     def test_pre2017_initial_transitions(self):
         """assert that the initial process has correct potential transitions"""
         from stocal.examples.pre2017 import process
-        traj = process.trajectory({'a':10, 'b':10})
-        self.assertEqual(len(traj.transitions), 6)
+        traj = process.sample({'a':10, 'b':10})
+        self.assertEqual(len(list(traj.transitions)), 6)
 
 
 class Issue3(unittest.TestCase):
@@ -78,7 +78,7 @@ class Issue4(unittest.TestCase):
         self.process = stocal.Process([stocal.Event(['a'], ['b'], 1)])
 
     def test_events_with_reactants(self):
-        traj = self.process.trajectory({})
+        traj = self.process.sample({})
         for _ in traj:
             pass
         self.assertEqual(traj.state, stocal.structures.multiset({}))

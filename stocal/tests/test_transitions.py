@@ -22,21 +22,6 @@ class TestProcess(unittest.TestCase):
         self.Process(rules=[])
         self.Process(transitions=[])
 
-    def test_trajectory_arguments(self):
-        """Process.trajectory can be called with optional arguments"""
-        proc = self.Process([])
-        proc.trajectory({})
-        proc.trajectory({}, 1.)
-        proc.trajectory({}, 1., 2.)
-        proc.trajectory({}, t=1.)
-        proc.trajectory({}, tmax=2.)
-        proc.trajectory({}, steps=10)
-
-    def test_trajectory_with_events(self):
-        """Partly deterministic processes return an appropriate sampler"""
-        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
-        proc.trajectory({})
-
     def test_sample_arguments(self):
         """Process.trajectory can be called with optional arguments"""
         proc = self.Process([])
