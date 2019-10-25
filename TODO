@@ -1,5 +1,6 @@
 - add public API documentation
 - regroup tests into specifications, unittests and bugs
+- reorganize stocal/tests/test_examples.py
 = release 2.0
 
 OLD TODOs
@@ -10,8 +11,6 @@ OLD TODOs
 = release/1.3
 - allow species equals 0 in initial state?
 - move stocal.experimental.CaoMethod into stocal.algorithms
-- remove stocal.experimental.samplers
-- reorganize stocal/tests/test_examples.py
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
 - persistency support (save and resume simulations)

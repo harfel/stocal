@@ -8,6 +8,7 @@
 - Removed stocal.Process.trajectory
 - Removed stocal.ReactionRule
 - Removed keyword argument t to StochasticSimulationAlgorithm
+- Removed stocal.experimental.samplers
 
 ### Changed
 - TransitionRule.infer_transitions can no longer be called with dicts, use multisets instead
