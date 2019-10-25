@@ -6,7 +6,7 @@ import unittest
 import sys
 import os
 
-from stocal.tests.test_transitions import TestReactionRule as TestTransitionRule, TestMassAction
+from stocal.tests.test_transitions import TestTransitionRule, TestMassAction
 
 from stocal.examples.pre2017 import DegradationRule
 from stocal.examples.pre2017 import LigationRule

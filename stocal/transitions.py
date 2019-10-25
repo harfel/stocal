@@ -681,11 +681,3 @@ class Process(object):
             raise ValueError("Flattening did not converge within %d steps" % max_steps)
 
         return flat_process
-
-
-class ReactionRule(TransitionRule):
-    """Deprecated. Identical to TransitionRule"""
-    def __init__(self, *args, **opts):
-        warnings.warn("Use TransitionRule instead", DeprecationWarning)
-        super(ReactionRule, self).__init__(*args, **opts)
-

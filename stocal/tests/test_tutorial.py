@@ -1,11 +1,12 @@
 """Test that all tutorial examples are working
 """
+# XXX update tests according to 2.0 tutorial
 import unittest
 from stocal import MassAction, Event, TransitionRule, Process, multiset
 from stocal import algorithms
 from stocal.experimental import tauleap
 
-from stocal.tests.test_transitions import TestReactionRule as TestTransitionRule
+from stocal.tests.test_transitions import TestTransitionRule
 
 
 class Dilution(TransitionRule):

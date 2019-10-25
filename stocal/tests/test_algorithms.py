@@ -237,7 +237,7 @@ class TestFirstReactionMethod(TestStochasticSimulationAlgorithm):
 
     def test_fire_inferred_event(self):
         """sampler fires inferred events"""
-        class Rule(stocal.ReactionRule):
+        class Rule(stocal.TransitionRule):
             Transition = stocal.Event
     
             def novel_reactions(self, x):

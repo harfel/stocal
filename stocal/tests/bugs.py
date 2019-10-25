@@ -38,7 +38,7 @@ class Issue3(unittest.TestCase):
     Opened 21-03-2018
     Closed 21-03-2018
     """
-    class Rule(stocal.ReactionRule):
+    class Rule(stocal.TransitionRule):
         Transition = stocal.Event
 
         def novel_reactions(self, x):

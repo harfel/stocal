@@ -47,7 +47,7 @@ class TestProcess(unittest.TestCase):
 
     def test_flatten_returns_new_process(self):
         """Process.flatten creates a new Process instance"""
-        class Dimerize(stocal.ReactionRule):
+        class Dimerize(stocal.TransitionRule):
             Transition = stocal.MassAction
             def novel_reactions(self, k, l):
                 if len(k) == len(l) == 1:
@@ -62,7 +62,7 @@ class TestProcess(unittest.TestCase):
 
     def test_flatten_flat_process_has_no_rules(self):
         """All rules of a flat process are resolved"""
-        class Dimerize(stocal.ReactionRule):
+        class Dimerize(stocal.TransitionRule):
             Transition = stocal.MassAction
             def novel_reactions(self, k, l):
                 if len(k) == len(l) == 1:
@@ -73,13 +73,13 @@ class TestProcess(unittest.TestCase):
 
     def test_flatten_rules_generate_flat_transitions(self):
         """Flattening converts applicable rules into transitions"""
-        class Dimerize(stocal.ReactionRule):
+        class Dimerize(stocal.TransitionRule):
             Transition = stocal.MassAction
             def novel_reactions(self, k, l):
                 if len(k) == len(l) == 1:
                     yield self.Transition([k, l], [k+l], 1.)
 
-        class Split(stocal.ReactionRule):
+        class Split(stocal.TransitionRule):
             Transition = stocal.MassAction
             def novel_reactions(self, kl):
                 if len(kl) == 2:
@@ -110,15 +110,15 @@ class TestRule(AbstractTestCase('Rule', stocal.Rule)):
         self.assertFalse(list(rule.infer_transitions({}, {'a': 3})))
 
 
-class TestReactionRule(TestRule):
-    """Test stocal.ReactionRule interface
+class TestTransitionRule(TestRule):
+    """Test stocal.TransitionRule interface
 
     This abstract test case provides the test for the specification of
     ReactionRule classes. To test a concrete ReactionRule, derive a test
     case from TestReactionRule and override the class method Rule
     with the class to be tested.
     """
-    Rule = stocal.ReactionRule
+    Rule = stocal.TransitionRule
 
     def test_novel_reaction_inferface(self):
         """Rule.novel_reactions must not use variable argument list"""
