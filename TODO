@@ -8,7 +8,6 @@ OLD TODOs
 + flexible yield results from StochasticSimulationAlgorithm.__iter__
 + support for proper delay events (-> feature/events)
 = release/1.3
-- remove dict support in MassAction.reactions and TransitionRule.infer_transitions
 - allow species equals 0 in initial state?
 - move stocal.experimental.CaoMethod into stocal.algorithms
 - remove stocal.experimental.samplers

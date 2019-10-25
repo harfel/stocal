@@ -535,9 +535,6 @@ class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
 
         see help(type(self)) for an explanation of the algorithm.
         """
-        new_species = new_species if isinstance(new_species, multiset) else multiset(new_species)
-        state = state if isinstance(state, multiset) else multiset(state)
-
         novel_species = sorted((
             (species, state[species]+1,
              min(new_species[species]+state[species],

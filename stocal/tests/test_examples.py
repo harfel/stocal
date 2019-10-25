@@ -7,11 +7,11 @@ import sys
 import os
 
 from stocal.tests.test_transitions import TestTransitionRule, TestMassAction
+from stocal import multiset
 
 from stocal.examples.pre2017 import DegradationRule
 from stocal.examples.pre2017 import LigationRule
 from stocal.examples.pre2017 import AutoCatalysisRule
-
 
 class TestBrusselator(unittest.TestCase):
     """Test examples.brusselator"""
@@ -126,11 +126,11 @@ class TestTypedRules(TestTransitionRule):
         from stocal.examples.typed_rules import AA, BB
         
         rule = self.Rule()
-        transitions = list(rule.infer_transitions({AA('a'): 2},
-                                                  {BB('z'): 1}))
+        transitions = list(rule.infer_transitions(multiset({AA('a'): 2}),
+                                                  multiset({BB('z'): 1})))
         self.assertEqual(len(transitions), 2)
 
-        transitions = list(rule.infer_transitions({AA('a'): 1},
+        transitions = list(rule.infer_transitions(multiset({AA('a'): 1}),
                                                   {AA('a'): 1, BB('z'): 1}))
         self.assertEqual(len(transitions), 0)
 

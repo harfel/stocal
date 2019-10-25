@@ -3,11 +3,16 @@
 ## [2.0]
 
 ### Removed
-- Removed keyword argument t to StochasticSimulationAlgorithm
 - Removed stocal.algorithm.TrajectorySampler
 - Removed stocal.algorithms.AndersonNRM
 - Removed stocal.Process.trajectory
 - Removed stocal.ReactionRule
+- Removed keyword argument t to StochasticSimulationAlgorithm
+
+### Changed
+- TransitionRule.infer_transitions can no longer be called with dicts, use multisets instead
+- PriorityQueue.keys and MultiDict.keys return generators rather than lists
+
 
 
 ## [1.2] - 2018-08-10

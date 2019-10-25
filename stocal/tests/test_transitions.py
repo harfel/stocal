@@ -4,6 +4,7 @@ import inspect
 
 from stocal.tests.abstract_test import AbstractTestCase
 import stocal
+from stocal import multiset
 
 
 class TestProcess(unittest.TestCase):
@@ -106,8 +107,8 @@ class TestRule(AbstractTestCase('Rule', stocal.Rule)):
         if inspect.isabstract(self.Rule):
             return
         rule = self.Rule()
-        self.assertFalse(list(rule.infer_transitions({}, {})))
-        self.assertFalse(list(rule.infer_transitions({}, {'a': 3})))
+        self.assertFalse(list(rule.infer_transitions(multiset(), multiset())))
+        self.assertFalse(list(rule.infer_transitions(multiset(), multiset(a=3))))
 
 
 class TestTransitionRule(TestRule):

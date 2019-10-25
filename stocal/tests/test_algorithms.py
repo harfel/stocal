@@ -180,7 +180,7 @@ class TestStochasticSimulationAlgorithm(AbstractTestCase('Sampler', stocal.algor
         sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
         sampler.add_transition(stocal.MassAction({}, {'a':1}, 1.))
         sampler.add_transition(stocal.MassAction({}, {'b':1}, 1.))
-        self.assertEqual(len(sampler.transitions), 3)
+        self.assertEqual(len(list(sampler.transitions)), 3)
 
 
 class TestDirectMethod(TestStochasticSimulationAlgorithm):

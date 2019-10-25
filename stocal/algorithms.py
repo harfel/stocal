@@ -116,11 +116,10 @@ class MultiDict(object):
 
     def keys(self):
         """Return a list of all present transition instances."""
-        warnings.warn("Method will return an iterator in future versions.", DeprecationWarning)
-        return [
+        return (
             key for key, (prop, mult) in self._dict.items()
             for i in range(mult)
-        ]
+        )
 
     def items(self):
         """Iterate over key, value, multiplicity triples."""
@@ -190,11 +189,10 @@ class PriorityQueue(object):
 
     def keys(self):
         """Return a list of all present transition instances."""
-        warnings.warn("Method will return an iterator in future versions.", DeprecationWarning)
-        return [
+        return (
             key for key, instances in self._queue.items()
             for i in instances
-        ]
+        )
 
     def topitem(self):
         """Yield (value, key, (data,)) triple with lowest value."""
