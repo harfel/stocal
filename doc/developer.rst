@@ -32,6 +32,11 @@ run using::
 	$ python -m unittest discover stocal.tests
 	$ python3 -m unittest discover stocal.tests
 
+In addition to these unit tests, validity of the documentation is
+ensured via sphinx doctests:
+
+	$ sphinx-build -b doctest doc .
+
 Passing of all tests is an enforced requirement for all code merged
 into the develop and master branches.
 

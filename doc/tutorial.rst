@@ -28,18 +28,23 @@ To model this in stocal, we define two MassAction reactions, one that
 transforms two A molecules into one molecule A2 with stochastic rate
 constant 1.0, and one that transforms one molecule of A2 into two A
 molecules with stochastic rate constant 10.0. We then create a Process
-that groups these two reactions::
+that groups these two reactions:
+
+.. testcode::
 
     from stocal import *
-    process = Process([MassAction({'A': 2}, {'A2': 1}, 1.0),
-                       MassAction({'A2': 1}, {'A': 2}, 10.0)])
+    r1 = MassAction({'A': 2}, {'A2': 1}, 1.0)
+    r2 = MassAction({'A2': 1}, {'A': 2}, 10.0)
+    process = Process([r1, r2])
 
 We can use this process, to sample stochastic trajectories. The method
 :code:`Process.sample` instantiates a trajectory sampler for a given
 initial condition and stop criterion. The trajectory sampler implements
 the iterator protocol, so we can simply iterate through the trajectory,
 invoking one stochastic transition at a time. With each transition,
-time and state of the trajectory are properly updated::
+time and state of the trajectory are properly updated:
+
+.. testcode::
 
     import matplotlib.pyplot as plt
     import numpy as np
@@ -89,7 +94,9 @@ state, for each reactant species.
 Events
 ------
 Stocal supports deterministic transitions that happen at a specific
-time, either once or periodically with a given frequency::
+time, either once or periodically with a given frequency:
+
+.. testcode::
 
     feed = Event([], ['A'], 0.0, 1.0)
     process = Process([r1, r2, feed])
@@ -103,7 +110,9 @@ Rule-Based Processes
 --------------------
 Having introduced an inflow, we next add an outflow to the model that
 dilutes species proportional to their abundance. We could simply add
-two reactions that remove molecules from the state::
+two reactions that remove molecules from the state:
+
+.. testcode::
 
     r4 = MassAction(['A'], [], 0.001)
     r5 = MassAction(['A2'], [], 0.001)
@@ -130,27 +139,42 @@ following attributes:
 | :code:`novel_reactions` | A method that generates an iterable of transitions for the given reactants.               |
 +-------------------------+-------------------------------------------------------------------------------------------+
 
-Taking this all together, we define the following Dilution rule::
+Taking this all together, we define the following Dilution rule:
+
+.. testcode::
 
     class Dilution(TransitionRule) :
         Transition = MassAction
-    
+
         def novel_reactions(self, species) :
             yield self.Transition([species], [], 0.001)
+
+.. testcode::
+    :hide:
+
+    from stocal.tests.test_transitions import TestTransitionRule
+    from unittest import TestSuite, TextTestRunner
+
+    class DilutionTest(TestTransitionRule):
+        Transition = Dilution
 
 Note the use of :code:`yield` in the :code:`novel_reactions` method.
 This
 `python keyword <https://docs.python.org/2/reference/simple_stmts.html#the-yield-statement>`_
 generates an on-the-fly iterable that contains all yielded items. If
 :code:`yield` is unfamiliar to you, you can instead return a list of
-transitions without changing the behavior of the code::
+transitions without changing the behavior of the code:
+
+.. testcode::
 
     def novel_reactions(self, species) :
         return [ self.Transition([species], [], 0.001) ]
 
 *New in version 1.1:* In python3, the transition type of a rule can
 alternatively be provided as return type annotation of the
-:code:`novel_reactions` method. For example::
+:code:`novel_reactions` method. For example:
+
+.. testcode::
 
     from typing import Iterator
     
@@ -159,7 +183,9 @@ alternatively be provided as return type annotation of the
             yield MassAction([species], [], 0.001)
 
 Having defined a new rule, we can create a rule-based stochastic process
-by giving a second argument to the Process constructor::
+by giving a second argument to the Process constructor:
+
+.. testcode::
 
     process = Process([r1, r2, feed], [Dilution()])
 
@@ -167,7 +193,9 @@ Note here, that the second argument is a list of rule _instances_ rather
 than classes.
 
 For clarity, :code:`Process` allows its arguments to be named, and we
-could have written the same process instantiation as::
+could have written the same process instantiation as:
+
+.. testcode::
 
     process = Process(transitions=[r1, r2, feed], rules=[Dilution()])
 
@@ -177,7 +205,9 @@ polymers---including monomers which are really just polymers of length
 one---can come together to form a chain that joins these two polymers.
 
 To model this, we define a rule class for the polymerization that
-generates a Polymerization reaction for any two reactants::
+generates a Polymerization reaction for any two reactants:
+
+.. testcode::
 
     class Polymerization(TransitionRule) :
         Transition = MassAction
@@ -194,7 +224,9 @@ To complete this example, we also generalize the reverse reaction and
 define a Hydrolysis rule that breaks a polymer at any bond. To make the
 model a little more interesting, we decide that the stochastic rate
 constants of these reactions depends on the lengths of the hydrolysis
-products, so that polymers are more likely to break in the middle::
+products, so that polymers are more likely to break in the middle:
+
+.. testcode::
 
     class Hydrolysis(TransitionRule) :
         Transition = MassAction
@@ -209,7 +241,9 @@ reactions for each reactant---one for each potential breaking point of
 the polymer.
 
 The total stochastic process, including feeding, polymerization,
-hybridization, and dilution is then defined by::
+hybridization, and dilution is then defined by:
+
+.. testcode::
 
     process = Process(transitions=[feed],
                       rules=[Dilution(), Polymerization(), Hydrolysis()])
@@ -219,7 +253,9 @@ generates a reaction for every chemical in the system.
 
 *New in version 1.2:* Rule-based processes that expand into a finite
 set of transitions can be flattened into equivalent static processes
-that employ specific transitions rather than general rules::
+that employ specific transitions rather than general rules:
+
+.. testcode::
 
     process = Process(rules=[Dilution()])
     flat_process = process.flatten(['a', 'b', 'c'])
@@ -270,7 +306,9 @@ The simplest way to implement structural congruence is by means of a
 normalization function that maps all congruent instances to an identical
 representation. For our molecular complexes, we could simply sort the
 tuple elements, thus making sure that differently ordered complexes have
-the same normalization::
+the same normalization:
+
+.. testcode::
 
     class Complex(tuple) :
         @property
@@ -299,7 +337,9 @@ s thus worthwhile to discuss propensity calculations in more detail.
 To illustrate the issue, we extend the above polymer example to work
 with several types of monomers A and B, which can form polymers with
 mixed content, such as ABBABAA. To achieve this, we simply need to
-define another feed Event that provides monomers of the second type::
+define another feed Event that provides monomers of the second type:
+
+.. testcode::
 
     process = Process(
         transitions=[
@@ -325,7 +365,9 @@ need to take to model polymerization appropriately.
 
 In the case of directional bonds, two polymers *k* and *l* can
 potentially form two different polymerization products: *k+l* and *l+k*.
-Therefore, the polymerization rule has to generate both reactions::
+Therefore, the polymerization rule has to generate both reactions:
+
+.. testcode::
 
     class Polymerization(TransitionRule) :
         Transition = MassAction
@@ -358,7 +400,9 @@ indistinguishable, they will be produced with a doubled propensity.
 In the case of non-directional bonds, we only have to infer the original
 one reaction, but we have to assert that *k+l* and *l+k* are
 structurally congruent. As we have seen before, this is best done by
-defining a custom type for non-directional polymers::
+defining a custom type for non-directional polymers:
+
+.. testcode::
 
     class Polymer(str) :
         @property
@@ -366,7 +410,9 @@ defining a custom type for non-directional polymers::
             return min(self, ''.join(reversed(self)))
 
 with the above overloads for :code:`__eq__`, :code:`__ne__` and
-:code:`__hash__`. The nondirectional Polymerization rule now becomes::
+:code:`__hash__`. The nondirectional Polymerization rule now becomes:
+
+.. testcode::
 
     class Polymerization(TransitionRule) :
         Transition = MassAction
@@ -400,7 +446,9 @@ With the above TransitionRule's we would need to constantly check
 whether the species supplied to :code:`TransitionRule.novel_reactions`
 are indeed proteins and RNA's and only yield a transition in case they
 are. Not knowing which argument of the reactant combination is the
-protein and which the RNA further complicates the code::
+protein and which the RNA further complicates the code:
+
+.. testcode::
 
     class Association(TransitionRule):
         Transition = MassAction
@@ -415,7 +463,9 @@ For these common situations, stocal offers species types and typed
 rules. In stocal, the type of a species is simply its python type. So
 far, we have encountered species typed as strings, Complexes, and
 Polymers. Here, we define two molecule types :code:`Protein` and :code:`Rna` which
-are simply subclasses of :code:`str`::
+are simply subclasses of :code:`str`:
+
+.. testcode::
 
     class Protein(str):
         pass
@@ -429,7 +479,9 @@ of types that the rule should accept. When defining a signature, it must
 have the same number of elements as the :code:`novel_reactions` method.
 :code:`novel_reactions` will now only be called with arguments that adhere to
 the type given in the signature. In our case, writing the rule becomes
-as simple as::
+as simple as:
+
+.. testcode::
 
     class Association(TransitionRule):
         Transition = MassAction
@@ -439,7 +491,9 @@ as simple as::
             yield self.Transition([protein, rna], [(protein,rna)], 1.)
 
 In python3, type annotations can alternatively be used to specify the
-rule signature::
+rule signature:
+
+.. testcode::
 
     from typing import Iterator
 
@@ -456,7 +510,9 @@ rates. Reactions of this kind appear naturally when  parameters of the
 reaction environment such as temperature or volume change over time.
 
 As an example, let us consider reactions taking placing in a linearly
-expanding reaction vessel::
+expanding reaction vessel:
+
+.. testcode::
 
     def volume(time, V0=1.0, dV=0.1):
         return V0 + dV*time
@@ -475,7 +531,9 @@ rate by the volume for all but one of the reactions, i.e.
 unimolecular reactions are volume independent, bimolecular reactions
 are inversely proportional to the volume, a.s.o.
 
-Taking it all together, the Reaction class reads::
+Taking it all together, the Reaction class reads:
+
+.. testcode::
 
     class VolumeDependentMassAction(MassAction):
         def propensity(self, state, time):
@@ -498,11 +556,34 @@ method, unless at least one transition of the process is time-dependent
 (in which case the method creates an instance of Anderon's method).
 
 If you want to control which simulation algorithm is instantiated, you
-can instantiate the desired sampler directly, as in, e.g.,::
+can instantiate the desired sampler directly, as in, e.g.,:
+
+.. testsetup:: samplers
+
+    from stocal import *
+    state = {'A': 100}
+    r1 = MassAction({'A': 2}, {'A2': 1}, 1.0)
+    r2 = MassAction({'A2': 1}, {'A': 2}, 10.0)
+    process = Process([r1, r2])
+
+.. testcode:: samplers
 
     sampler = algorithms.DirectMethod(process, state, tmax=100.)
     for dt, transitions in sampler:
         print(dt, transitions)
+
+.. testcode:: samplers
+    :hide:
+
+    from stocal.algorithms import (DirectMethod, FirstReactionMethod,
+                                   NextReactionMethod, AndersonMethod)
+    from stocal.experimental.tauleap import CaoMethod
+    samplers = (DirectMethod, FirstReactionMethod, NextReactionMethod,
+                AndersonMethod, CaoMethod)
+    for Sampler in samplers:
+        for dt, transitions in Sampler(process, state, tmax=100.):
+            print(dt, transitions)
+
 
 Currently, stocal provides the following samplers:
 
@@ -531,6 +612,6 @@ Further Documentation
 ---------------------
 The full API of stocal is available via pydoc::
 
-    pydoc stocal
+    $ pydoc stocal
 
 Examples of stocal in use can be found in the stocal/examples folder.
