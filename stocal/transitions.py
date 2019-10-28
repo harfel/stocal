@@ -404,11 +404,6 @@ class Rule(with_metaclass(abc.ABCMeta, object)):
     the actual transition inference.
     """
 
-    @abc.abstractproperty
-    def Transition(self):
-        """The type of Transition that the rule generates"""
-        return Transition
-
     @abc.abstractmethod
     def infer_transitions(self, new_species, state):
         """infer new transitions among new_species and state
