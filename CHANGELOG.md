@@ -13,7 +13,7 @@
 ### Changed
 - TransitionRule.infer_transitions can no longer be called with dicts, use multisets instead
 - PriorityQueue.keys and MultiDict.keys return generators rather than lists
-
+- Moved stocal.experimental.tauleap.CaoMethod into stocal.algorithms
 
 
 ## [1.2] - 2018-08-10

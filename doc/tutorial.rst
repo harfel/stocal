@@ -598,7 +598,7 @@ Currently, stocal provides the following samplers:
 +--------------------+------------------------------------------------------------------------------------------------------------------+
 |AndersonMethod      | Variant of NextReactionMethod that allows for propensity functions to be time-dependent *(new in version 1.1)*   |
 +--------------------+------------------------------------------------------------------------------------------------------------------+
-|CaoMethod           | An (inexact) tau-leaping variant of SSA -- available in stocal.experimental.tauleap *(new in version 1.2)*       |
+|CaoMethod           | An (inexact) explicit tau-leaping variant of SSA *(new in version 1.2)*                                          |
 +--------------------+------------------------------------------------------------------------------------------------------------------+
 
 Please refer to the class documentation for information about the exact

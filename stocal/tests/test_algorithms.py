@@ -1,7 +1,7 @@
 """Tests for stocal.algorithms"""
 import unittest
-from stocal.tests.abstract_test import AbstractTestCase
 import stocal
+from stocal.tests.abstract_test import AbstractTestCase
 
 
 class TestStochasticSimulationAlgorithm(AbstractTestCase('Sampler', stocal.algorithms.StochasticSimulationAlgorithm)):
@@ -283,6 +283,25 @@ class TestNextReactionMethod(TestFirstReactionMethod):
 class TestAndersonMethod(TestFirstReactionMethod):
     """Test stocal.algorithms.AndersonNRM"""
     Sampler = stocal.algorithms.AndersonMethod
+
+
+class TestCaoMethod(TestStochasticSimulationAlgorithm):
+    """Test CaoMethod
+
+    This tests the regular StochasticSimulationAlgorithm interface."""
+    Sampler = stocal.algorithms.CaoMethod
+
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_add_transition_enables_transition(self):
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
+
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_update_state_enables_infered(self):
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
+
+    @unittest.skip("Sampler does not adhere to specification")
+    def test_update_state_enables_static(self):
+        self.fail("CaoMethod violates current StochasticSimulationAlgorithm specification.")
 
 
 if __name__ == '__main__':
