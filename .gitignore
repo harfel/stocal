@@ -1,5 +1,12 @@
+# setup.py and pip build
 *.pyc
 build/
 dist/
-validation_data/
 stocal.egg-info/
+
+# validation
+.coverage
+htmlcov/
+output.txt
+validation_data/
+.doctrees/

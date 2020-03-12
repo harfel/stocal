@@ -33,7 +33,7 @@ run using::
 	$ python3 -m unittest discover stocal.tests
 
 In addition to these unit tests, validity of the documentation is
-ensured via sphinx doctests:
+ensured via sphinx doctests::
 
 	$ sphinx-build -b doctest doc .
 
@@ -64,8 +64,10 @@ To run validations, call::
 
 	$ python stocal/examples/validation.py run N
 
-from the command line. To generate a validation report, run
-$ python stocal/examples/validation.py report
+from the command line. To generate a validation report, run::
+
+	$ python stocal/examples/validation.py report
+
 This generates a file validation.tex that can be compiled with pdflatex.
 See::
 
@@ -74,8 +76,6 @@ See::
 for more information. The DSMTS user guide recommends N=1,000 as an
 absolute minimum to be run regularly in conjunction with unit test,
 and n=100,000 or n=1,000,000 for a thorough statistical analysis.
-A rudimentary LaTeX template that collates report results into a
-single document can be found in doc/validation.tex
 
 
 Releases
@@ -88,13 +88,13 @@ release number indicate changes that break backward compatibility.
 
 When preparing a new release, these steps should be followed
 
- * git flow release start
- * ensure an optimal code coverage of the test suite
- * ensure that all tests pass
- * ensure that any novel algorithm passes validation
- * ensure that documentation (README, tutorial, etc.) is up to date
- * update CHANGELOG.md
- * bump the version number
- * git flow release finish
- * sudo setup.py sdist upload
- * publish release on github
+ #. git flow release start
+ #. ensure an optimal code coverage of the test suite
+ #. ensure that all tests pass
+ #. ensure that any novel algorithm passes validation
+ #. ensure that documentation (README, tutorial, etc.) is up to date
+ #. update CHANGELOG.md
+ #. bump the version number
+ #. git flow release finish
+ #. sudo setup.py sdist upload
+ #. publish release on github

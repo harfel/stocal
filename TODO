@@ -1,3 +1,4 @@
++ process.trajectory
 - modified StochasticSimulationAlgorithm.__iter__ protocol
 - add public API documentation
 - regroup tests into specifications, unittests and bugs
@@ -5,6 +6,7 @@
 = release 2.0
 
 OLD TODOs
+- ensure that examples/validation is working
 * stocal.algorithms.AndersonMethod.update_state is broken
 + support for proper delay events
 - persistency support (save and resume simulations)

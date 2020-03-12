@@ -39,6 +39,7 @@ their multiplicity.
 
 import sys
 import abc
+import logging
 import warnings
 from pqdict import pqdict
 
@@ -720,12 +721,12 @@ class AndersonFRM(FirstReactionMethod):
         warnings.warn("AndersonFRM will be removed in future versions.", DeprecationWarning)
         self.T = []
         self.P = []
-        super(AndersonNRM, self).__init__(process, state, **sampler_options)
+        super(AndersonFRM, self).__init__(process, state, **sampler_options)
 
     def add_transition(self, transition):
         from math import log
 
-        super(AndersonNRM, self).add_transition(transition)
+        super(AndersonFRM, self).add_transition(transition)
         self.T.append(0)
         self.P.append(-log(self.rng.random()))
 
@@ -770,7 +771,7 @@ class AndersonFRM(FirstReactionMethod):
         self.T = [Tk+int_a_dt(trans, time-self.time) for Tk, trans in
                   zip(self.T, self.transitions)]
         self.P[mu] -= log(self.rng.random())
-        super(AndersonNRM, self).perform_transition(time, transition)
+        super(AndersonFRM, self).perform_transition(time, transition)
 
 
 class CaoMethod(DirectMethod):
@@ -786,6 +787,9 @@ class CaoMethod(DirectMethod):
     constructor keyword argument `epsilon`.
 
     See help(StochasticSimulationAlgorithm) for usage information
+
+    Note: unlike other StochasticSimulationAlgorithm's iteration yields
+    a tdictionary of ransition counts. 
     """
     n_crit = 10
     tauleap_threshold = 10
@@ -840,7 +844,7 @@ class CaoMethod(DirectMethod):
                         except StopIteration:
                             return
                         self.num_reactions += 1
-                        yield self.time, self.state, {trans: 1}
+                        yield trans
                     break
                 elif self.abandon_tauleap != -1:
                     logging.debug("Abandoned tau-leaping for %d steps" % (self.step-self.abandon_tauleap))
@@ -908,7 +912,7 @@ class CaoMethod(DirectMethod):
                     self.update_propensities(affected)
                     self.prune_transitions()
 
-                    yield self.time, self.state, firings
+                    yield None # XXX should yield AggregateTransition
                     break
 
         if self.step != self.steps and self.tmax < float('inf'):

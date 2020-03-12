@@ -59,19 +59,6 @@ class TestProcess(unittest.TestCase):
         proc.sample({}, tmax=2.)
         proc.sample({}, steps=10)
 
-    def test_sample_with_events(self):
-        """Partly deterministic processes return an appropriate sampler"""
-        # XXX test does not test what it claims to test
-        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
-        proc.sample({})
-
-    def test_sample_return_type_behavior(self):
-        """Partly deterministic processes return an appropriate sampler"""
-        # XXX test does not test what it claims to test
-        proc = self.Process([stocal.Event({}, {'a':1}, 1.)])
-        traj = iter(proc.sample({}))
-        self.assertEqual(len(next(traj)), 2)
-
     def test_flatten_returns_new_process(self):
         """Process.flatten creates a new Process instance"""
         process = self.Process(rules=[self.Dimerize()])
@@ -92,7 +79,7 @@ class TestProcess(unittest.TestCase):
         initial_species = ['a', 'b']
         proc = self.Process(rules=[self.Dimerize(), self.Split()])
         flat_proc = proc.flatten(initial_species)
-        self.assertEquals(len(flat_proc.transitions), 6)
+        self.assertEqual(len(flat_proc.transitions), 6)
 
 
 class TestRule(AbstractTestCase('Rule', stocal.Rule)):

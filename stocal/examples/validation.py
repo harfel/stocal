@@ -460,7 +460,7 @@ if __name__ == '__main__':
         mod = import_module(module)
         return getattr(mod, member)
 
-    git_label = subprocess.check_output(["git", "describe"]).strip()
+    git_label = subprocess.check_output(["git", "describe"]).decode('utf-8').strip()
     default_store = os.path.join('validation_data', git_label)
 
     parser = argparse.ArgumentParser(

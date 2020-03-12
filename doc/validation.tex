@@ -1,5 +1,6 @@
 \documentclass[notitlepage]{revtex4-1}
 \usepackage{graphicx}
+\usepackage{hyperref}
 \graphicspath{{validation_data/1.1.2-64-g0d0fc6f/}}
 
 \begin{document}
@@ -35,8 +36,11 @@ at five times the reported standard deviation and should be only
 occasionally exceeded.
 \end{itemize}
 
+\tableofcontents
+
 \BLOCK{ for method_name, figures in methods.items() }
 \section{\VAR{method_name}}
+\noindent
 \BLOCK{ for figure in figures }
 \includegraphics[width=\textwidth]{\VAR{figure}}
 \BLOCK{ endfor }
