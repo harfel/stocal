@@ -1,4 +1,3 @@
-- unit test for multisets with mixed states
 * states cannot compare objects of mixed types, e.g. strings and tuples
 = bugfix/mixed-type-compare
 * stocal.algorithms.AndersonMethod.update_state is broken

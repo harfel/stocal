@@ -180,6 +180,10 @@ class TestTransition(AbstractTestCase('Transition', stocal.Transition)):
         self.assertEqual(self.Transition(['a'], ['z']), self.Transition({'a':1}, {'z':1}))
         self.assertEqual(self.Transition(['a', 'a'], ['z']), self.Transition({'a':2}, {'z':1}))
 
+    def test_hash_mixed_type(self):
+        transition = self.Transition({'a': 1, ('a','b'): 1}, { ('a', ('a', 'b')): 1 })
+        hash(transition)
+
     def test_str(self):
         """Transition.str returns a string object"""
         self.assertIsInstance(str(self.Transition({}, ['a'])), str)
