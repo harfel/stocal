@@ -180,5 +180,13 @@ class TestValidation(unittest.TestCase):
         report_validation(args)
 
 
+class TestCombinators(unittest.TestCase):
+    def test_example(self):
+        """test process instantiation"""
+        from stocal.examples.combinators import process, initial_state
+        for _ in process.sample(initial_state, steps=100):
+            pass
+
+
 if __name__ == '__main__':
     unittest.main()

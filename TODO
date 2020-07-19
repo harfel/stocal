@@ -1,3 +1,6 @@
+- unit test for multisets with mixed states
+* states cannot compare objects of mixed types, e.g. strings and tuples
+= bugfix/mixed-type-compare
 * stocal.algorithms.AndersonMethod.update_state is broken
 + every argument to StochasticSimulationAlgorithm for sampling interval
 + flexible yield results from StochasticSimulationAlgorithm.__iter__
@@ -13,6 +16,7 @@
 - regroup tests into specifications, unittests and bugs
 - move stocal.experimental.CaoMethod into stocal.algorithms
 - remove stocal.experimental.samplers
+- reorganize stocal/tests/test_examples.py
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
 - persistency support (save and resume simulations)
