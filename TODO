@@ -13,6 +13,7 @@
 - regroup tests into specifications, unittests and bugs
 - move stocal.experimental.CaoMethod into stocal.algorithms
 - remove stocal.experimental.samplers
+- reorganize stocal/tests/test_examples.py
 = release/2.0
 - utilities to simplify scipy/matplotlib interaction
 - persistency support (save and resume simulations)
