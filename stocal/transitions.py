@@ -108,8 +108,8 @@ class Transition(with_metaclass(abc.ABCMeta, object)):
     def __hash__(self):
         if not self._hash:
             self._hash = hash((
-                tuple(sorted(self.reactants.items())),
-                tuple(sorted(self.products.items())),
+                frozenset(self.reactants.items()),
+                frozenset(self.products.items())
             ))
         return self._hash
 

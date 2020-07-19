@@ -1,5 +1,3 @@
-* states cannot compare objects of mixed types, e.g. strings and tuples
-= bugfix/mixed-type-compare
 * stocal.algorithms.AndersonMethod.update_state is broken
 + every argument to StochasticSimulationAlgorithm for sampling interval
 + flexible yield results from StochasticSimulationAlgorithm.__iter__
