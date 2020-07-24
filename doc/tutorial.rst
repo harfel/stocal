@@ -33,25 +33,29 @@ that groups these two reactions:
 .. testcode::
 
     from stocal import *
-    r1 = MassAction({'A': 2}, {'A2': 1}, 1.0)
-    r2 = MassAction({'A2': 1}, {'A': 2}, 10.0)
+    r1 = MassAction({'A': 2}, {'A2': 1}, 0.1)
+    r2 = MassAction({'A2': 1}, {'A': 2}, 1.0)
     process = Process([r1, r2])
 
 We can use this process, to sample stochastic trajectories. The method
-:code:`Process.sample` instantiates a trajectory sampler for a given
-initial condition and stop criterion. The trajectory sampler implements
-the iterator protocol, so we can simply iterate through the trajectory,
-invoking one stochastic transition at a time. With each transition,
-time and state of the trajectory are properly updated:
+:code:`Process.trajectory` instantiates a trajectory sampler for a given
+initial condition. Sampled trajectories can be plotted with ease:
 
-.. testcode::
+.. code::
 
     import matplotlib.pyplot as plt
-    import numpy as np
 
-    trajectory = process.trajectory({'A': 100}, times=range(0, 100))
-    plt.plot(trajectory.times, trajectory['A'])
+    trajectory = process.trajectory({'A': 100}, tmax=1.0)
+    plt.step(trajectory.times, trajectory['A'])
     plt.show()
+
+.. testcode::
+    :hide:
+
+    import matplotlib.pyplot as plt
+
+    trajectory = process.trajectory({'A': 100}, tmax=1.0)
+    plt.step(trajectory.times, trajectory['A'])
 
 
 Reactions
@@ -118,7 +122,7 @@ two reactions that remove molecules from the state:
     r5 = MassAction(['A2'], [], 0.001)
 
 However, this requires adding a dilution reaction for every chemical in
-model. This might become cumbersome when dealing with many species, and
+the model. This might become cumbersome when dealing with many species, and
 we might end up forgetting the dilution of one species or another.
 
 We take this scenario as a motivation to introduce rule-based modeling.
@@ -189,7 +193,7 @@ by giving a second argument to the Process constructor:
 
     process = Process([r1, r2, feed], [Dilution()])
 
-Note here, that the second argument is a list of rule _instances_ rather
+Note here, that the second argument is a list of rule *instances* rather
 than classes.
 
 For clarity, :code:`Process` allows its arguments to be named, and we
@@ -331,8 +335,8 @@ generates a new Complex (since it would currently generate a tuple).
 Propensities
 ------------
 Rule-based stochastic processes bear a subtlety with regard to
-propensities which does not appear in regular stochastic processes. It
-s thus worthwhile to discuss propensity calculations in more detail.
+propensities which does not appear in regular stochastic processes.
+It's thus worthwhile to discuss propensity calculations in more detail.
 
 To illustrate the issue, we extend the above polymer example to work
 with several types of monomers A and B, which can form polymers with
@@ -569,20 +573,19 @@ can instantiate the desired sampler directly, as in, e.g.,:
 .. testcode:: samplers
 
     sampler = algorithms.DirectMethod(process, state, tmax=100.)
-    for dt, transitions in sampler:
-        print(dt, transitions)
+    for transitions in sampler:
+        pass
 
 .. testcode:: samplers
     :hide:
 
     from stocal.algorithms import (DirectMethod, FirstReactionMethod,
-                                   NextReactionMethod, AndersonMethod)
-    from stocal.experimental.tauleap import CaoMethod
+                                   NextReactionMethod, AndersonMethod,
+                                   CaoMethod)
     samplers = (DirectMethod, FirstReactionMethod, NextReactionMethod,
                 AndersonMethod, CaoMethod)
     for Sampler in samplers:
-        for dt, transitions in Sampler(process, state, tmax=100.):
-            print(dt, transitions)
+        Sampler(process, state, tmax=100.)
 
 
 Currently, stocal provides the following samplers:
@@ -607,11 +610,3 @@ implementation and reference publication.
 If you want to implement your own stochastic simulation algorithm, it
 should be programmed against the interface defined by
 :code:`stocal.algorithms.StochasticSimulationAlgorithm`.
-
-Further Documentation
----------------------
-The full API of stocal is available via pydoc::
-
-    $ pydoc stocal
-
-Examples of stocal in use can be found in the stocal/examples folder.

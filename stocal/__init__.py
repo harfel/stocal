@@ -36,6 +36,7 @@ from .types import molecular_type
 from .transitions import Transition, Reaction, MassAction, Event
 from .transitions import Rule, TransitionRule, Process
 from .structures import multiset
+from .trajectory import Trajectory
 
 from . import types
 from . import algorithms

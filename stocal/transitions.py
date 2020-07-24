@@ -146,23 +146,24 @@ class Reaction(Transition):
     """Abstract base class for stochastic transitions.
 
     Stochastic transitions are those that occur with a certain
-    proponsity within a given time interval.
+    propensity within a given time interval.
     Subclasses must implement the propensity method. For autonomous
     reactions, i.e. where the propensity does only depend on the state
-    but not on time, the propensity method must have the signature
+    but not on time, the propensity method must have the signature::
 
-    def propensity(self, state):
-        ...
+        def propensity(self, state):
+            ...
 
     If the propensity of a reaction does depend on time, the propensity
-    method must have the signature
+    method must have the signature::
 
-    def propensity(self, state, time):
-        ...
+        def propensity(self, state, time):
+            ...
 
     In the latter case, the user can additionally override the methods
-    Reaction.propensity_integral and Reaction.propensity_meets_target,
-    for example with analytic solutions.
+    :code:`Reaction.propensity_integral` and
+    :code:`Reaction.propensity_meets_target`, for example with analytic
+    solutions.
     """
     def __eq__(self, other):
         """Structural congruence
@@ -493,6 +494,8 @@ class _TransitionRuleMetaclass(abc.ABCMeta):
 class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
     """Abstract base class that facilitates inference of Reactions
 
+    XXX improve doc
+
     This class provides a standard implementation of infer_transitions
     that generates all possible reactant combinations from species in
     state and new_species, that only became possible because of species
@@ -510,7 +513,7 @@ class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
     non-annotated parameter).
     
     In python3, TransitionRule.Transition can alternatively be provided
-    as novel_reactions return type annotation:
+    as novel_reactions return type annotation::
 
         from typing import Iterator
         class MyRule(stocal.TransitionRule):
@@ -581,11 +584,13 @@ class TransitionRule(Rule, with_metaclass(_TransitionRuleMetaclass, Rule)):
 class Process(object):
     """Stochastic process class
 
-    A collection of all transitions and rules that define a
-    stochastic process. When initializing a StochasticSimulationAlgorithm
-    with a Process instance, transitions get copied over into the sampler.
-    This makes it possible to use a single process instance with
-    multiple samplers.
+    :param transitions: static reactions, events, etc.
+    :type transitions: list(Transition) or None
+    :param rules: Rule instances that infer dynamic transitions
+    :type rules: list(Rule) or None
+
+    The order in which transitions and rules are listed is not
+    significant.
     """
     def __init__(self, transitions=None, rules=None):
         self.transitions = transitions or []
@@ -605,7 +610,19 @@ class Process(object):
     def __ne__(self, other):
         return not self == other
 
-    def _trajectory(self, state, t=0., tstart=0., tmax=float('inf'), steps=None, seed=None):
+    def sample(self, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
+        # The method returns an automatically chosen sampling algorithm
+        # suitable for the given stochastic process. The returned sampler
+        # can be iterated over to generate transitions along a trajectory:
+ 
+        # >>> process = Process()
+        # >>> state = {}
+        # >>> trajectory = process.trajectory(state)
+        # >>> for transitions in trajectory():
+        # ...     print(trajectory.time, trajectory.state, transitions)
+
+        # C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
+        # on the sampler class.
         def transition_types():
             """Yield all generated transtion types of the process"""
             for trans in self.transitions:
@@ -623,43 +640,72 @@ class Process(object):
 
         return Sampler(self, state, tstart=tstart, tmax=tmax, steps=steps, seed=seed)
 
-    def sample(self, state, tstart=0., tmax=float('inf'), steps=None, seed=None):
-        """Create trajectory sampler for given state
+    def trajectory(self, state, tstart=0, tmax=float('nan'), times=None, seed=None):
+        """Sample a random trajectory
 
-        The method returns an automatically chosen sampling algorithm
-        suitable for the given stochastic process. The returned sampler
-        can be iterated over to generate transitions along a trajectory:
- 
-        >>> process = Process()
-        >>> state = {}
-        >>> trajectory = process.trajectory(state)
-        >>> for dt, transitions in trajectory():
-        ...     print(trajectory.time, trajectory.state, transitions)
+        :param state: initial state
+        :type state: dict or multiset
+        :param float tstart: initial time
+        :param float tmax: final time
+        :param iterable(float) times: sample time points
+        :param seed: random seed of trajectory sampler
+        :type seed: int, str, bytearray or None
+        :return: a random sampled trajectory
+        :rtype: Trajectory
 
-        C.f. stocal.algorithms.StochasticSimulationAlgorithm for details
-        on the sampler class.
+        Generate a random trajectory of the process for the given
+        initial state. Either tmax or times must be provided.
+        If tmax is given, the trajectory contains results each time
+        a transition fires. Alternatively, if times is given, the
+        trajectory only reports results for the given times. If tstart
+        is given, the sample will start at that given time. If not
+        given, the sample will start at times[0] if given or 0 otherwise.
+
+        The method will automatically instantiate a suitable sampling
+        algorithm, depending on the nature of the underlying stochastic
+        process.
         """
-        # This method yields transitions according to the future
-        # StochasticSimulationAlgorithm specification in the form
-        # (dt, transition_dct). It is planned to replace the current
-        # trajectory method.
-        sampler = self._trajectory(state, tstart=tstart, tmax=tmax, steps=steps, seed=seed)
+        from .trajectory import Trajectory
+        sampler = self.sample(state, tstart, tmax, seed=seed)
+        return Trajectory(sampler, times=times)
 
-        class _Wrapper(object):
-            def __getattr__(self, attr):
-                return getattr(sampler, attr)
+    def ensemble(self, state, times, samples, specimen=0, seed=None):
+        """Generate random ensemble
+        
+        :param state: initial state
+        :type state: dict or multiset
+        :param iterable(float) times: sample time points
+        :param seed: random seed of trajectory sampler
+        :type seed: int, str, bytearray or None
+        :param int samples: number of samples to generate statistics
+        :param int specimen: number of example trajectories to keep
+        :return: a random ensemble
+        :rtype: Ensemble
 
-            def __setattr__(self, attr, val):
-                return setattr(sampler, attr, val)
-
-            def __iter__(self):
-                time = sampler.time
-                for transition in sampler:
-                    yield sampler.time-time, {transition: 1}
-                    time = sampler.time
-        return _Wrapper()
+        Generate a random ensemble of the process for the given
+        initial state. See documentation of the Ensemble class for
+        details.
+        """
+        raise RuntimeError("XXX not imlpemented yet")
 
     def flatten(self, initial_species, max_steps=1000):
+        """Flatten rule-based process into static process
+        
+        :param iterable initial_species: species present at first iteration
+        :param int max_steps: iterations after which flattening is abandoned
+        :return: equivalent static process
+        :rtype: Process
+        :raises ValueError: if flattening did not converge within max_steps iterations.
+
+        flatten generates a static process instance, i.e. a process that
+        only features transitions but no rules. Flatting starts with the
+        given set of initial species and applies all rules of the
+        process. Inferred transitions are added to the static process
+        and the set of species is expanded by all generated product
+        species. Flattening stops once no further new species is
+        generated, or raises a ValueError if flattening did not converge
+        within the given number of maximal steps.
+        """
         Proc = type(self)
         flat_process = Proc(self.transitions)
 
