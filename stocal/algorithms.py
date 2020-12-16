@@ -221,6 +221,12 @@ class PriorityQueue(object):
 
     def remove_item(self, key):
         """Remove all instances of key with a value of float('inf')"""
+        # XXX The code below is wrong and leads to a memory leak. The section should read
+        # remaining = [t for t in self._queue[key]
+        #             if t[0] != self.depletion_value]
+        # but this leads to an inconsistent sampler state (orphaned reactions in the
+        # dependency graph). The fault needs to be fixed, but the error is not only at
+        # this point.
         remaining = [t for t in self._queue[key]
                      if t != self.depletion_value]
         if remaining:
@@ -394,20 +400,21 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
         return (self.steps is not None and self.step >= self.steps) or self.time > self.tmax
 
     def __iter__(self):
-        """Standard interface to sample a stochastic trajectory.
+        return self
 
-        Yields each performed transition of the stochastic trajectory.
+    def __next__(self):
+        """Interface to sample a stochastic trajectory.
 
-        This implementation first picks a potential transition.
-        If the transition is applicable, it is performed, otherwise
-        it is rejected. Iteration continues until a stop criterion
-        occurs.
+        Performs a single random step of the Gillespie algorithm and
+        returns the fired transition after updating self.time and
+        self.state and inferring potentially novel transitions.
         Consider to overwrite self.propose_potential_transition,
         self.is_applicable, self.perform_transition,
         self.reject_transition or self.has_reached_end in favour of
-        overloading __iter__ when implementing a
+        overloading __next__ when implementing a
         StochasticSimulationAlgorithm.
         """
+        # XXX can this logic be simplified?
         while not self.has_reached_end():
             time, transition, args = self.propose_potential_transition()
 
@@ -418,11 +425,21 @@ class StochasticSimulationAlgorithm(with_metaclass(abc.ABCMeta, object)):
             else:
                 self.perform_transition(time, transition, *args)
                 self.prune_transitions()
-                yield transition
+                return transition
 
         if self.step != self.steps and self.tmax < float('inf'):
             self.time = self.tmax
+        raise StopIteration
 
+    def until(self, time):
+        old_tmax, self.tmax = self.tmax, time
+        while self.time < time:
+            try:
+                next(self)
+            except StopIteration:
+                break
+        self.tmax = old_tmax
+        # XXX what to return?
 
 class DirectMethod(StochasticSimulationAlgorithm):
     """Implementation of Gillespie's direct method.
@@ -502,6 +519,7 @@ class DirectMethod(StochasticSimulationAlgorithm):
         If the new propensity of a transition is 0 and the transition
         has been derived by a rule or is an Event, the transition gets
         added to self.depleted for later pruning."""
+        # XXX order in which reactions are updated needs to be preserved over independent runs
         for trans in affected_transitions:
             propensity = trans.propensity(self.state)
             if propensity == 0 and (trans.rule or isinstance(trans, Event)):
@@ -602,6 +620,8 @@ class NextReactionMethod(FirstReactionMethod):
         self.firings.add_item(transition, **params)
 
     def prune_transitions(self):
+        if not self.depleted:
+            return
         for trans in self.depleted:
             self.dependency_graph.remove_reaction(trans)
             self.firings.remove_item(trans)
@@ -627,6 +647,7 @@ class NextReactionMethod(FirstReactionMethod):
         # update affected firing times
         affected = self.dependency_graph.affected_transitions(transition.affected_species)
         self.firings.update_one_instance(transition)
+        # XXX order in which reactions are updated should be preserved over independant runs
         self.firings.update_items(affected)
         # mark depleted reactions
         for trans in affected:
@@ -804,6 +825,7 @@ class CaoMethod(DirectMethod):
         self.abandon_tauleap = -1
 
     def __iter__(self):
+        # XXX should become regular iterator
         from math import log
 
         while not self.has_reached_end():
