@@ -24,25 +24,33 @@ State
 -----
 
 .. autoclass:: multiset
+	:members:
+	:special-members:
 
 Transitions
 -----------
 Transitions are transformations of state elements.
 
 .. autoclass:: Transition
+	:members:
 
 .. autoclass:: Reaction
+	:members:
 
 .. autoclass:: MassAction
+	:members:
 
 .. autoclass:: Event
+	:members:
 
 
 Rules
 -----
 .. autoclass:: Rule
+	:members:
 
 .. autoclass:: TransitionRule
+	:members:
 
 
 Trajectories and Ensembles
@@ -52,3 +60,4 @@ Trajectories and Ensembles
 	:members:
 
 .. py:class: Ensemble
+	:members:

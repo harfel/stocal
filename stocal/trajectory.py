@@ -18,12 +18,18 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-"""Facilities to work with stochastic trajectories
-XXX
-"""
+"""Facilities to work with stochastic trajectories"""
 
 class Trajectory(object):
-    """XXX class doc"""
+    """Access to a single random sample of a stochastic process
+
+    Trajectory instances contain a time access (trajectory.times) at which the
+    system state is sampled, and a dictionary of copy number axes
+    (trajectory.species), one for each species that occurred during simulation.
+
+    Rather than directly instantiating a Trajectory, user code should call
+    Process.trajectory() to obtain an instance.
+    """
     def __init__(self, sampler, times=None):
         """XXX init doc"""
         self.sampler = sampler
@@ -48,11 +54,12 @@ class Trajectory(object):
                     if s not in self.species:
                         self.species[s] = len(self.times)*[0]
                     self.species[s].append(self.sampler.state[s])
+                for s in self.species:
+                    if s in self.sampler.state:
+                        continue
+                    self.species[s].append(0)
                 self.times.append(self.sampler.time)
 
-    def __getitem__(self, species):
-        """XXX getitem doc"""
-        return self.species.get(species, 0)
 
 
 if __name__ == '__main__':

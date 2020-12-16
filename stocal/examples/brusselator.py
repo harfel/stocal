@@ -21,7 +21,8 @@ process = stocal.Process([
 ])
 
 if __name__ == '__main__':
-    traj = process.sample({}, tmax=50)
-    print("# time\tx\ty\tc\td")
-    for dt, transitions in traj:
-        print(traj.time, '\t'.join(str(traj.state[s]) for s in "xycd"))
+    from matplotlib import pyplot as plt
+    traj = process.trajectory({}, tmax=50)
+    for s in traj.species:
+        plt.step(traj.times, traj['y'])
+    plt.show()
