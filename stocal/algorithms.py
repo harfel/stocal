@@ -829,6 +829,8 @@ class CaoMethod(DirectMethod):
         from math import log
 
         while not self.has_reached_end():
+            if self.time == self.tmax:
+                break
             # step 1: partition reactions -- Eq. (10)
             Jcrit, Jncr = self.identify_critical_reactions()
 
