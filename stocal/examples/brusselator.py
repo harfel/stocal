@@ -22,7 +22,6 @@ process = stocal.Process([
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    traj = process.trajectory({}, tmax=50)
-    for s in traj.species:
-        plt.step(traj.times, traj['y'])
+    traj = process.trajectory({}, tmax=100)
+    plt.step(traj.times, traj.species["x"])
     plt.show()
